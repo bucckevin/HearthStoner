@@ -3,6 +3,18 @@
 Every installed version, newest first. The number is in `VERSION`: patch (1.0.x) for fixes, minor (1.x.0) for new
 features, major (x.0.0) for big changes, such as a new data format. Each version is tagged in git as `v<number>`.
 
+## 1.2.0 - 2026-11-07
+
+Practice drills (built on the `practice-drills` branch).
+
+- Practice home: today's review (questions you missed come back the next day, then after 3 and 7 days; three right
+  in a row retire one; saved in practice.json), your streak, and a tile per drill with what's due.
+- New drills: What would you play? (a turn from your replay; scored on mana use, shows what you played and how your
+  win chance moved), Guess their hand (cards revealed later), Secret guessing (revealed secrets), Discover drill.
+- Mulligan quiz becomes Mulligan by matchup: opponent-class chips and a keep/toss table for the matchup.
+- Lethal puzzles: after the solution you mark whether you found it, so missed ones come back in the review.
+- `screenshot` also draws every drill, asked and answered.
+
 ## 1.1.1 - 2026-11-07
 
 - Quests, collection, ranks and decks read from the game again when HearthStoner started before Hearthstone: an

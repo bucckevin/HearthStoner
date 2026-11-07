@@ -307,6 +307,7 @@ namespace HearthStoner
                         using (var f = File.Create(file)) enc.Save(f);
                         Console.WriteLine("Wrote " + Path.GetFullPath(file));
                     }
+                    PracticeShots(shell, data, folder);
                 }
                 catch (Exception ex) { error = ex; }
             });
@@ -315,6 +316,46 @@ namespace HearthStoner
             t.Join();
             if (error != null) throw error;
             return 0;
+        }
+
+        /// <summary>
+        /// Each Practice drill's first question, and the same question answered (app-practice-play.png,
+        /// app-practice-play-answered.png, ...). Their replays are built first; drawn twice so card pictures are in.
+        /// </summary>
+        private static void PracticeShots(AppShell shell, AppData data, string folder)
+        {
+            foreach (var drill in PracticeIds.Drills)
+                foreach (var answered in new[] { false, true })
+                {
+                    foreach (var g in PracticePage.ShowForScreenshot(shell, drill, answered))
+                        if (!string.IsNullOrEmpty(g.LogFile)) ReplayPage.Get(g, data);
+                    var name = $"practice-{drill}{(answered ? "-answered" : "")}";
+                    Render(shell, folder, name, 1280, 900, quiet: true);
+                    var v = -1;
+                    for (var i = 0; i < 20 && v != CardTiles.Version; i++) { v = CardTiles.Version; Thread.Sleep(400); }
+                    PracticePage.ShowForScreenshot(shell, drill, answered);
+                    Render(shell, folder, name, 1280, 900, quiet: false);
+                }
+            PracticePage.ShowForScreenshot(shell, null, false);
+        }
+
+        /// <summary>Draws the shell's Practice page at the given size to app-&lt;name&gt;.png.</summary>
+        private static void Render(AppShell shell, string folder, string name, int wid, int hgt, bool quiet)
+        {
+            shell.Width = wid;
+            shell.Height = hgt;
+            shell.Show("Practice");
+            shell.Redraw();
+            shell.Measure(new Size(wid, hgt));
+            shell.Arrange(new Rect(0, 0, wid, hgt));
+            shell.UpdateLayout();
+            var bmp = new RenderTargetBitmap(wid, hgt, 96, 96, PixelFormats.Pbgra32);
+            bmp.Render(shell);
+            var enc = new PngBitmapEncoder();
+            enc.Frames.Add(BitmapFrame.Create(bmp));
+            var file = Path.Combine(folder, "app-" + name + ".png");
+            using (var f = File.Create(file)) enc.Save(f);
+            if (!quiet) Console.WriteLine("Wrote " + Path.GetFullPath(file));
         }
     }
 }

@@ -50,6 +50,8 @@ namespace HearthStoner.Game
             public List<HandCard> Hand = new List<HandCard>();
             /// <summary>Card ids of secrets in play ("" when hidden).</summary>
             public List<string> Secrets = new List<string>();
+            /// <summary>The entity of each secret in <see cref="Secrets"/>, same order (to look up what it was in <see cref="FinalCardIds"/>).</summary>
+            public List<int> SecretEntities = new List<int>();
         }
 
         public sealed class Frame
@@ -292,7 +294,7 @@ namespace HearthStoner.Game
                 });
             }
             foreach (var sec in t.Zone(pid, "SECRET").OrderBy(e => e.Int("ZONE_POSITION")))
-                if (sec.CardType != "HERO_POWER") s.Secrets.Add(sec.CardId ?? "");
+                if (sec.CardType != "HERO_POWER") { s.Secrets.Add(sec.CardId ?? ""); s.SecretEntities.Add(sec.Id); }
             return s;
         }
     }

@@ -4,24 +4,46 @@ using System.Windows.Threading;
 namespace HearthStoner.Pages
 {
     /// <summary>
-    /// What the Practice page remembers between redraws: which quiz hand and puzzle you're on, your keep/toss picks
-    /// and the running score. Owned by the window (<see cref="AppShell.Practice"/>), so a second window or the
-    /// screenshot mode starts fresh.
+    /// What the Practice page remembers between redraws: the drill (or the daily review) you're in, its questions,
+    /// your answer so far to the shown one, and the session score. Owned by the window (<see cref="AppShell.Practice"/>),
+    /// so a second window or the screenshot mode starts fresh.
     /// </summary>
     public sealed class PracticeState
     {
-        /// <summary>Index of the mulligan quiz hand shown.</summary>
-        public int QuizHand;
-        /// <summary>Your picks for the shown hand: card index to keep (true) or toss (false). Missing means keep.</summary>
+        /// <summary>The drill shown (a <see cref="PracticeIds"/> name), <see cref="Review"/>, or null for the Practice home.</summary>
+        public string Drill;
+        public const string Review = "review";
+        /// <summary>The question ids of this drill or review, and which one is shown.</summary>
+        public List<string> Queue = new List<string>();
+        public int Index;
+        /// <summary>The mulligan drill's opponent class filter (null: any).</summary>
+        public string MatchupClass;
+
+        /// <summary>True once the shown question is answered (checked, revealed, locked in).</summary>
+        public bool Answered;
+        public bool WasRight;
+        /// <summary>Mulligan: card index to keep (true) or toss (false); missing means keep.</summary>
         public readonly Dictionary<int, bool> Keep = new Dictionary<int, bool>();
-        /// <summary>True once the shown hand was checked against the data.</summary>
-        public bool Checked;
-        /// <summary>Quiz score so far: cards judged right, out of cards judged.</summary>
+        /// <summary>What would you play: hand positions in the order you picked them.</summary>
+        public readonly List<int> PickOrder = new List<int>();
+        /// <summary>Guess their hand: hand slot to the chosen option's index.</summary>
+        public readonly Dictionary<int, int> Guesses = new Dictionary<int, int>();
+        /// <summary>Secret and Discover drills: the option you picked (-1: none yet).</summary>
+        public int Choice = -1;
+
+        /// <summary>Session score: questions right, out of questions answered.</summary>
         public int Right, Total;
-        /// <summary>Index of the lethal puzzle shown.</summary>
-        public int Puzzle;
-        /// <summary>True when the shown puzzle's solution is revealed.</summary>
-        public bool SolutionShown;
+
+        /// <summary>Clears the answer to the shown question (moving to another one).</summary>
+        public void ResetAnswer()
+        {
+            Answered = false;
+            WasRight = false;
+            Keep.Clear();
+            PickOrder.Clear();
+            Guesses.Clear();
+            Choice = -1;
+        }
     }
 
     /// <summary>
