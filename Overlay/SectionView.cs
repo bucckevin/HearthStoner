@@ -16,37 +16,114 @@ namespace HearthStoner.Overlay
             foreach (var sec in sections)
             {
                 var first = panel.Children.Count == 0;
-                if (sec.Bar) panel.Children.Add(HeaderBar(sec.Title, sec.RightText, first, titleSize));
-                else panel.Children.Add(new TextBlock
-                {
-                    Text = sec.Title,
-                    FontWeight = FontWeights.Bold,
-                    FontSize = titleSize,
-                    Foreground = new SolidColorBrush(Color.FromRgb(255, 214, 120)),
-                    Margin = new Thickness(0, first ? 0 : 8, 0, 2),
-                    TextWrapping = TextWrapping.Wrap,
-                });
+                panel.Children.Add(SectionTitle(sec, first, titleSize));
                 foreach (var line in sec.Lines)
                 {
-                    UIElement el;
-                    if (line.CardId != null) el = CardTile(line, cardArt, hoverMode);
-                    else
-                    {
-                        el = new TextBlock
-                        {
-                            Text = line.Text,
-                            FontSize = line.Tone == Tone.Dim ? 11 : 12,
-                            FontWeight = line.Tone == Tone.Heading ? FontWeights.SemiBold : FontWeights.Normal,
-                            Foreground = new SolidColorBrush(ColorFor(line.Tone)),
-                            TextWrapping = TextWrapping.Wrap,
-                            TextDecorations = line.Struck ? TextDecorations.Strikethrough : null,
-                            Opacity = line.Struck ? 0.6 : 1.0,
-                        };
-                    }
+                    var el = Line(line, cardArt, hoverMode);
                     if (line.Pulse) Pulse(el);
                     panel.Children.Add(el);
                 }
             }
+        }
+
+        private static readonly Brush TitleGold = Frozen(new SolidColorBrush(Color.FromRgb(255, 214, 120)));
+        private static readonly Brush LabelBrush = Frozen(new SolidColorBrush(Color.FromRgb(139, 144, 184)));
+        private static readonly Brush ChipBrush = Frozen(new SolidColorBrush(Color.FromRgb(35, 40, 73)));
+        private static readonly Brush ChipHotBrush = Frozen(new SolidColorBrush(Color.FromRgb(90, 58, 30)));
+        private static readonly Brush TagHotBrush = Frozen(new SolidColorBrush(Color.FromRgb(90, 36, 48)));
+        private static readonly Brush TagBrush = Frozen(new SolidColorBrush(Color.FromRgb(46, 53, 102)));
+
+        /// <summary>
+        /// A section's title: an owner header (OPPONENT / YOU, the name, HP on the right), a deck header bar, a small
+        /// capitals label for a sub-section, or a plain gold title.
+        /// </summary>
+        private static UIElement SectionTitle(AdviceSection sec, bool first, double size)
+        {
+            var margin = new Thickness(0, first ? 0 : 8, 0, 2);
+            if (sec.Bar) return HeaderBar(sec.Title, sec.RightText, first, size);
+            if (sec.Minor) return Label(sec.Title, margin);
+            if (sec.Owner == null)
+                return new TextBlock { Text = sec.Title, FontWeight = FontWeights.Bold, FontSize = size, Foreground = TitleGold, Margin = margin, TextWrapping = TextWrapping.Wrap };
+
+            var row = new DockPanel { Margin = margin, LastChildFill = true };
+            var right = new TextBlock { Text = sec.HeaderRight, FontWeight = FontWeights.Bold, FontSize = size + 3, Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Bottom };
+            DockPanel.SetDock(right, Dock.Right);
+            row.Children.Add(right);
+            var owner = new TextBlock { Text = sec.Owner, FontWeight = FontWeights.Bold, FontSize = 10.5, Foreground = LabelBrush, Margin = new Thickness(0, 0, 6, 2), VerticalAlignment = VerticalAlignment.Bottom };
+            DockPanel.SetDock(owner, Dock.Left);
+            row.Children.Add(owner);
+            row.Children.Add(new TextBlock { Text = sec.HeaderName, FontWeight = FontWeights.Bold, FontSize = size, Foreground = TitleGold, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Bottom });
+            return row;
+        }
+
+        /// <summary>Small grey capitals introducing the lines below it.</summary>
+        private static TextBlock Label(string text, Thickness margin) =>
+            new TextBlock { Text = (text ?? "").ToUpperInvariant(), FontWeight = FontWeights.Bold, FontSize = 10.5, Foreground = LabelBrush, Margin = margin, TextWrapping = TextWrapping.Wrap };
+
+        /// <summary>One advice line: a card tile, a chips row, a minion row with tags, a label, or wrapped text.</summary>
+        private static UIElement Line(AdviceLine line, bool cardArt, bool hoverMode)
+        {
+            if (line.CardId != null) return CardTile(line, cardArt, hoverMode);
+            if (line.IsLabel) return Label(line.Text, new Thickness(0, 5, 0, 2));
+            if (line.Chips != null) return ChipsRow(line);
+            if (line.Tags != null) return TagRow(line);
+            return new TextBlock
+            {
+                Text = line.Text,
+                FontSize = 12,
+                FontWeight = line.Tone == Tone.Heading ? FontWeights.SemiBold : FontWeights.Normal,
+                Foreground = new SolidColorBrush(ColorFor(line.Tone)),
+                TextWrapping = TextWrapping.Wrap,
+                TextDecorations = line.Struck ? TextDecorations.Strikethrough : null,
+                Opacity = line.Struck ? 0.6 : 1.0,
+            };
+        }
+
+        /// <summary>A row of small number chips (hot ones gold) with the line's aside text at the right.</summary>
+        private static UIElement ChipsRow(AdviceLine line)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 1, 0, 2), LastChildFill = true };
+            if (!string.IsNullOrEmpty(line.Aside))
+            {
+                var aside = new TextBlock { Text = line.Aside, FontSize = 12, Foreground = new SolidColorBrush(ColorFor(Tone.Dim)), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0) };
+                DockPanel.SetDock(aside, Dock.Right);
+                row.Children.Add(aside);
+            }
+            var chips = new WrapPanel();
+            foreach (var c in line.Chips)
+                chips.Children.Add(new Border
+                {
+                    MinWidth = 20, Height = 20, Margin = new Thickness(0, 0, 3, 0), CornerRadius = new CornerRadius(3),
+                    Background = c.Hot ? ChipHotBrush : ChipBrush,
+                    Child = new TextBlock
+                    {
+                        Text = c.Text, FontSize = 12, FontWeight = FontWeights.SemiBold, Margin = new Thickness(4, 0, 4, 0),
+                        Foreground = c.Hot ? CountGold : Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                    },
+                });
+            row.Children.Add(chips);
+            return row;
+        }
+
+        /// <summary>A minion on the board: name and attack/health, keyword tags (dangerous ones red), a hint below.</summary>
+        private static UIElement TagRow(AdviceLine line)
+        {
+            var stack = new StackPanel();
+            var head = new WrapPanel();
+            var nameColor = line.Tone == Tone.Bad ? new SolidColorBrush(ColorFor(Tone.Bad)) : Brushes.White;
+            head.Children.Add(new TextBlock { Text = line.CardName, FontSize = 12.5, FontWeight = FontWeights.SemiBold, Foreground = nameColor, VerticalAlignment = VerticalAlignment.Center });
+            head.Children.Add(new TextBlock { Text = " " + line.Aside, FontSize = 12.5, Foreground = new SolidColorBrush(ColorFor(Tone.Dim)), Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
+            foreach (var t in line.Tags)
+                head.Children.Add(new Border
+                {
+                    Margin = new Thickness(0, 1, 3, 1), Padding = new Thickness(5, 1, 5, 1), CornerRadius = new CornerRadius(3),
+                    Background = t.Hot ? TagHotBrush : TagBrush,
+                    Child = new TextBlock { Text = t.Text, FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = t.Hot ? new SolidColorBrush(ColorFor(Tone.Bad)) : Brushes.White },
+                });
+            stack.Children.Add(head);
+            if (!string.IsNullOrEmpty(line.Hint))
+                stack.Children.Add(new TextBlock { Text = line.Hint, FontSize = 11.5, Foreground = new SolidColorBrush(ColorFor(Tone.Dim)), TextWrapping = TextWrapping.Wrap });
+            return new Border { Background = RowBase, CornerRadius = new CornerRadius(3), Padding = new Thickness(6, 3, 6, 3), Margin = new Thickness(0, 1, 0, 1), Child = stack };
         }
 
         /// <summary>Fade in and out forever, to draw the eye.</summary>
@@ -286,8 +363,8 @@ namespace HearthStoner.Overlay
             {
                 case Tone.Good: return Color.FromRgb(120, 220, 130);
                 case Tone.Bad: return Color.FromRgb(255, 110, 100);
-                case Tone.Warn: return Color.FromRgb(255, 190, 90);
-                case Tone.Dim: return Color.FromRgb(150, 158, 175);
+                case Tone.Warn: return Color.FromRgb(255, 154, 77);   // amber: "look at this" (gold is for rewards)
+                case Tone.Dim: return Color.FromRgb(172, 178, 200);
                 case Tone.Heading: return Color.FromRgb(140, 200, 255);
                 default: return Color.FromRgb(230, 232, 240);
             }

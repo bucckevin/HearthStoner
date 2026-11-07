@@ -45,7 +45,11 @@ namespace HearthStoner.Advice
             var effective = hp + armor;
             // Player names, falling back to You / Opponent until the game reveals the opponent's name.
             var who = _game.DisplayName(side) ?? (friendly ? "You" : "Opponent");
-            var s = new AdviceSection($"{who}: {hp} HP{(armor > 0 ? $" + {armor} armor = {effective}" : "")}") { Left = left };
+            var s = new AdviceSection($"{who}: {hp} HP{(armor > 0 ? $" + {armor} armor = {effective}" : "")}")
+            {
+                Left = left, Owner = friendly ? "YOU" : "OPPONENT", HeaderName = who,
+                HeaderRight = armor > 0 ? $"{hp} HP + {armor}" : $"{hp} HP",
+            };
 
             var myTurn = _game.IsFriendlyTurn;
             // The attacking side is "other". If it's the attacker's turn now, count only what can attack now.
@@ -184,7 +188,9 @@ namespace HearthStoner.Advice
             {
                 var info = _cards.ById(m.KnownCardId);
                 var notes = ThreatNotes(m, info);
-                s.Add($"{info?.Name ?? "?"} {m.Attack}/{m.Health}{(notes.Length > 0 ? " - " + notes : "")}", Threat(m) >= 8 ? Tone.Bad : Tone.Normal);
+                var (tags, hints) = ThreatTags(m, info);
+                s.Lines.Add(new AdviceLine($"{info?.Name ?? "?"} {m.Attack}/{m.Health}{(notes.Length > 0 ? " - " + notes : "")}", Threat(m) >= 8 ? Tone.Bad : Tone.Normal)
+                    { CardName = info?.Name ?? "?", Aside = $"{m.Attack}/{m.Health}", Tags = tags, Hint = hints.Count > 0 ? string.Join(" · ", hints) : null });
 
                 var answers = new List<string>();
                 foreach (var h in myHand)
@@ -266,6 +272,38 @@ namespace HearthStoner.Advice
                 if (p.Trigger) notes.Add("triggers each turn: kill first");
             }
             return string.Join("; ", notes);
+        }
+
+
+        /// <summary>
+        /// The same notes as <see cref="ThreatNotes"/>, split for the overlay: short keyword tags (the dangerous ones
+        /// marked hot) and the advice that goes with them.
+        /// </summary>
+        private static (List<Chip> Tags, List<string> Hints) ThreatTags(Entity m, CardInfo info)
+        {
+            var tags = new List<Chip>();
+            var hints = new List<string>();
+            var p = info?.Profile;
+            void Tag(string flag, string label, bool hot, string hint = null)
+            {
+                if (!m.Flag(flag)) return;
+                tags.Add(new Chip(label, hot));
+                if (hint != null) hints.Add(hint);
+            }
+            Tag("TAUNT", "Taunt", false);
+            Tag("DIVINE_SHIELD", "Shield", false, "ping the shield first");
+            Tag("POISONOUS", "Poison", true, "trade a token into it");
+            Tag("STEALTH", "Stealth", true, "needs AoE");
+            Tag("WINDFURY", "Windfury", true);
+            Tag("LIFESTEAL", "Lifesteal", false);
+            Tag("REBORN", "Reborn", false, "kill it twice");
+            if (p != null && !m.Flag("SILENCED"))
+            {
+                if (p.Deathrattle) { tags.Add(new Chip("Deathrattle")); hints.Add("silence beats killing"); }
+                if (p.Aura) { tags.Add(new Chip("Aura", true)); hints.Add("kill it first"); }
+                if (p.Trigger) { tags.Add(new Chip("Each turn", true)); hints.Add("kill it first"); }
+            }
+            return (tags, hints.Distinct().ToList());
         }
 
 

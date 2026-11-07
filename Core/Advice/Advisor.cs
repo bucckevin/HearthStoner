@@ -28,7 +28,22 @@ namespace HearthStoner.Advice
         /// <summary>Keep pulsing to draw the eye (lethal / danger).</summary>
         public bool Pulse;
 
+        // ---- compact rows (the overlay draws these; the console still prints Text)
+        /// <summary>Drawn as a small capitals label above the lines it introduces.</summary>
+        public bool IsLabel;
+        /// <summary>When set, drawn as a row of small chips (e.g. the turns each card in their hand was held).</summary>
+        public List<Chip> Chips;
+        /// <summary>When set, drawn as a row: <see cref="CardName"/>, <see cref="Aside"/>, then keyword tags (a minion on the board).</summary>
+        public List<Chip> Tags;
+        /// <summary>Text at the right end of a chips row; on a tag row, the minion's attack/health after its name (<see cref="CardName"/>).</summary>
+        public string Aside;
+        /// <summary>A short hint under a tag row (e.g. "ping it first").</summary>
+        public string Hint;
+
         public AdviceLine(string text, Tone tone = Tone.Normal) { Text = text; Tone = tone; }
+
+        /// <summary>A small capitals label line.</summary>
+        public static AdviceLine Label(string text) => new AdviceLine(text, Tone.Dim) { IsLabel = true };
 
         public static AdviceLine Card(CardInfo info, string id, string text, Tone tone, string badge, string detail, bool struck = false) =>
             new AdviceLine(text, tone)
@@ -43,9 +58,23 @@ namespace HearthStoner.Advice
             };
     }
 
+    /// <summary>One chip or tag in a compact row; <see cref="Hot"/> ones stand out (gold chip, red tag).</summary>
+    public sealed class Chip
+    {
+        public string Text;
+        public bool Hot;
+        public Chip(string text, bool hot = false) { Text = text; Hot = hot; }
+    }
+
     public sealed class AdviceSection
     {
         public string Title;
+        /// <summary>Whose panel this is ("OPPONENT" / "YOU"): the overlay then draws the label, <see cref="HeaderName"/> and <see cref="HeaderRight"/> instead of the title.</summary>
+        public string Owner;
+        public string HeaderName;
+        public string HeaderRight;
+        /// <summary>Draw the title as a small capitals label (a sub-section of the panel above it).</summary>
+        public bool Minor;
         /// <summary>Shown on the opponent's (left) side of the overlay.</summary>
         public bool Left;
         /// <summary>Draw the title as a header bar (deck-tracker style), with this text at its right end.</summary>

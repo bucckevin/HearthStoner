@@ -71,53 +71,80 @@ namespace HearthStoner.Advice
 
         private AdviceSection OpponentSection(string oppClass, List<ArchetypeGuess> guesses, List<LikelyCard> likely)
         {
-            var s = new AdviceSection($"Opponent - {MetaStats.ClassName(oppClass)}") { Left = true };
+            var s = new AdviceSection($"Their deck - {MetaStats.ClassName(oppClass)}") { Left = true, Minor = true };
             var opp = _game.OpponentPlayerId;
 
             if (guesses.Count == 0) s.Add(_meta == null ? "No meta data loaded." : "No meta data for this class.", Tone.Dim);
             foreach (var g in guesses.Take(3).Where(g => g.Probability >= 0.05))
-                s.Add($"{g.Probability:P0}  {g.Archetype.Name}  ({g.Archetype.WinRate:P0} WR)", g == guesses[0] ? Tone.Heading : Tone.Normal);
+                s.Add(g.Probability >= SureEnough ? $"{g.Archetype.Name} · sure · {g.Archetype.WinRate:P0} WR" : $"{g.Probability:P0}  {g.Archetype.Name}  ({g.Archetype.WinRate:P0} WR)",
+                    g == guesses[0] ? Tone.Heading : Tone.Normal);
 
             var bigThreats = likely.Where(c => c.Probability >= 0.3).Take(8).ToList();
             if (bigThreats.Count > 0)
             {
-                s.Add("Likely still has:", Tone.Dim);
+                s.Lines.Add(AdviceLine.Label("Still in their deck"));
                 foreach (var c in bigThreats)
                 {
                     var info = _cards.ById(c.CardId);
                     var prof = info?.Profile;
                     var tag = prof != null && prof.IsAoe ? $"  [{prof.Summary()}]" : "";
+                    // A near-certain card shows no percentage: a column of 99%s says nothing.
                     s.Lines.Add(AdviceLine.Card(info, c.CardId, $"  {c.Probability:P0}  ({info?.Cost}) {info?.Name ?? c.CardId}{tag}",
-                        prof != null && prof.IsAoe ? Tone.Warn : Tone.Normal, $"{c.Probability:P0}", prof != null && prof.IsAoe ? "AoE" : null));
+                        prof != null && prof.IsAoe ? Tone.Warn : Tone.Normal, c.Probability >= SureEnough ? null : $"{c.Probability:P0}", prof != null && prof.IsAoe ? "AoE" : null));
                 }
             }
 
-            // Their hand: where each card came from and how long they've held it.
-            var hand = _game.Hand(opp);
-            if (hand.Count > 0)
-            {
-                s.Add($"Hand ({hand.Count}):", Tone.Dim);
-                var slot = 1;
-                foreach (var e in hand)
-                {
-                    var age = Math.Max(0, (_game.Turn - e.ZoneTurn + 1) / 2);
-                    string what;
-                    if (!string.IsNullOrEmpty(e.KnownCardId) && (e.ReturnedToHand || !string.IsNullOrEmpty(e.CardId)))
-                        what = $"{_cards.NameOf(e.KnownCardId)}{(e.ReturnedToHand ? " (returned)" : "")}";
-                    else if (e.Int("CREATOR") != 0)
-                        what = $"created by {_cards.NameOf(_game.EntityCardId(e.Int("CREATOR")))}";
-                    else if (e.KeptInMulligan)
-                        what = "kept in mulligan";
-                    else if (e.StartedInDeck)
-                        what = e.StartController == _game.FriendlyPlayerId ? "stolen from your deck" : "from deck";
-                    else what = "?";
-                    var held = age > 0 ? $", held {age} turn{(age == 1 ? "" : "s")}" : "";
-                    s.Add($"  #{slot++}: {what}{held}", e.ReturnedToHand ? Tone.Warn : Tone.Normal);
-                }
-            }
-            s.Add($"Mana next turn: {_game.NextTurnMana(opp)}", Tone.Dim);
+            AddOpponentHand(s, opp);
             foreach (var read in Reads(likely)) s.Add(read, Tone.Warn);
             return s;
+        }
+
+
+        /// <summary>A guess this likely is shown as fact (no percentage).</summary>
+        private const double SureEnough = 0.95;
+
+        /// <summary>A card held this many turns or more is marked: often a combo piece or a reactive card.</summary>
+        private const int LongHeld = 4;
+
+
+        /// <summary>
+        /// Their hand as one row of chips (turns each card has been held, long-held ones marked), next turn's mana at
+        /// its end, and a line for each card we know more about (named, created, returned, kept, stolen).
+        /// </summary>
+        private void AddOpponentHand(AdviceSection s, int opp)
+        {
+            var hand = _game.Hand(opp);
+            var mana = _game.NextTurnMana(opp);
+            if (hand.Count == 0) { s.Add($"Mana next turn: {mana}", Tone.Dim); return; }
+
+            var chips = new List<Chip>();
+            var notes = new List<AdviceLine>();
+            var ages = new List<int>();
+            var slot = 1;
+            foreach (var e in hand)
+            {
+                var age = Math.Max(0, (_game.Turn - e.ZoneTurn + 1) / 2);
+                ages.Add(age);
+                chips.Add(new Chip(age.ToString(), age >= LongHeld));
+                var what = HandCardOrigin(e);
+                if (what != "from deck") notes.Add(new AdviceLine($"#{slot}: {what}", e.ReturnedToHand ? Tone.Warn : Tone.Dim));
+                slot++;
+            }
+            s.Lines.Add(AdviceLine.Label($"Hand {hand.Count} · turns held"));
+            s.Lines.Add(new AdviceLine($"Hand ({hand.Count}): held {string.Join(", ", ages)} turns; mana next turn: {mana}") { Chips = chips, Aside = $"{mana} mana next" });
+            s.Lines.AddRange(notes);
+        }
+
+
+        /// <summary>Where a card in their hand came from, as far as they've shown.</summary>
+        private string HandCardOrigin(Entity e)
+        {
+            if (!string.IsNullOrEmpty(e.KnownCardId) && (e.ReturnedToHand || !string.IsNullOrEmpty(e.CardId)))
+                return $"{_cards.NameOf(e.KnownCardId)}{(e.ReturnedToHand ? " (returned)" : "")}";
+            if (e.Int("CREATOR") != 0) return $"created by {_cards.NameOf(_game.EntityCardId(e.Int("CREATOR")))}";
+            if (e.KeptInMulligan) return "kept in mulligan";
+            if (e.StartedInDeck) return e.StartController == _game.FriendlyPlayerId ? "stolen from your deck" : "from deck";
+            return "?";
         }
 
 
