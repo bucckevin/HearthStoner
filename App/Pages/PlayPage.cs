@@ -54,13 +54,14 @@ namespace HearthStoner.Pages
         }
 
         /// <summary>
-        /// The first deck of each distinct card list (in the given order), mapped to the names of the other decks
-        /// with exactly the same cards.
+        /// The first deck of each archetype (in the given order), mapped to the names of your other decks of that
+        /// archetype. The expected win rate comes from the archetype, so those decks would show the same number;
+        /// decks that match no archetype group only with exact copies.
         /// </summary>
         public static Dictionary<DeckPlanner.DeckPick, List<string>> SameLists(IEnumerable<DeckPlanner.DeckPick> picks)
         {
             var result = new Dictionary<DeckPlanner.DeckPick, List<string>>();
-            foreach (var g in picks.GroupBy(p => string.Join(",", (p.Deck.Cards ?? new List<string>()).OrderBy(c => c, StringComparer.Ordinal))))
+            foreach (var g in picks.GroupBy(p => p.Archetype != null ? "a:" + p.Archetype.Id : "c:" + DeckVersions.Key(p.Deck.Cards)))
             {
                 var list = g.ToList();
                 result[list[0]] = list.Skip(1).Select(p => p.Deck.Name).ToList();
@@ -68,13 +69,13 @@ namespace HearthStoner.Pages
             return result;
         }
 
-        /// <summary>"Aura Paladin · +3 copies", with the copies' names as a tooltip.</summary>
+        /// <summary>"End Of Turnadin · +3 more", with the other decks' names as a tooltip.</summary>
         private static TextBlock SubtitleWithCopies(string sub, List<string> copies, double size)
         {
             var t = Theme.Text(sub, size, Theme.Dusk);
             if (copies.Count == 0) return t;
-            t.Inlines.Add(new System.Windows.Documents.Run($"  ·  +{copies.Count} {(copies.Count == 1 ? "copy" : "copies")}") { Foreground = Theme.Vellum });
-            t.ToolTip = "Same 40 cards as: " + string.Join(", ", copies);
+            t.Inlines.Add(new System.Windows.Documents.Run($"  ·  +{copies.Count} more") { Foreground = Theme.Vellum });
+            t.ToolTip = "Your other decks of this archetype (same expected win rate): " + string.Join(", ", copies);
             return t;
         }
 

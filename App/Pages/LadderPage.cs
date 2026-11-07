@@ -166,8 +166,10 @@ namespace HearthStoner.Pages
 
         private static void Decks(Panel p, LadderReport r, bool legend, AppData d)
         {
-            // Decks you've played first; a deck with the same cards as one above it (and no games) is merged into it.
-            var cardsByName = d.Decks.GroupBy(x => x.Name).ToDictionary(g => g.Key, g => DeckVersions.Key(g.First().Cards));
+            // Decks you've played first; an unplayed deck of the same archetype as one above it (its estimate is the
+            // archetype's, so the same number) is merged into it, as on the Play page.
+            var cardsByName = d.Picks.Where(x => !x.Deck.Imported).GroupBy(x => x.Deck.Name).ToDictionary(g => g.Key,
+                g => g.First().Archetype != null ? "a:" + g.First().Archetype.Id : "c:" + DeckVersions.Key(g.First().Deck.Cards));
             var rows = new System.Collections.Generic.List<(LadderReport.DeckClimb Deck, int Copies)>();
             foreach (var x in r.Decks.Where(x => x.Best.HasValue || x.Games > 0).OrderByDescending(x => x.Games > 0))
             {
@@ -187,7 +189,7 @@ namespace HearthStoner.Pages
                 var min = x.Minutes is double m ? $"{m:0}" : "—";
                 var fromMeta = x.Games < LadderReport.MinGames && x.MetaStarsPerHour.HasValue;
                 var val = x.Best is double b ? $"{b:+0.0;-0.0;0.0}" : "—";
-                var name = copies > 0 ? $"{x.Name}  +{copies} {(copies == 1 ? "copy" : "copies")}" : x.Name;
+                var name = copies > 0 ? $"{x.Name}  +{copies} more" : x.Name;
                 p.Children.Add(DeckRow(x.Class, name, rec, min, val, !played ? Theme.Mist : x.Best > 0 ? Theme.Win : x.Best < 0 ? Theme.Loss : Theme.Dusk,
                     x.Expected is double e ? $"Meta expected win rate {AppShell.Pct(e)}" : null, 13.5, fromMeta, dim: !played));
             }
