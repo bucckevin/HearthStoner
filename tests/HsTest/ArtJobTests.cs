@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using Xunit;
 
 namespace HearthStoner.Tests
@@ -36,6 +37,15 @@ namespace HearthStoner.Tests
         public void A_cut_off_tail_with_no_markers_is_the_middle_of_a_long_game() =>
             Assert.True(HearthstoneLocator.GameInProgress("TAG_CHANGE ...", true, Now.AddSeconds(-5), Now));
 
+        /// <summary>Stands in for the app's GameArtBuilder.</summary>
+        private sealed class FakeBuilder : IGameArtBuilder
+        {
+            public Func<string, string> Version = _ => null;
+            public Action<string, string, Action<string, int, int>, CancellationToken> Make = (hs, outDir, progress, ct) => { };
+            public string GameVersion(string installDir) => Version(installDir);
+            public void Build(string installDir, string outDir, Action<string, int, int> progress, CancellationToken cancel) => Make(installDir, outDir, progress, cancel);
+        }
+
         private static string TempDir()
         {
             var d = Path.Combine(Path.GetTempPath(), "hs-artjob-" + Guid.NewGuid().ToString("N"));
@@ -51,9 +61,9 @@ namespace HearthStoner.Tests
             {
                 var kinds = new List<string>();
                 var inGameCalls = 0;
-                ArtJob.Version = _ => "6000.3.11";
-                ArtJob.InGame = () => { inGameCalls++; if (inGameCalls > 1) kinds.Add(ArtJob.Status.Kind); return inGameCalls == 1; };
-                ArtJob.Build = (hs, outDir, progress, ct) =>
+                var fake = new FakeBuilder { Version = _ => "6000.3.11" };
+                ArtJob.Configure(fake, () => { inGameCalls++; if (inGameCalls > 1) kinds.Add(ArtJob.Status.Kind); return inGameCalls == 1; });
+                fake.Make = (hs, outDir, progress, ct) =>
                 {
                     kinds.Add(ArtJob.Status.Kind);
                     Directory.CreateDirectory(Path.Combine(outDir, "boards"));
@@ -75,7 +85,7 @@ namespace HearthStoner.Tests
                 Assert.Equal(builds + 1, ArtJob.Builds);
 
                 // Up to date: nothing is rebuilt.
-                ArtJob.Build = (hs, outDir, progress, ct) => throw new Exception("should not run");
+                fake.Make = (hs, outDir, progress, ct) => throw new Exception("should not run");
                 ArtJob.Run(dir, dir, force: false, pollMs: 1);
                 Assert.Equal("done", ArtJob.Status.Kind);
             }
@@ -88,16 +98,15 @@ namespace HearthStoner.Tests
             var dir = TempDir();
             try
             {
-                ArtJob.Version = _ => "2";
-                ArtJob.InGame = () => false;
-                ArtJob.Build = (hs, outDir, progress, ct) => { progress("textures", 1, 10); throw new NotImplementedException(); };
+                var fake = new FakeBuilder { Version = _ => "2", Make = (hs, outDir, progress, ct) => { progress("textures", 1, 10); throw new NotImplementedException(); } };
+                ArtJob.Configure(fake, () => false);
                 File.WriteAllText(Path.Combine(dir, "version.txt"), "1");
                 ArtJob.Run(dir, dir, force: false, pollMs: 1);
                 Assert.Equal("failed", ArtJob.Status.Kind);
                 Assert.StartsWith("Couldn't make board art: ", ArtJob.Status.Text);
                 Assert.Equal("1", File.ReadAllText(Path.Combine(dir, "version.txt")));
 
-                ArtJob.Version = _ => null;
+                fake.Version = _ => null;
                 ArtJob.Run(dir, dir, force: true, pollMs: 1);
                 Assert.Equal("Couldn't make board art: Hearthstone wasn't found.", ArtJob.Status.Text);
             }

@@ -1120,14 +1120,29 @@ namespace HearthStoner
         /// <summary>Makes the art in the background if it's missing or outdated (<paramref name="force"/>: always); see ArtJob.</summary>
         public static void StartJob(string installDir, Func<bool> inGame = null, bool force = false)
         {
-            if (ArtJob.Build == null)
+            lock (Cache)
             {
-                ArtJob.Build = GameArtBuilder.Run;
-                ArtJob.Version = GameArtBuilder.GameVersion;
-                ArtJob.Finished += () => { lock (Cache) Cache.Clear(); };   // new art replaces the loaded images
+                if (!_jobConfigured)
+                {
+                    // The builder's progress notes go to the diagnostics log (hearthstoner.log in the app).
+                    GameArtBuilder.Log ??= note => Console.Error.WriteLine("[gameart] " + note);
+                    ArtJob.Finished += () => { lock (Cache) Cache.Clear(); };   // new art replaces the loaded images
+                    _jobConfigured = true;
+                }
+                ArtJob.Configure(new InstallArtBuilder(), inGame);
             }
-            if (inGame != null) ArtJob.InGame = inGame;
             ArtJob.Start(installDir, force);
+        }
+
+        private static bool _jobConfigured;
+
+        /// <summary>The real builder: reads the art out of the Hearthstone install (<see cref="GameArtBuilder"/>).</summary>
+        private sealed class InstallArtBuilder : IGameArtBuilder
+        {
+            public string GameVersion(string installDir) => GameArtBuilder.GameVersion(installDir);
+
+            public void Build(string installDir, string outDir, Action<string, int, int> progress, System.Threading.CancellationToken cancel) =>
+                GameArtBuilder.Run(installDir, outDir, progress, cancel);
         }
 
         /// <summary>A rendered board (null if it hasn't been rendered); a small copy when <paramref name="width"/> is set.</summary>

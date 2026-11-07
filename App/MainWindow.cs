@@ -287,7 +287,7 @@ namespace HearthStoner
                         if (step.Name != null)
                         {
                             shell.ReplayFrame = step.Frame; shell.Show("Replays");
-                            if (step.T >= 0) { ReplayPage.PrimeStep(rg, step.Frame); ReplayBoard.FixedProgress = step.T; }
+                            if (step.T >= 0) { ReplayPage.PrimeStep(shell, rg, step.Frame); ReplayBoard.FixedProgress = step.T; }
                         }
                         else if (page == "Replays") shell.ReplayFrame = midFrame;
                         shell.ReplayShowHidden = name == "replays-hidden";

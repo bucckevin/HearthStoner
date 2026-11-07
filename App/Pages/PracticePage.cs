@@ -13,13 +13,6 @@ namespace HearthStoner
     /// </summary>
     public static class PracticePage
     {
-        /// <summary>Quiz state: which hand, your keep/toss choices, whether it has been checked, the running score.</summary>
-        private static int _quizHand;
-        private static readonly Dictionary<int, bool> _keep = new Dictionary<int, bool>();
-        private static bool _checked;
-        private static int _right, _total;
-        private static int _puzzle;
-        private static bool _solutionShown;
 
         public static UIElement Build(AppShell shell)
         {
@@ -52,8 +45,8 @@ namespace HearthStoner
                 p.Children.Add(Theme.Text("No opening hands with data yet. Play a few games with HearthStoner running.", 13.5, Theme.Dusk, wrap: true));
                 return p;
             }
-            if (_quizHand >= hands.Count) _quizHand = 0;
-            var g = hands[_quizHand];
+            if (shell.Practice.QuizHand >= hands.Count) shell.Practice.QuizHand = 0;
+            var g = hands[shell.Practice.QuizHand];
             var sub = Theme.Text($"{g.MyArchetype ?? MetaStats.ClassName(g.MyClass)} vs {g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass)}, " +
                                  $"{(g.WentFirst ? "going first" : "on the coin")}. Click a card to toss it, then check.", 13.5, Theme.Dusk, wrap: true);
             sub.Margin = new Thickness(0, -4, 0, 12);
@@ -64,7 +57,7 @@ namespace HearthStoner
             {
                 var m = g.Mulligan[i];
                 var idx = i;
-                var keep = !_keep.TryGetValue(i, out var k) || k;
+                var keep = !shell.Practice.Keep.TryGetValue(i, out var k) || k;
                 var card = new StackPanel { Width = 116, Margin = new Thickness(0, 0, 10, 10) };
                 var img = CardTiles.GetRender(m.CardId);
                 var pic = img != null
@@ -74,7 +67,7 @@ namespace HearthStoner
                 var label = Theme.Text(keep ? "Keep" : "Toss", 13.5, keep ? Theme.Vellum : Theme.Dusk, FontWeights.SemiBold);
                 label.HorizontalAlignment = HorizontalAlignment.Center;
                 card.Children.Add(label);
-                if (_checked && (m.Advice == "KEEP" || m.Advice == "TOSS"))
+                if (shell.Practice.Checked && (m.Advice == "KEEP" || m.Advice == "TOSS"))
                 {
                     var right = keep == (m.Advice == "KEEP");
                     var verdict = Theme.Text($"{(right ? "Right" : "Data: " + m.Advice.ToLowerInvariant())} ({(m.Delta >= 0 ? "+" : "")}{m.Delta * 100:F1}%)", 12.5, right ? Theme.Win : Theme.Loss, FontWeights.SemiBold);
@@ -85,35 +78,35 @@ namespace HearthStoner
                     card.Children.Add(you);
                 }
                 var b = new Border { Child = card, Cursor = System.Windows.Input.Cursors.Hand, Background = Brushes.Transparent, ToolTip = d.Cards.NameOf(m.CardId) };
-                if (!_checked) b.MouseLeftButtonUp += (s, e) => { _keep[idx] = !keep; shell.Redraw(); };
+                if (!shell.Practice.Checked) b.MouseLeftButtonUp += (s, e) => { shell.Practice.Keep[idx] = !keep; shell.Redraw(); };
                 row.Children.Add(b);
             }
             p.Children.Add(row);
 
             var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 0) };
-            if (!_checked)
+            if (!shell.Practice.Checked)
                 actions.Children.Add(Theme.Button("Check", () =>
                 {
                     foreach (var (m, i) in g.Mulligan.Select((m, i) => (m, i)).Where(x => x.m.Advice == "KEEP" || x.m.Advice == "TOSS"))
                     {
-                        var keep = !_keep.TryGetValue(i, out var k) || k;
-                        _total++;
-                        if (keep == (m.Advice == "KEEP")) _right++;
+                        var keep = !shell.Practice.Keep.TryGetValue(i, out var k) || k;
+                        shell.Practice.Total++;
+                        if (keep == (m.Advice == "KEEP")) shell.Practice.Right++;
                     }
-                    _checked = true;
+                    shell.Practice.Checked = true;
                     shell.Redraw();
                 }));
             else
-                actions.Children.Add(Theme.Button(hands.Count > 1 ? "Next hand" : "Try again", () => { _quizHand = (_quizHand + 1) % hands.Count; _keep.Clear(); _checked = false; shell.Redraw(); }));
-            if (_total > 0)
+                actions.Children.Add(Theme.Button(hands.Count > 1 ? "Next hand" : "Try again", () => { shell.Practice.QuizHand = (shell.Practice.QuizHand + 1) % hands.Count; shell.Practice.Keep.Clear(); shell.Practice.Checked = false; shell.Redraw(); }));
+            if (shell.Practice.Total > 0)
             {
-                var score = Theme.Text($"Score: {_right} of {_total} ({AppShell.Pct((double)_right / _total)})", 14, Theme.Vellum, FontWeights.SemiBold);
+                var score = Theme.Text($"Score: {shell.Practice.Right} of {shell.Practice.Total} ({AppShell.Pct((double)shell.Practice.Right / shell.Practice.Total)})", 14, Theme.Vellum, FontWeights.SemiBold);
                 score.VerticalAlignment = VerticalAlignment.Center;
                 score.Margin = new Thickness(16, 0, 0, 0);
                 actions.Children.Add(score);
             }
             p.Children.Add(actions);
-            var note = Theme.Text($"Hand {_quizHand + 1} of {hands.Count}. Percentages: how much more (or less) often players win when they keep the card in this matchup.", 12, Theme.Dusk, wrap: true);
+            var note = Theme.Text($"Hand {shell.Practice.QuizHand + 1} of {hands.Count}. Percentages: how much more (or less) often players win when they keep the card in this matchup.", 12, Theme.Dusk, wrap: true);
             note.Margin = new Thickness(0, 12, 0, 0);
             p.Children.Add(note);
             return p;
@@ -135,8 +128,8 @@ namespace HearthStoner
                 p.Children.Add(Theme.Text("None yet. Whenever HearthStoner sees you have lethal, it saves the board here to solve again.", 13.5, Theme.Dusk, wrap: true));
                 return p;
             }
-            if (_puzzle >= list.Count) _puzzle = 0;
-            var (g, t) = list[_puzzle];
+            if (shell.Practice.Puzzle >= list.Count) shell.Practice.Puzzle = 0;
+            var (g, t) = list[shell.Practice.Puzzle];
             var z = t.Puzzle;
             var missed = g.Review.Any(r => r.Kind == "MissedLethal" && r.Turn == t.Turn);
             var head = Theme.Text($"Turn {(t.Turn + 1) / 2} vs {g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass)}, {g.Start:MMM d}" + (missed ? ". You missed this one." : ""), 13.5, missed ? Theme.Gold : Theme.Dusk, wrap: true);
@@ -159,7 +152,7 @@ namespace HearthStoner
             Line("Your board", (z.YourMinions.Count > 0 ? string.Join(", ", z.YourMinions) : "empty") + (z.Weapon != null ? $"; weapon {z.Weapon}" : ""));
             Line($"Your hand", $"{z.Mana} mana: {(z.Hand.Count > 0 ? string.Join(", ", z.Hand) : "empty")}");
 
-            if (_solutionShown)
+            if (shell.Practice.SolutionShown)
             {
                 var sol = new Border
                 {
@@ -171,7 +164,7 @@ namespace HearthStoner
             }
 
             var actions = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
-            if (!_solutionShown) actions.Children.Add(Theme.Button("Show the solution", () => { _solutionShown = true; shell.Redraw(); }));
+            if (!shell.Practice.SolutionShown) actions.Children.Add(Theme.Button("Show the solution", () => { shell.Practice.SolutionShown = true; shell.Redraw(); }));
             var replayable = ReplayPage.Replayable(d);
             var ri = replayable.IndexOf(g);
             if (ri >= 0)
@@ -188,12 +181,12 @@ namespace HearthStoner
             }
             if (list.Count > 1)
             {
-                var next = Theme.Button("Next puzzle", () => { _puzzle = (_puzzle + 1) % list.Count; _solutionShown = false; shell.Redraw(); }, primary: false);
+                var next = Theme.Button("Next puzzle", () => { shell.Practice.Puzzle = (shell.Practice.Puzzle + 1) % list.Count; shell.Practice.SolutionShown = false; shell.Redraw(); }, primary: false);
                 next.Margin = new Thickness(8, 0, 0, 0);
                 actions.Children.Add(next);
             }
             p.Children.Add(actions);
-            var count = Theme.Text($"Puzzle {_puzzle + 1} of {list.Count}{(list.Count(x => x.Game.Review.Any(r => r.Kind == "MissedLethal" && r.Turn == x.Turn.Turn)) is int m && m > 0 ? $", {m} of them missed in the game" : "")}.", 12, Theme.Dusk);
+            var count = Theme.Text($"Puzzle {shell.Practice.Puzzle + 1} of {list.Count}{(list.Count(x => x.Game.Review.Any(r => r.Kind == "MissedLethal" && r.Turn == x.Turn.Turn)) is int m && m > 0 ? $", {m} of them missed in the game" : "")}.", 12, Theme.Dusk);
             count.Margin = new Thickness(0, 12, 0, 0);
             p.Children.Add(count);
             return p;

@@ -31,6 +31,10 @@ namespace HearthStoner
         /// <summary>Replays page: which game (index into the replayable games, newest first), which frame, hidden cards shown.</summary>
         public int ReplayGame, ReplayFrame;
         public bool ReplayShowHidden;
+        /// <summary>Practice page state that lasts between redraws.</summary>
+        public PracticeState Practice { get; } = new PracticeState();
+        /// <summary>Replays page playback state that lasts between redraws.</summary>
+        public ReplayViewState ReplayView { get; } = new ReplayViewState();
         /// <summary>Called when a page asks for fresh data (Refresh, collection read, settings change).</summary>
         public Action ReloadRequested;
         public Action<string> Status;

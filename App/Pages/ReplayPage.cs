@@ -22,12 +22,9 @@ namespace HearthStoner
     {
         private static readonly Dictionary<string, Replay> Cache = new Dictionary<string, Replay>();
         private static readonly HashSet<string> Building = new HashSet<string>();
-        private static DispatcherTimer _player;
-        private static string _shownGame;
-        private static int _shownFrame = -1;
 
         /// <summary>Makes the next draw of <paramref name="frame"/> animate as a step from the frame before (screenshots).</summary>
-        public static void PrimeStep(GameRecord g, int frame) { _shownGame = g.LogFile; _shownFrame = frame - 1; }
+        public static void PrimeStep(AppShell shell, GameRecord g, int frame) { shell.ReplayView.ShownGame = g.LogFile; shell.ReplayView.ShownFrame = frame - 1; }
 
         /// <summary>Games that can be replayed (they have their log), newest first.</summary>
         public static List<GameRecord> Replayable(AppData d) => d.Games.Where(g => !string.IsNullOrEmpty(g.LogFile)).ToList();
@@ -148,8 +145,8 @@ namespace HearthStoner
 
             // Board.
             // Stepping forward one action animates it; jumps and redraws don't.
-            var prev = _shownGame == game.LogFile && _shownFrame == shell.ReplayFrame - 1 && shell.ReplayFrame > 0 ? r.Frames[shell.ReplayFrame - 1] : null;
-            _shownGame = game.LogFile; _shownFrame = shell.ReplayFrame;
+            var prev = shell.ReplayView.ShownGame == game.LogFile && shell.ReplayView.ShownFrame == shell.ReplayFrame - 1 && shell.ReplayFrame > 0 ? r.Frames[shell.ReplayFrame - 1] : null;
+            shell.ReplayView.ShownGame = game.LogFile; shell.ReplayView.ShownFrame = shell.ReplayFrame;
             var board = ReplayBoard.Build(r, shell.ReplayFrame, prev, shell.ReplayShowHidden, d);
             body.Children.Add(board);
 
@@ -159,7 +156,7 @@ namespace HearthStoner
             Button B(string text, Action a, string tip, bool primary = false) { var b = Theme.Button(text, a, primary); b.ToolTip = tip; b.Margin = new Thickness(0, 0, 6, 0); b.MinWidth = 42; return b; }
             buttons.Children.Add(B("⏮", () => Turn(-1), "Previous turn (Up)"));
             buttons.Children.Add(B("◀", () => Go(shell.ReplayFrame - 1), "Step back (Left)"));
-            var playing = _player != null && _player.IsEnabled;
+            var playing = shell.ReplayView.Playing;
             buttons.Children.Add(B(playing ? "Pause" : "Play", () => TogglePlay(shell, r), "Play the game forward (Space)", primary: true));
             buttons.Children.Add(B("▶", () => Go(shell.ReplayFrame + 1), "Step forward (Right)"));
             buttons.Children.Add(B("⏭", () => Turn(+1), "Next turn (Down)"));
@@ -235,15 +232,15 @@ namespace HearthStoner
 
         private static void TogglePlay(AppShell shell, Replay r)
         {
-            if (_player != null && _player.IsEnabled) { _player.Stop(); shell.Redraw(); return; }
-            _player = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1100) };
-            _player.Tick += (s, e) =>
+            if (shell.ReplayView.Playing) { shell.ReplayView.Player.Stop(); shell.Redraw(); return; }
+            shell.ReplayView.Player = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1100) };
+            shell.ReplayView.Player.Tick += (s, e) =>
             {
-                if (shell.Current != "Replays" || shell.ReplayFrame >= r.Frames.Count - 1) { _player.Stop(); shell.Redraw(); return; }
+                if (shell.Current != "Replays" || shell.ReplayFrame >= r.Frames.Count - 1) { shell.ReplayView.Player.Stop(); shell.Redraw(); return; }
                 shell.ReplayFrame++;
                 shell.Redraw();
             };
-            _player.Start();
+            shell.ReplayView.Player.Start();
             shell.Redraw();
         }
 

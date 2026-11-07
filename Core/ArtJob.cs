@@ -4,6 +4,22 @@ using System.Threading;
 
 namespace HearthStoner
 {
+    /// <summary>Makes the replay board art from a Hearthstone install. The app's implementation reads the game's asset files.</summary>
+    public interface IGameArtBuilder
+    {
+        /// <summary>The Hearthstone build the install holds (art is remade when it changes).</summary>
+        /// <param name="installDir">The Hearthstone install folder.</param>
+        /// <returns>The version text, or null when no Hearthstone is there.</returns>
+        string GameVersion(string installDir);
+
+        /// <summary>Makes the art into <paramref name="outDir"/>.</summary>
+        /// <param name="installDir">The Hearthstone install folder.</param>
+        /// <param name="outDir">Where the art goes; created by the caller.</param>
+        /// <param name="progress">Called with (stage, done, total) as it goes.</param>
+        /// <param name="cancel">Stops the build.</param>
+        void Build(string installDir, string outDir, Action<string, int, int> progress, CancellationToken cancel);
+    }
+
     /// <summary>
     /// Makes the replay board art (%LocalAppData%\HearthStoner\gameart) from your Hearthstone install on a low-priority
     /// background thread: at app start when it's missing or made for another Hearthstone version, and from Settings'
@@ -35,14 +51,25 @@ namespace HearthStoner
         public static int Builds;
         public static event Action Finished;
 
-        /// <summary>GameArtBuilder.Run and GameArtBuilder.GameVersion, and the app's own in-game flag.</summary>
-        public static Action<string, string, Action<string, int, int>, CancellationToken> Build;
-        public static Func<string, string> Version;
-        public static Func<bool> InGame;
+        // Set once by Configure; read by the job thread.
+        private static volatile IGameArtBuilder _builder;
+        private static volatile Func<bool> _inGame;
 
         public static string Dir => AppPaths.Data("gameart");
 
         private static int _busy;
+
+        /// <summary>
+        /// Plugs in the art builder (the app's GameArtBuilder; a fake in tests) and the app's own in-game flag.
+        /// Call before <see cref="Start"/> or <see cref="Run"/>; calling again replaces the builder.
+        /// </summary>
+        /// <param name="builder">Makes the art; must not be null.</param>
+        /// <param name="inGame">True while you're in a game; null keeps the flag set before (Hearthstone's log is always checked too).</param>
+        public static void Configure(IGameArtBuilder builder, Func<bool> inGame)
+        {
+            _builder = builder ?? throw new ArgumentNullException(nameof(builder));
+            if (inGame != null) _inGame = inGame;
+        }
 
         /// <summary>Art is made when there's none yet, or it was made for another version of Hearthstone.</summary>
         public static bool NeedsBuild(string madeFor, int boards, string gameVersion) =>
@@ -65,7 +92,8 @@ namespace HearthStoner
             try
             {
                 Status = new State { Kind = "checking" };
-                var version = installDir == null || Version == null ? null : Version(installDir);
+                var builder = _builder ?? throw new InvalidOperationException("the board art builder isn't set up (ArtJob.Configure wasn't called).");
+                var version = installDir == null ? null : builder.GameVersion(installDir);
                 if (string.IsNullOrEmpty(version)) throw new Exception("Hearthstone wasn't found.");
                 if (!force && !NeedsBuild(MadeFor(outDir), CountBoards(outDir), version))
                 {
@@ -90,7 +118,7 @@ namespace HearthStoner
                 WaitForGame(() => starting);
                 Status = starting;
                 Directory.CreateDirectory(outDir);
-                Build(installDir, outDir, (stage, done, total) =>
+                builder.Build(installDir, outDir, (stage, done, total) =>
                 {
                     var now = new State { Kind = "running", Stage = stage, Done = done, Total = total };
                     Status = now;
@@ -107,7 +135,7 @@ namespace HearthStoner
             }
         }
 
-        private static bool InGameNow(string installDir) => (InGame?.Invoke() ?? false) || HearthstoneLocator.GameInProgress(installDir);
+        private static bool InGameNow(string installDir) => (_inGame?.Invoke() ?? false) || HearthstoneLocator.GameInProgress(installDir);
 
         private static string MadeFor(string outDir)
         {
