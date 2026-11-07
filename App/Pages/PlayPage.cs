@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -263,15 +264,15 @@ namespace HearthStoner.Pages
             var any = false;
             foreach (var pool in new[] { "Daily", "Weekly" })
             {
-                var qs = log.Quests.Where(q => q.Pool == pool && q.Open).ToList();
+                var qs = log.Quests.Where(q => q.Pool == pool && q.Open && !q.IsBattlegrounds).ToList();
                 if (qs.Count == 0) continue;
                 any = true;
-                var h = Theme.Text(pool.ToUpperInvariant(), 11, Theme.Dusk, FontWeights.SemiBold);
-                h.Margin = new Thickness(0, 2, 0, 6);
-                p.Children.Add(h);
-                foreach (var q in qs) p.Children.Add(QuestRow(q, plan));
+                QuestGroup(p, pool.ToUpperInvariant(), qs, plan);
             }
             if (!any) p.Children.Add(Theme.Text("All your quests are done. New ones arrive with the next daily reset.", 13.5, Theme.Dusk, wrap: true));
+            // The game keeps these in its separate Battlegrounds quest log, with their own reward track.
+            var battlegrounds = log.Quests.Where(q => q.Open && q.IsBattlegrounds).ToList();
+            if (battlegrounds.Count > 0) QuestGroup(p, "BATTLEGROUNDS (separate quest log and reward track)", battlegrounds, plan);
 
             if (any)
             {
@@ -295,6 +296,15 @@ namespace HearthStoner.Pages
             return box;
         }
 
+        /// <summary>A small heading and one row per quest.</summary>
+        private static void QuestGroup(Panel p, string heading, List<QuestEntry> quests, QuestPlan plan)
+        {
+            var h = Theme.Text(heading, 11, Theme.Dusk, FontWeights.SemiBold);
+            h.Margin = new Thickness(0, 2, 0, 6);
+            p.Children.Add(h);
+            foreach (var q in quests) p.Children.Add(QuestRow(q, plan));
+        }
+
         private static UIElement QuestRow(QuestEntry q, QuestPlan plan)
         {
             var p = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
@@ -307,7 +317,8 @@ namespace HearthStoner.Pages
             p.Children.Add(top);
             p.Children.Add(Bar(q.Quota > 0 ? (double)q.Progress / q.Quota : 0, Theme.Gold, 5, new Thickness(0, 5, 0, 3)));
             var info = new TextBlock { FontSize = 12, Foreground = Theme.Dusk, FontFamily = Theme.Body };
-            var est = !plan.GamesFor.TryGetValue(q.Id, out var g) ? "can't estimate"
+            var est = q.IsBattlegrounds ? "play Battlegrounds"
+                : !plan.GamesFor.TryGetValue(q.Id, out var g) ? "can't estimate"
                 : double.IsInfinity(g) ? "your decks don't move it" : $"~{Math.Max(1, Math.Ceiling(g - 0.05)):0} game{(g <= 1.05 ? "" : "s")}";
             info.Inlines.Add(new System.Windows.Documents.Run($"{q.Progress:N0} / {q.Quota:N0}  ·  {est}"));
             if (plan.Reroll == q)

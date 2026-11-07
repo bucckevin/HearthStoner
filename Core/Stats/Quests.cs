@@ -22,7 +22,11 @@ namespace HearthStoner.Stats
         /// <summary>The weekday the pool hands out new quests (0 = Sunday), -1 for every day.</summary>
         public int ResetDay = -1;
         /// <summary>The reward track the XP goes to: 1 the main one, 2 Battlegrounds.</summary>
-        public int RewardTrack = 1;
+        public int RewardTrack = MainTrack;
+        public const int MainTrack = 1, BattlegroundsTrack = 2;
+
+        /// <summary>A Battlegrounds quest: it sits in the game's separate Battlegrounds quest log and feeds that reward track, so constructed decks can't move it.</summary>
+        [JsonIgnore] public bool IsBattlegrounds => RewardTrack == BattlegroundsTrack;
 
         [JsonIgnore] public int Left => Math.Max(0, Quota - Progress);
         [JsonIgnore] public bool Done => Quota > 0 && Progress >= Quota;
@@ -154,7 +158,7 @@ namespace HearthStoner.Stats
         public static QuestPlan Make(QuestLog log, List<PlayerDeck> decks, List<GameRecord> games, CardDb cards, Func<PlayerDeck, double?> expected, DateTime now)
         {
             var plan = new QuestPlan();
-            var open = log?.Quests.Where(q => q.Open && (q.Pool == "Daily" || q.Pool == "Weekly")).ToList() ?? new List<QuestEntry>();
+            var open = log?.Quests.Where(q => q.Open && !q.IsBattlegrounds && (q.Pool == "Daily" || q.Pool == "Weekly")).ToList() ?? new List<QuestEntry>();
             if (open.Count == 0) return plan;
             var rules = open.Select(q => (Quest: q, Rule: RuleFor(q, cards))).Where(x => x.Rule != null).ToList();
             var byDeck = games.Where(g => g.Decided).GroupBy(g => DeckVersions.DeckOf(g, decks, cards)).Where(gr => gr.Key != null).ToDictionary(gr => gr.Key, gr => gr.ToList());

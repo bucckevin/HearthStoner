@@ -170,6 +170,21 @@ namespace HearthStoner.Tests
         }
 
         [Fact]
+        public void Battlegrounds_quests_are_left_out_of_the_plan()
+        {
+            var deck = Deck("Spell Mage", "MAGE");
+            var games = Enumerable.Range(0, 4).Select(i => Game(deck.Name, "MAGE", true, 10, Spell, Spell)).ToList();
+            var bg = Quest(2, "Play $q Demons or Elementals.", 30, pool: "Weekly", xp: 60, icon: "Battlegrounds");
+            bg.RewardTrack = QuestEntry.BattlegroundsTrack;
+            var log = new QuestLog { Quests = { Quest(1, "Cast $q spells.", 20, pool: "Weekly"), bg } };
+            var plan = QuestPlan.Make(log, new List<PlayerDeck> { deck }, games, Cards, d => null, new DateTime(2026, 11, 3));
+            Assert.True(bg.IsBattlegrounds);
+            Assert.False(new QuestEntry().IsBattlegrounds);          // quests saved before the track was read count as main
+            Assert.False(plan.GamesFor.ContainsKey(2));
+            Assert.Equal(10.0, plan.WeekliesGames.Value);            // only the spell weekly: 20 spells at 2 a game
+        }
+
+        [Fact]
         public void No_quests_file_means_no_plan()
         {
             var plan = QuestPlan.Make(null, new List<PlayerDeck>(), new List<GameRecord>(), Cards, d => null, DateTime.Now);
