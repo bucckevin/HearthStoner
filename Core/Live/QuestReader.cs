@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,7 +15,7 @@ namespace HearthStoner.Live
         /// <param name="definitions">Quest definitions already read (quest id to entry); new ones are added. The game's Quest table doesn't change while it runs, so callers keep this between reads.</param>
         /// <param name="log">Where a failed season-end read is reported; may be null.</param>
         /// <returns>The log, or null when the game has no quests loaded yet.</returns>
-        public static QuestLog Read(HsMemory mem, Dictionary<int, QuestEntry> definitions, Action<string> log = null)
+        public static QuestLog? Read(HsMemory mem, Dictionary<int, QuestEntry?> definitions, Action<string>? log = null)
         {
             if (mem == null) throw new ArgumentNullException(nameof(mem));
             if (definitions == null) throw new ArgumentNullException(nameof(definitions));
@@ -33,7 +34,7 @@ namespace HearthStoner.Live
             return result;
         }
 
-        private static TrackState ReadTrack(HsMemory mem)
+        private static TrackState? ReadTrack(HsMemory mem)
         {
             var t = mem.GetRewardTrack()?.TrackEntries?.OrderBy(x => x.TrackType == MainRewardTrack ? 0 : 1).FirstOrDefault();
             return t == null ? null : new TrackState { Level = t.Level, Xp = t.Xp, XpNeeded = t.XpNeeded, TotalXp = t.TotalXp, BonusPercent = t.XpBonusPercent };

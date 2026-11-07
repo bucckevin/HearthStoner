@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -111,7 +112,7 @@ namespace HearthStoner
         /// A quest's definition from GameDbf.Quest (goal text, quota, reward-track XP, icon) and its pool from
         /// GameDbf.QuestPool (pool type 1 daily, 2 weekly; the weekday it hands out new quests). Null if it isn't there.
         /// </summary>
-        public QuestEntry QuestDef(int id)
+        public QuestEntry? QuestDef(int id)
         {
             var r = FindDbf("Quest", id);
             if (r == null) return null;
@@ -131,13 +132,13 @@ namespace HearthStoner
         }
 
         /// <summary>A localized DBF string (DbfLocValue) in the game's language.</summary>
-        private static string Loc(dynamic v)
+        private static string? Loc(dynamic v)
         {
-            try { return v is string s ? s : (string)v?["m_currentLocaleValue"]; }
+            try { return v is string s ? s : (string?)v?["m_currentLocaleValue"]; }
             catch { return null; }
         }
 
-        private dynamic FindDbf(string table, int id)
+        private dynamic? FindDbf(string table, int id)
         {
             var recs = _image["GameDbf"]?[table]?["m_records"];
             if (recs == null) return null;
@@ -166,7 +167,7 @@ namespace HearthStoner
 
             var keys = decks["keySlots"];
             var values = decks["valueSlots"];
-            if (keys == null || values == null) return result;
+            if (keys is null || values is null) return result;
 
             int n = Math.Min((int)keys.Length, (int)values.Length);
             for (var i = 0; i < n; i++)
@@ -192,8 +193,9 @@ namespace HearthStoner
         /// <summary>Type names in Assembly-CSharp containing the text.</summary>
         public IEnumerable<string> FindTypes(string contains) =>
             _raw.TypeDefinitions
-                .Select(t => SafeName(t))
-                .Where(n => n != null && n.IndexOf(contains, StringComparison.OrdinalIgnoreCase) >= 0)
+                .Select(SafeName)
+                .OfType<string>()
+                .Where(n => n.IndexOf(contains, StringComparison.OrdinalIgnoreCase) >= 0)
                 .Distinct()
                 .OrderBy(n => n);
 
@@ -207,7 +209,7 @@ namespace HearthStoner
             if (parts.Length == 0) yield break;
 
             // The class name may itself contain dots (namespaces), so try the longest matching prefix.
-            ITypeDefinition type = null;
+            ITypeDefinition? type = null;
             var consumed = 0;
             for (var take = parts.Length; take >= 1 && type == null; take--)
             {
@@ -234,8 +236,8 @@ namespace HearthStoner
             }
 
             // Walk: first hop is a static field on the class, the rest are instance fields.
-            object current = null;
-            string readError = null;
+            object? current = null;
+            string? readError = null;
             try { current = type[parts[consumed]]; }
             catch (Exception ex) { readError = $"Couldn't read {type.FullName}.{parts[consumed]}: {ex.Message}"; }
             if (readError != null) { yield return readError; yield break; }
@@ -249,7 +251,7 @@ namespace HearthStoner
             foreach (var line in DescribeObject(path, current)) yield return line;
         }
 
-        private static object Step(object current, string part, out string error)
+        private static object? Step(object current, string part, out string? error)
         {
             error = null;
             if (int.TryParse(part, out var index))
@@ -268,7 +270,7 @@ namespace HearthStoner
             return null;
         }
 
-        private static IEnumerable<string> DescribeObject(string path, object value)
+        private static IEnumerable<string> DescribeObject(string path, object? value)
         {
             if (value is IManagedObjectInstance obj)
             {
@@ -294,7 +296,7 @@ namespace HearthStoner
             }
         }
 
-        private static string Describe(object v)
+        private static string Describe(object? v)
         {
             switch (v)
             {
@@ -302,7 +304,7 @@ namespace HearthStoner
                 case string s: return "\"" + (s.Length > 80 ? s.Substring(0, 80) + "..." : s) + "\"";
                 case IManagedObjectInstance o: return "{" + (o.TypeDefinition?.FullName ?? "object") + "}";
                 case IList l: return $"array[{l.Count}]";
-                default: return Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture);
+                default: return Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture) ?? "";
             }
         }
 
@@ -317,8 +319,8 @@ namespace HearthStoner
         }
 
         private static bool SafeIsStatic(IFieldDefinition f) { try { return f.TypeInfo.IsStatic; } catch { return false; } }
-        private static object SafeStatic(ITypeDefinition t, string field) { try { return t[field]; } catch (Exception ex) { return "<" + ex.GetType().Name + ">"; } }
-        private ITypeDefinition SafeGetType(string name) { try { return _raw.GetTypeDefinition(name); } catch { return null; } }
-        private static string SafeName(ITypeDefinition t) { try { return t.FullName; } catch { return null; } }
+        private static object? SafeStatic(ITypeDefinition t, string field) { try { return t[field]; } catch (Exception ex) { return "<" + ex.GetType().Name + ">"; } }
+        private ITypeDefinition? SafeGetType(string name) { try { return _raw.GetTypeDefinition(name); } catch { return null; } }
+        private static string? SafeName(ITypeDefinition t) { try { return t.FullName; } catch { return null; } }
     }
 }

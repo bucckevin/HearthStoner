@@ -1,6 +1,8 @@
+#nullable enable
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace HearthStoner.Live
 {
@@ -13,7 +15,7 @@ namespace HearthStoner.Live
         /// <typeparam name="T">What the read returns.</typeparam>
         /// <param name="read">The memory read. An exception thrown by it drops the attachment and the read is tried once more.</param>
         /// <returns>The read's result, or <c>default</c> when Hearthstone isn't running or both attempts failed.</returns>
-        T Use<T>(Func<HsMemory, T> read);
+        T? Use<T>(Func<HsMemory, T> read);
     }
 
     /// <summary>Keeps one attachment to Hearthstone and transparently re-attaches if the game restarts.</summary>
@@ -21,21 +23,21 @@ namespace HearthStoner.Live
     {
         private const int Attempts = 2;
         private readonly bool _verbose;
-        private readonly Action<string> _log;
+        private readonly Action<string>? _log;
         private readonly object _lock = new object();
-        private HsMemory _mem;
+        private HsMemory? _mem;
 
         /// <summary>Creates the holder; nothing is attached until the first <see cref="Use{T}"/>.</summary>
         /// <param name="verbose">Show UnitySpy's internal log and report failed reads.</param>
         /// <param name="log">Where failed reads are reported when <paramref name="verbose"/> is on; may be null.</param>
-        public LiveMemory(bool verbose, Action<string> log = null)
+        public LiveMemory(bool verbose, Action<string>? log = null)
         {
             _verbose = verbose;
             _log = log;
         }
 
         /// <inheritdoc />
-        public T Use<T>(Func<HsMemory, T> read)
+        public T? Use<T>(Func<HsMemory, T> read)
         {
             if (read == null) throw new ArgumentNullException(nameof(read));
             lock (_lock)
@@ -64,6 +66,7 @@ namespace HearthStoner.Live
         }
 
         /// <summary>Attaches when there's no live attachment. Returns false when Hearthstone isn't running.</summary>
+        [MemberNotNullWhen(true, nameof(_mem))]
         private bool EnsureAttached()
         {
             if (_mem != null && IsAlive(_mem.ProcessId)) return true;

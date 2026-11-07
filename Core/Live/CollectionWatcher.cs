@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,15 +20,15 @@ namespace HearthStoner.Live
 
         private readonly ILiveMemory _live;
         private readonly Func<bool> _inGame;
-        private readonly Func<OwnedCollection> _refreshCollection;
+        private readonly Func<OwnedCollection?> _refreshCollection;
         private readonly Action _saved;
         private readonly Action<string> _say;
-        private readonly Action<string> _verboseLog;
-        private readonly Dictionary<int, QuestEntry> _questDefinitions = new Dictionary<int, QuestEntry>();
+        private readonly Action<string>? _verboseLog;
+        private readonly Dictionary<int, QuestEntry?> _questDefinitions = new Dictionary<int, QuestEntry?>();
         private int _lastCount = -1;
         private bool _wasInGame;
         private SceneModeEnum? _lastScene;
-        private string _questKey;
+        private string? _questKey;
 
         /// <summary>Creates the watcher; call <see cref="Loop"/> on a background thread to run it.</summary>
         /// <param name="live">Memory access.</param>
@@ -36,8 +37,8 @@ namespace HearthStoner.Live
         /// <param name="saved">Called after the collection (not the first time) or the quests were saved.</param>
         /// <param name="say">Status lines ("[collection] saved ..."); must not be null.</param>
         /// <param name="verboseLog">Failed quest reads; null to keep quiet.</param>
-        public CollectionWatcher(ILiveMemory live, Func<bool> inGame, Func<OwnedCollection> refreshCollection, Action saved,
-            Action<string> say, Action<string> verboseLog)
+        public CollectionWatcher(ILiveMemory live, Func<bool> inGame, Func<OwnedCollection?> refreshCollection, Action? saved,
+            Action<string> say, Action<string>? verboseLog)
         {
             _live = live ?? throw new ArgumentNullException(nameof(live));
             _inGame = inGame ?? throw new ArgumentNullException(nameof(inGame));

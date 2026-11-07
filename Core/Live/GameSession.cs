@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Linq;
 using System.Threading;
@@ -19,8 +20,8 @@ namespace HearthStoner.Live
         private static readonly TimeSpan SettleBeforeSave = TimeSpan.FromMilliseconds(1500);
 
         private readonly Func<string, string, MetaStats> _loadMeta;
-        private readonly string _rankOverride;
-        private readonly string _periodOverride;
+        private readonly string? _rankOverride;
+        private readonly string? _periodOverride;
         private readonly Action<string> _log;
         private readonly Action<string> _warn;
         private readonly DeckLoader _deckLoader;
@@ -44,11 +45,11 @@ namespace HearthStoner.Live
         public PowerLogTailer Tailer { get; }
 
         /// <summary>A game event, raised on the log thread with the tracker lock held, after the recorder saw it.</summary>
-        public event Action<GameEvent> EventSeen;
+        public event Action<GameEvent>? EventSeen;
         /// <summary>The match info (mode, both players' ranks) once it shows up in memory, raised on a worker thread.</summary>
-        public event Action<IMatchInfo> MatchFound;
+        public event Action<IMatchInfo>? MatchFound;
         /// <summary>A finished game was saved: the record and the file it went to. Raised on a worker thread.</summary>
-        public event Action<GameRecord, string> GameSaved;
+        public event Action<GameRecord, string>? GameSaved;
 
         /// <summary>Wires up the pipeline. Nothing runs until <see cref="Start"/> and <see cref="Run"/>.</summary>
         /// <param name="installDir">The Hearthstone install folder; must exist.</param>
@@ -63,7 +64,7 @@ namespace HearthStoner.Live
         /// <param name="log">Diagnostics.</param>
         /// <param name="warn">Warnings that need your attention (a new Hearthstone build).</param>
         public GameSession(string installDir, Settings settings, CardDb cards, MetaStats meta, ILiveMemory live,
-            Func<string, string, MetaStats> loadMeta, string rankOverride, string periodOverride,
+            Func<string, string, MetaStats> loadMeta, string? rankOverride, string? periodOverride,
             Action<string> say, Action<string> log, Action<string> warn)
         {
             if (string.IsNullOrEmpty(installDir)) throw new ArgumentException("The Hearthstone install folder is required.", nameof(installDir));
@@ -94,7 +95,7 @@ namespace HearthStoner.Live
         /// Starts the deck finder and reads your BattleTag (the most reliable way to tell which player you are).
         /// </summary>
         /// <returns>Your BattleTag, or null when Hearthstone isn't running or not logged in yet.</returns>
-        public string Start()
+        public string? Start()
         {
             new Thread(_deckLoader.Loop) { IsBackground = true, Name = "deck loader" }.Start();
             var tag = Live.Use(m => m.GetAccountInfo()?.BattleTag);
@@ -161,7 +162,7 @@ namespace HearthStoner.Live
                     them?.StarLevel ?? 0, them?.LegendRank ?? 0);
         }
 
-        private IMatchInfo WaitForMatchInfo()
+        private IMatchInfo? WaitForMatchInfo()
         {
             for (var i = 0; i < MatchInfoTries; i++)
             {

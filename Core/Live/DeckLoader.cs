@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,7 +21,7 @@ namespace HearthStoner.Live
         private readonly Advisor _advisor;
         private readonly CardDb _cards;
         private readonly ILiveMemory _live;
-        private readonly Func<string> _powerLog;
+        private readonly Func<string?> _powerLog;
         private readonly Action<string> _say;
         private readonly Action<string> _log;
         private volatile bool _reset = true;
@@ -34,7 +35,7 @@ namespace HearthStoner.Live
         /// <param name="powerLog">The Power.log being followed (Decks.log sits next to it); may return null.</param>
         /// <param name="say">Messages for you ("Your deck: ..."); must not be null.</param>
         /// <param name="log">Diagnostics; must not be null.</param>
-        public DeckLoader(GameTracker tracker, Advisor advisor, CardDb cards, ILiveMemory live, Func<string> powerLog,
+        public DeckLoader(GameTracker tracker, Advisor advisor, CardDb cards, ILiveMemory live, Func<string?> powerLog,
             Action<string> say, Action<string> log)
         {
             _tracker = tracker ?? throw new ArgumentNullException(nameof(tracker));
@@ -93,7 +94,7 @@ namespace HearthStoner.Live
             return inGame && !haveDeck && _attempts < MaxAttempts;
         }
 
-        private (List<string> List, string Name, string Source) FromDecksLog()
+        private (List<string>? List, string? Name, string? Source) FromDecksLog()
         {
             var queued = DecksLog.LastQueuedDeck(_powerLog());
             if (queued == null) return (null, null, null);
@@ -101,7 +102,7 @@ namespace HearthStoner.Live
             return list != null && list.Count > 0 ? (list, queued.Name, "Decks.log") : (null, null, null);
         }
 
-        private (List<string> List, string Name, string Source) FromMemory()
+        private (List<string>? List, string? Name, string? Source) FromMemory()
         {
             var deck = _live.Use(x => x.GetActiveDeck());
             if (deck?.DeckList == null || deck.DeckList.Count == 0) return (null, null, null);
@@ -114,7 +115,7 @@ namespace HearthStoner.Live
         }
 
         /// <summary>Gives the list to the tracker unless the game ended or a list arrived meanwhile.</summary>
-        private bool Hand(List<string> list, string name)
+        private bool Hand(List<string> list, string? name)
         {
             lock (_tracker.Sync)
             {

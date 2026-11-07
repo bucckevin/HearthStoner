@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 
 namespace HearthStoner
@@ -10,16 +11,16 @@ namespace HearthStoner
     /// </summary>
     public static class Diag
     {
-        private static volatile Action<string> _sink;
+        private static volatile Action<string>? _sink;
 
         /// <summary>Sets where caught errors are written; null turns recording off.</summary>
         /// <param name="sink">Receives one line per error. Must be safe to call from any thread.</param>
-        public static void SetSink(Action<string> sink) => _sink = sink;
+        public static void SetSink(Action<string>? sink) => _sink = sink;
 
         /// <summary>Records an error that was caught and deliberately not acted on.</summary>
         /// <param name="ex">The error; ignored when null.</param>
         /// <param name="context">Where it happened, e.g. "Settings" or "ArtCache"; shown in brackets.</param>
-        public static void Ignored(Exception ex, string context)
+        public static void Ignored(Exception? ex, string? context)
         {
             var sink = _sink;
             if (sink == null || ex == null) return;

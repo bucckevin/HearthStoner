@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +12,7 @@ namespace HearthStoner.Live
         private static readonly string[] Leagues = { "Bronze", "Silver", "Gold", "Platinum", "Diamond" };
 
         /// <summary>The player's rank in the given format, or null when the player is unknown.</summary>
-        public static IRank Of(IPlayer player, GameFormat format)
+        public static IRank? Of(IPlayer? player, GameFormat format)
         {
             if (player == null) return null;
             return format switch
@@ -46,7 +47,7 @@ namespace HearthStoner.Live
         }
 
         /// <summary>"Name#1234 - Gold 3": the player's BattleTag (or name) and rank in the format.</summary>
-        public static string Describe(IPlayer player, GameFormat format)
+        public static string Describe(IPlayer? player, GameFormat format)
         {
             if (player == null) return "?";
             var rank = Of(player, format);
@@ -62,7 +63,7 @@ namespace HearthStoner.Live
         /// </summary>
         /// <param name="settings">Your settings; must not be null.</param>
         /// <param name="games">Saved games, oldest first; when null they are loaded from disk.</param>
-        public static string MetaBracket(Settings settings, IReadOnlyList<GameRecord> games = null)
+        public static string MetaBracket(Settings settings, IReadOnlyList<GameRecord>? games = null)
         {
             if (settings == null) throw new ArgumentNullException(nameof(settings));
             if (!string.Equals(settings.MetaRank, "auto", StringComparison.OrdinalIgnoreCase)) return settings.MetaRank;
