@@ -2,5 +2,5 @@ bin/
 obj/
 .vs/
 *.log
-screenshots/
+/screenshots/
 tests/data/

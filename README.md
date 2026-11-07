@@ -1,201 +1,291 @@
 # HearthStoner
 
-A Windows console app that reads your Hearthstone data:
+[![Latest release](https://img.shields.io/github/v/release/bucckevin/HearthStoner)](https://github.com/bucckevin/HearthStoner/releases/latest)
+[![CI](https://github.com/bucckevin/HearthStoner/actions/workflows/ci.yml/badge.svg)](https://github.com/bucckevin/HearthStoner/actions/workflows/ci.yml)
 
-- **Collection, decks, account and match info** straight from game memory, using [UnitySpy](https://github.com/Zero-to-Heroes/unity-spy-.net4.5) (MIT). That's the open-source HearthMirror replacement maintained by the Firestone tracker, vendored in `vendor/`.
-- **Live gameplay** (draws, plays, deaths, turns, results, cards left in your deck) from Hearthstone's `Power.log`, combined with memory reads.
+A Hearthstone tracker and coach for Windows. It shows an overlay with advice while you play, records every game,
+and lets you replay your games, see where they turned, practise on your own mistakes and pick the deck most likely
+to win against today's field. It's a desktop app (a window, a tray icon and the in-game overlay) with a command line
+for the same features.
 
-## Requirements
+![The Play page: your decks ranked against today's field](docs/screenshots/play.png)
 
-- Windows 10/11, 64-bit
-- The [.NET 10 SDK](https://dotnet.microsoft.com/download) to build. The installed app needs nothing: the runtime is inside the exe
-- Hearthstone running and sitting at the main menu when reading memory
+## What it does
 
-## Install
+- **In-game overlay:** your deck with draw odds, the opponent's likely deck and hand, secrets, mulligan advice from
+  real win rates, lethal checks, threats and answers.
+- **Deck picks:** your decks ranked by expected win rate against the decks people play at your rank today.
+- **History and replays:** every game saved, with a win-chance graph that marks the turning points, a review of
+  likely mistakes, and a replay you can step through.
+- **Practice:** drills built from your own games, with a daily review that brings back the questions you missed.
+- **Stats and ladder:** win rates by deck and matchup, mana use, tilt patterns, and your climb this season.
+- **Updates itself** from this repository's releases.
 
-**Download:** get `HearthStoner.exe` from the [latest release](https://github.com/bucckevin/HearthStoner/releases/latest) and double-click it. It asks to install itself for your Windows user (no admin rights) and then keeps itself up to date: it checks once a day and offers new versions in Settings and the tray menu. Windows may warn about an unknown publisher the first time (the exe isn't code-signed yet): choose **More info**, then **Run anyway**.
-
-**From source:** double-click `install.bat`. It builds one `HearthStoner.exe` into `%LOCALAPPDATA%\Programs\HearthStoner`, adds HearthStoner to the Start menu (with its icon) and starts it. Run it again to update to the latest source. No admin rights needed. The installed exe is self-contained (the .NET runtime is built in, compressed, about 75 MB), so it also runs on a PC without .NET; copy it anywhere and double-click it to install there. To remove it, use Windows' Settings > Apps > HearthStoner > Uninstall (or `HearthStoner uninstall`). That removes the program, the shortcut and start-with-Windows, and keeps your data in `%LOCALAPPDATA%\HearthStoner`.
-
-## Versions
-
-The version number lives in `VERSION` (major.minor.patch). Every installed change bumps it (patch for fixes, minor for
-features), gets a line in `CHANGELOG.md` and a git tag `v<number>`. Pushing the tag makes GitHub build, test and
-publish the release (`.github/workflows/release.yml`); every push is built and tested by `ci.yml`. Each build also records when it was built. See it
-with `HearthStoner --version`, at the bottom of the Settings page, in the tray menu, or in Windows'
-installed apps list.
-
-## Build
-
-Double-click `build.bat` (output goes to `build.log`), or:
-
-```
-dotnet build HearthStoner.slnx -c Release
-dotnet test HearthStoner.slnx            # the tests
-```
-
-The exe lands in `bin\Release\net10.0-windows\HearthStoner.exe`.
-
-The solution has four projects:
-
-| Project | What's in it |
+| | |
 |---|---|
-| `HearthStoner.csproj` (Windows, .NET 10) | The command line (`Program.cs`, commands in `Cli/`), the overlay (`Overlay/`), the tray app and window (`App/`, pages in `App/Pages/`) |
-| `Core/HearthStoner.Core.csproj` (.NET 10, any OS) | All the logic, in `Core/`: `Game/`, `Advice/`, `Meta/`, `Knowledge/`, `Stats/`, `Live/` (the live pipeline), deck codes, card data, settings, memory reads. Every .cs file in `Core/` is part of it, and each folder is its own namespace (`HearthStoner.Game`, ...) |
-| `vendor/UnitySpy.csproj` | UnitySpy, the memory reader (MIT) |
-| `tests/HsTest/HsTest.csproj` | xUnit tests: unit tests, plus every saved game replayed through the full self-test |
+| ![The overlay](docs/screenshots/overlay.png) | ![History with the win-chance graph](docs/screenshots/history.png) |
+| The overlay (opponent on the left, you on the right) | History: the win-chance graph and the review |
+| ![A practice drill](docs/screenshots/practice-drill.png) | ![Decks](docs/screenshots/decks.png) |
+| Practice: "What would you play?" from a turn of your own game | Decks: your results with a list and the swaps the data favours |
 
-## Use
+## Download and install
 
-```
-HearthStoner setup                          # enables Power logging; restart Hearthstone once afterwards
-HearthStoner collection                     # every card you own, grouped by class, with finishes
-HearthStoner collection --csv cards.csv     # also export (or --json cards.json)
-HearthStoner decks                          # your saved decks, each with a deck code you can paste into the game
-HearthStoner status                         # account, current screen, current match + ranks
-HearthStoner app                            # the full app: tray icon + overlay + window (deck picker, tuning, crafting, stats, history, meta)
-HearthStoner overlay                        # in-game overlay with all the advice below; Ctrl+C to stop
-HearthStoner watch --tips                   # same advice in the console, printed every turn
-HearthStoner meta                           # today's Standard archetypes: popularity and win rate
-HearthStoner stats                          # your win rates vs the meta, mulligan habits, tilt check, games to next rank
-HearthStoner review 3                       # post-game review of your last 3 games, turn by turn
-HearthStoner puzzles                        # re-solve turns where you had lethal
-HearthStoner quiz                           # mulligan quiz from your own opening hands
-HearthStoner quests                         # your quests and progress
-HearthStoner replay <Power.log> --deck CODE # run a saved game log through the advisor
-HearthStoner find Collection                # search Hearthstone's class names
-HearthStoner explore CollectionManager.s_instance          # see an object's fields and live values
-```
+1. Download `HearthStoner.exe` from the [latest release](https://github.com/bucckevin/HearthStoner/releases/latest)
+   and double-click it.
+2. Windows may warn about an unknown publisher (the exe isn't code-signed yet): choose **More info**, then
+   **Run anyway**.
+3. HearthStoner offers to install itself for your Windows user, with Start menu and desktop shortcuts. No admin
+   rights needed, and nothing else to install (.NET is built into the exe, which is why it's about 75 MB).
+4. **Restart Hearthstone once** after the first start. HearthStoner turns on the game's log, which Hearthstone only
+   picks up when it starts.
+5. Play with Hearthstone **windowed or in borderless fullscreen**, so the overlay can sit on top.
 
-Add `--verbose` to any command to see UnitySpy's internal log.
+HearthStoner checks for a new version once a day and offers it in Settings and in the tray menu. It installs when
+you're not in a game.
 
-## In-game advice (overlay)
+**Requirements:** Windows 10 or 11, 64-bit.
 
-`HearthStoner overlay` lays a click-through panel over each side of the Hearthstone window (run the game windowed or borderless fullscreen):
+**Uninstall:** Windows Settings > Apps > HearthStoner > Uninstall. Your games and settings stay in
+`%LocalAppData%\HearthStoner`; delete that folder too if you want them gone.
 
-- **Health & damage (top of each side):** effective health (HP + armor) for both heroes, what each board can hit for (now if it's that side's turn, otherwise next turn; Charge, Windfury, weapons, frozen minions and Taunts counted), your burn in hand added for a lethal check, their likely burn or Charge cards that would make it lethal, total attack and health on each board, and a fatigue warning.
-- **Opponent (left):** their most likely archetypes, given the cards they've shown and how popular each archetype is. Also the cards they probably still hold, with board clears flagged, and each card in their hand with where it came from (kept in mulligan, drawn, created by X, returned to hand) and how long they've held it.
-- **Secrets (left):** what a hidden secret can still be. Candidates are ruled out as you do things that would have triggered them, like attacking, casting a spell or playing a minion. Each candidate comes with advice on playing around it.
-- **Mulligan (right):** keep or toss each card, using real win-rate-when-kept stats for your deck's archetype in this exact matchup.
-- **Board (right):** lethal checks, a warning when their board can kill you, their biggest threats with notes ("Divine Shield: ping it first"), which cards in your hand or which trades answer each one, and board clears to play around.
-- **Your deck (right):** a deck-tracker list in the style of HSReplay's: a bar per card with its mana cost, art and a count box (2+ copies, or a star for a legendary), dimmed when every copy is drawn, plus each card's chance to be your next draw (turn off with `DeckShowOdds`). Below it, the chance your next draw is removal, AoE, healing or card draw.
+## The app
 
-It only uses information you're allowed to see: the game log your client writes, your own client's public state and aggregate meta stats. It never reads hidden opponent information and never sends input to the game.
+HearthStoner sits in the tray near the clock. Its menu has Open, Overlay on/off, Start with Windows, Quit, and
+"Update to x.y.z" when a new version is out. The overlay appears whenever Hearthstone is in front. The window has
+nine pages:
 
-Data sources:
-- **Card text and stats:** [HearthstoneJSON](https://hearthstonejson.com). HearthStoner reads each card's text to profile it as removal, AoE, burn, healing, draw and so on (`Core/Knowledge/CardProfile.cs`).
-- **Meta stats:** [Firestone](https://www.firestoneapp.com)'s public Constructed data (archetypes, per-card mulligan and draw win rates, per-matchup splits), refreshed every 3 hours. Change the rank bracket with `--rank legend` and the period with `--period last-patch`.
-- **Secrets:** the 11 Standard secrets, with their triggers and play-around advice, are hand-written in `Core/Knowledge/Secrets.cs`.
+- **Play:** a button to start Hearthstone through the Battle.net app (it turns into "Switch to Hearthstone" while
+  the game runs). Then your decks, ranked by expected win rate against today's field at your rank, the best one as
+  a banner with a button to copy its deck code. On the right: the field's class mix with your win rate against each
+  class, your quests, and what to craft next. Under your decks, **meta changes**: decks whose expected win rate
+  moved by 1.5 points or more, or archetypes whose share of games changed noticeably, since a few days ago.
+- **Decks:** each deck's card list, your results with it by class, the swaps the data favours (for example a card
+  that wins 41% of games when drawn for one that wins 55%), and how your list differs from the best list of its
+  archetype, with the dust to build it. Paste any deck code to analyze it the same way. **Versions:** every list
+  you've played a deck with, its record, and what changed from the version before.
+- **Ladder:** where you stand, the season's climb chart with the rank floors, your pace before the reset, the deck
+  that climbs fastest per hour, star bonus and streaks, your opponents' ranks, this session, and your best time to
+  play.
+- **History:** every recorded game, filtered by ranked, casual, wins or losses, with its result, key numbers, your
+  mulligan, the review, and the **win-chance graph**: an estimate at every moment from health, boards, hands,
+  unspent mana and lethal threats, starting from the matchup's win rate. The biggest drops are marked and open the
+  replay at that moment.
+- **Replays:** step through any recorded game without Hearthstone: both boards, hands, mana, secrets, what
+  HearthStoner advised that turn, and a timeline with the turning point and review notes. Left/Right step,
+  Up/Down jump a turn, Space plays. The board, frames and effects are drawn with art read from your own
+  Hearthstone install (built in the background; Settings can rebuild it after a patch).
+- **Practice:** a daily review (questions you missed come back the next day, then after 3 and 7 days; three right
+  in a row retire one) and six drills from your own games: What would you play?, Guess their hand, Secret guessing,
+  Mulligan by matchup, Discover picks and Lethal puzzles.
+- **Stats:** your record, going first and on the coin, the last 30 games, **mana use** (how much you spend, the
+  turns you leave mana unspent, by deck), results by opponent class and by deck, mulligan habits and tilt notes.
+- **Meta:** every archetype at your rank with its play rate and win rate, by class or in one list, with search and
+  sorting. Your archetypes are marked.
+- **Settings:** overlay layout and panels, the replay board, the meta rank bracket and period, which program starts
+  Hearthstone, start with Windows, updates, your collection, and the hotkeys. Saved as you change them.
 
-Update `CardDb.StandardSets` and `Core/Knowledge/Secrets.cs` when Standard rotates (each March).
+![Practice](docs/screenshots/practice.png)
 
-`setup`, `watch` and `overlay` also set `FileSizeLimit.Int=-1` in `client.config` in your Hearthstone folder. Without it, Hearthstone stops writing Power.log after about 10 MB, which is a few games, and tracking silently stops.
+## The in-game overlay
 
-### Overlay extras
+A click-through panel on each side of the Hearthstone window. Where they go (both right, both left, or split) is a
+setting.
 
-- **This turn:** the ways to spend all your mana with the cards the game says you can play right now, plus your hero power.
-- **Choose:** when you Discover, the win rate of each option when it was picked by players of your archetype (Firestone data).
-- **Opponent's hand:** a mark over each card in their hand: the turn they got it (T3), `Mull` for cards from their opening hand (kept or redrawn), `Coin`, `New` for cards created by another card (with the card that made it), `Back` for a card returned to their hand (with its name), and `Yours` for a card stolen from you. Turn off with `ShowOpponentHandMarks`; Ctrl+Shift+O hides it with the opponent panels. Positions follow the hand's fan for 1 to 10 cards at any window size.
-- **Opponent played:** every card your opponent has played, with art, the turn they last played it, and whether it was created by another card.
-- **Hover mode:** press Ctrl+Shift+M and point at a card bar to see the full card picture. Press it again to give the mouse back to the game.
-- **Reads (opponent panel):** inferences from public information. For example: they floated 3 mana with 5 cards, so they're likely holding reactive or expensive cards. They played nothing with 2 mana, so they probably have a slow hand. Cheap cards they had the mana for but didn't play are probably not in their hand. Cards kept since the mulligan and never played are often combo pieces.
-- **Lethal through Taunts:** when Taunts are in the way, HearthStoner works out whether your attacks and damage spells can clear them and still reach face, then shows exactly which minion or spell should go where. Hero powers that hit face (Hunter, Mage and others) count toward your lethal and toward what your opponent threatens.
-- **Outs:** when their board threatens lethal, the cards left in your deck that would save you, with the chance of drawing one next. When yours threatens lethal, their likely cards that could stop it.
-- **Matchup cheat sheet** (mulligan and the first turns): your archetype's win rate in this matchup, your best and weakest cards in it, and the likely enemy archetype's key cards, with board clears flagged.
-- **Counters:** spells cast, minions died, corpses, hero power uses, cards played this turn and cards drawn. Only the counters that cards in your deck care about are shown.
-- **Animations:** the card you just drew flashes gold in the deck list, and lethal and danger warnings pulse.
-- **Hotkeys:** Ctrl+Shift+H shows or hides the overlay, Ctrl+Shift+D the deck list, Ctrl+Shift+O the opponent panels, and Ctrl+Shift+A the advice.
+- **Health and damage:** effective health (health plus armor) for both heroes, what each board can hit for (Charge,
+  Windfury, weapons, frozen minions and Taunts counted), your burn in hand added for a lethal check, their likely burn
+  that would make it lethal, and a fatigue warning.
+- **Opponent:** their most likely archetypes from the cards they've shown and how popular each one is, the cards they
+  probably still hold (board clears flagged), and each card in their hand with where it came from (kept in the
+  mulligan, drawn, created by a card, returned) and how long they've held it.
+- **Secrets:** what a hidden secret can still be. Candidates are ruled out as you do things that would have triggered
+  them, and each comes with advice on playing around it.
+- **Mulligan:** keep or toss each card, from real win-rate-when-kept stats for your archetype in this matchup.
+- **Board:** lethal checks, a warning when their board can kill you, their biggest threats with notes ("Divine Shield:
+  ping it first"), which cards or trades answer each one, and board clears to play around.
+- **Your deck:** a deck-tracker list with each card's mana cost, art and count, dimmed when every copy is drawn, plus
+  each card's chance to be your next draw, and the chance your next draw is removal, AoE, healing or card draw.
 
-### Settings
+Extras:
 
-`%LocalAppData%\HearthStoner\settings.json` is created the first time HearthStoner runs. In it you can set panel width, opacity, text size, card art on or off, swapping sides, each panel on or off, the hotkeys, and the meta bracket. The meta bracket defaults to `auto`, which uses the rank from your last game. Restart HearthStoner after editing.
+- **This turn:** the ways to spend all your mana with the cards you can play right now, plus your hero power.
+- **Discover:** the win rate of each option when picked by players of your archetype.
+- **Opponent's hand marks:** over each card in their hand, the turn they got it, `Mull` (from their opening hand),
+  `Coin`, `New` (created by another card), `Back` (returned to their hand) or `Yours` (stolen from you).
+- **Opponent played:** every card they've played, with the turn and whether it was created by another card.
+- **Reads:** inferences from public information, like "they floated 3 mana with 5 cards, so they're likely holding
+  reactive or expensive cards".
+- **Lethal through Taunts:** whether your attacks and damage spells can clear the Taunts and still reach face, and
+  exactly which minion or spell goes where. Hero powers that hit face count.
+- **Outs:** when their board threatens lethal, the cards left in your deck that would save you and the chance of
+  drawing one next.
+- **Matchup cheat sheet** (mulligan and early turns): your win rate in this matchup, your best and weakest cards in it,
+  and the enemy archetype's key cards.
+- **Counters:** spells cast, minions died, corpses and the like, only when cards in your deck care about them.
+- **Hover mode:** press Ctrl+Shift+M and point at a card to see the full card. Press it again to give the mouse back.
 
-## The app (`HearthStoner app`, or the Start menu shortcut)
+**Hotkeys** (while Hearthstone is in front): Ctrl+Shift+H shows or hides the overlay, Ctrl+Shift+D the deck list,
+Ctrl+Shift+O the opponent panels, Ctrl+Shift+A the advice, Ctrl+Shift+M hover mode. Change them in
+`%LocalAppData%\HearthStoner\settings.json` (Settings has a button to open it); everything else is on the Settings
+page.
 
-This runs without a console window. It puts a tray icon near the clock with these menu items: Open, Overlay on/off, Start with Windows, and Quit. The overlay appears whenever Hearthstone is in front. The window has a navigation rail with eight pages:
+## Games, reviews and practice
 
-- **Play:** a button to launch Hearthstone through the Battle.net app (`Battle.net.exe --exec="launch WTCG"`), which turns into "Switch to Hearthstone" with a green dot while the game runs. Battle.net is found from the registry; Settings shows which program it uses and lets you choose Battle.net.exe or Hearthstone.exe yourself. Then your decks, ranked by expected win rate against today's field at your rank. The best one is a banner of its signature card's art, with its best and worst common matchups and a button to copy its deck code. On the right: the field's class mix with that deck's win rate against each class, and what to craft next. Under your decks, **meta changes**: HearthStoner keeps a daily snapshot of the meta (`meta-history.json`) and, compared with a few days ago, points out when a deck's expected win rate moved by 1.5 points or more, or an archetype's share of games changed noticeably.
-- **Decks:** each deck's card list, the swaps the data favours (for example Inspiring Maul, 41% when drawn, for Ursol, 55%), and how your list differs from the best-performing list of its archetype, with the dust to build it. Paste any deck code to analyze it the same way. **Versions:** every list you've played a deck with (from your game records, matched by name or by 24+ shared cards), its record, and the cards that changed from the version before.
-- **History:** every recorded game with its result, key numbers, a **win-chance graph** (an estimate at every moment from health, boards, hands, unspent mana and lethal threats, starting from the matchup's win rate in the meta data; the biggest drops are marked and click through to the replay), the review and your mulligan.
-- **Replays:** step through any saved game: both boards, hands, mana and the advice HearthStoner showed, with the win chance under the board and review notes on the timeline. **Game art (optional):** run `HearthStoner gameart` once to pull the real board, minion and hero frames, end-turn button, armor, divine shield and freeze art out of your own Hearthstone install into `%LocalAppData%\HearthStoner\gameart` (and to render every game board for replays). It only reads the game's files. The replay board uses that art when it's there, and draws its own otherwise. The art is Blizzard's, so keep it on your PC and don't share it; run it again after a patch. For the whole table (frame, corners, hero slots), save a 1024x512 picture of a board as `table.png` in that folder, such as the board images on hearthstone.wiki.gg; the replay lines its heroes, minions, end-turn button and play history up with that layout.
-- **Practice:** a mulligan quiz from your own opening hands and lethal puzzles from your own games.
-- **Stats:** your record, win rate going first and on the coin, recent form, legend rank over time, how early the overlay reads the opponent's deck, **mana use** (share of mana spent on turns 1-10, how often you use all of it on turns 1-6, average spent per turn, the turn you stall on, by deck), results by opponent class and by deck, mulligan habits, tilt check and ladder.
-- **Meta:** every archetype by class, with play rate and win rate.
-- **Settings:** overlay layout and panels, the meta bracket and period, start with Windows, reading your collection, and the hotkeys. Saved as you change them.
-
-The look: a dark indigo theme with Barlow and Barlow Condensed (SIL Open Font License, bundled in `App/Fonts`). Card art comes from HearthstoneJSON and is cached in `%LocalAppData%\HearthStoner\art`. `HearthStoner screenshot [folder]` renders every page to PNGs.
-
-Console output goes to `%LocalAppData%\HearthStoner\hearthstoner.log`. Crafting needs your collection: the app reads it from Hearthstone automatically once the game is at the main menu, or from Settings.
-
-## Game history and review
-
-Every game played with `overlay` or `watch` running is saved to `%LocalAppData%\HearthStoner\games\` as a JSON file. Each file includes your deck, the opponent's class and likely archetype, the result, rank, mulligan, Discover picks, and a snapshot of every turn. After each game, a review lists likely mistakes:
+Every game played while HearthStoner runs is saved to `%LocalAppData%\HearthStoner\games\`: your deck, the opponent's
+class and likely archetype, the result, rank, mulligan, Discover picks and a snapshot of every turn, plus the game's
+log so it can be replayed. After each game, a review lists likely mistakes:
 
 - possible missed lethal
 - ending a turn with unspent mana while a card was playable
 - overextending into a board clear that HearthStoner had flagged as likely
-- mulligan choices against the data
-- Discover picks that win less than another option
+- mulligan choices against the data, and Discover picks that win less than another option
 - secrets you ran into
-
-With the game's log saved, the History page adds notes worked out from the replay, each with a link to that moment:
-
-- cards held for four or more turns while affordable, with mana left over on at least one of them
-- the hero power left unused with mana to spare (one note per game)
-- trades where your minion died and theirs survived the turn (divine shields not counted)
+- cards held for four or more turns while affordable, and the hero power left unused with mana to spare
+- trades where your minion died and theirs survived
 - attacking face when their board could kill you, and dying the next turn
 - where the win chance fell the most
 
-The review shows in the console and on the overlay until the next game starts. `HearthStoner stats` combines all your games: win rate per deck and matchup next to the meta's, mulligan habits, tilt patterns (after losses, long sessions, time of day), an estimate of games to the next league, and which mistakes keep coming up.
+![Stats](docs/screenshots/stats.png)
 
-## Practice and upkeep
+## What goes online
 
-- `HearthStoner selftest`: checks HearthStoner against your own saved game logs and known card answers, and writes the results to `selftest.log`. Run it after updating HearthStoner or after a Hearthstone patch.
-- `dotnet test HearthStoner.slnx`: the unit tests plus the full self-test over your saved games. On Windows it uses your real HearthStoner data and Hearthstone logs. `tests/run.sh` does the same on Linux or macOS (no Windows or Hearthstone needed). It builds everything, including the Windows app, and installs the .NET 10 SDK into `/opt/dotnet` if it's missing. Test data goes in `tests/data`: copies of `%LocalAppData%\HearthStoner` (cards.json and meta/) under `tests/data/appdata/HearthStoner`, and copies of Hearthstone's `Logs\Hearthstone_*` folders under `tests/data/install/Logs`. Every change is built and tested this way before it ships.
-- **Two groups of tests.** `dotnet test HearthStoner.slnx --filter Category!=MyGames` runs the fixed tests (same inputs every time, about a second). `--filter Category=MyGames` runs the ones that replay your own logs and saved games, which grow as you play. So a failure tells you whether the code broke or a new game exposed something.
-- **Saved games are tests.** Every game saved with its log is replayed by `dotnet test`: recording it again must give the same result, length, classes and turn-by-turn health and boards, the replay must obey the game's limits (hand, board, mana), and the win chance and review must hold up. A Hearthstone patch that changes the log fails here after your first game on it. On Linux, copies of the games go in `tests/data/appdata/HearthStoner/games`.
-- `HearthStoner preview [out.png] [--log Power.log] [--turn N]`: draws the overlay as it looked at turn N (default 12) of your latest game into a PNG. `build.bat` makes `screenshots\preview.png` after every build.
-- `HearthStoner puzzles`: every time HearthStoner sees you have lethal, it saves the board, hand and mana. Re-solve them later; the ones you missed are marked.
-- `HearthStoner quiz`: a mulligan quiz built from your own opening hands, scored against the win-rate data.
-- `HearthStoner quests`: your quests and progress from memory. For now it also shows the raw quest record fields.
-- **Update checks:** once a day HearthStoner checks whether the Firestone team has published a newer UnitySpy (memory reading). It also tells you when Hearthstone's client build changes, which is when memory reading usually breaks.
+- **Card data** from [HearthstoneJSON](https://hearthstonejson.com) (names, text, art), cached on your PC.
+- **Meta stats** from [Firestone](https://www.firestoneapp.com)'s public Constructed data (archetypes, mulligan and
+  draw win rates, matchups), refreshed every 3 hours.
+- **Update checks** against this repository's GitHub releases, once a day (turn off "Check for updates" in Settings).
 
-## How memory reading works
+Nothing about you or your games is uploaded. Everything HearthStoner records stays in `%LocalAppData%\HearthStoner`.
 
-Hearthstone is a Unity game running on the Mono runtime. UnitySpy opens the process **read-only**, finds Mono's root domain through `mono_get_root_domain` in `mono-2.0-bdwgc.dll`, and walks to the `Assembly-CSharp` image. From there it reads classes, static fields and object fields using Mono's own metadata. Nothing is injected or written.
+## Troubleshooting
 
-The data lives at paths like:
+- **No games are recorded:** restart Hearthstone once after installing HearthStoner, so the game starts writing its
+  log. HearthStoner also raises the log's 10 MB limit, which otherwise stops tracking after a few games.
+- **The overlay doesn't show:** play windowed or in borderless fullscreen, and check Overlay is ticked in the tray
+  menu (Ctrl+Shift+H toggles it).
+- **Collection, decks, quests or ranks are empty after a Hearthstone patch:** memory reading usually breaks on
+  patches. See [When a Hearthstone patch breaks something](#when-a-hearthstone-patch-breaks-something).
+- **What happened:** the app's log is `%LocalAppData%\HearthStoner\hearthstoner.log`.
+
+## Command line
+
+The same features, from a terminal (`HearthStoner help` lists them all):
+
+```
+HearthStoner app [--minimized]              # the full app: tray icon, overlay and window
+HearthStoner install | uninstall | update   # install for your user, remove (keeps your data), install the latest release
+HearthStoner update --check                 # just say whether a newer version is out
+HearthStoner setup                          # turn on Hearthstone's game log (the app does this by itself)
+HearthStoner collection [--csv F] [--json F] # every card you own, read from the game
+HearthStoner decks                          # your saved decks, each with a deck code to paste into the game
+HearthStoner status                         # account, current screen, current match and ranks
+HearthStoner overlay                        # just the overlay; Ctrl+C to stop
+HearthStoner watch --tips                   # play-by-play and advice in the console, every turn
+HearthStoner meta [--class C]               # today's Standard archetypes: popularity and win rate
+HearthStoner stats                          # win rates vs the meta, mulligan habits, tilt check, games to next rank
+HearthStoner review 3                       # review of your last 3 games
+HearthStoner puzzles | quiz | quests        # lethal puzzles, mulligan quiz, your quests
+HearthStoner import-logs                    # keep the logs of past games for replays
+HearthStoner launch [--dry-run]             # start Hearthstone through Battle.net
+HearthStoner gameart                        # build the replay art from your Hearthstone install now
+HearthStoner selftest                       # check HearthStoner against your own game logs
+HearthStoner --version
+```
+
+Options: `--rank` and `--period` pick the meta stats (for example `--rank legend --period last-patch`), `--hs PATH`
+points at the Hearthstone folder if it isn't found, and `--verbose` shows the memory reader's log.
+
+## Disclaimer
+
+HearthStoner is a fan-made tool. It isn't made, endorsed or supported by Blizzard Entertainment. Hearthstone is a
+trademark of Blizzard Entertainment, and the card and game art HearthStoner shows belongs to Blizzard.
+
+It only uses information you're allowed to see: the game log your client writes, your own client's state and public
+meta stats. It never reads the opponent's hidden information, never writes to the game, and never sends input to it
+or automates play. Reading log files is what Blizzard expects trackers to do. Reading memory read-only is how
+Hearthstone Deck Tracker and Firestone work, and Blizzard has tolerated it for years, but it isn't officially
+approved. Use HearthStoner at your own risk.
+
+Game art for replays is read from your own Hearthstone install and stays on your PC; none is shipped with
+HearthStoner.
+
+## Credits
+
+- [HearthstoneJSON](https://hearthstonejson.com): card data and art.
+- [Firestone](https://www.firestoneapp.com): meta stats.
+- [UnitySpy](https://github.com/Zero-to-Heroes/unity-spy-.net4.5) (MIT), maintained by the Firestone team: memory
+  reading, included in `vendor/` (see `vendor/LICENSE-UnitySpy.txt`).
+- [Barlow](https://github.com/jpt/barlow) (SIL Open Font License): the app's fonts, in `App/Fonts`.
+
+---
+
+## For developers
+
+### Build and test
+
+You need the [.NET 10 SDK](https://dotnet.microsoft.com/download). Double-click `build.bat` (output in `build.log`),
+or:
+
+```
+dotnet build HearthStoner.slnx -c Release
+dotnet test HearthStoner.slnx -c Release
+```
+
+The exe lands in `bin\Release\net10.0-windows\HearthStoner.exe`. `install.bat` builds the single self-contained exe
+(the publish settings are in `HearthStoner.csproj`) and installs it.
+
+- **Two groups of tests.** `--filter Category!=MyGames` runs the fixed tests (same inputs every time).
+  `--filter Category=MyGames` replays your own logs and saved games, which grow as you play: recording each game
+  again must give the same result, length, classes and turn-by-turn boards, replays must obey the game's limits, and
+  the win chance and review must hold up. A Hearthstone patch that changes the log fails here after your first game
+  on it.
+- **On Windows** the tests use your real HearthStoner data and Hearthstone logs. **On Linux or macOS**,
+  `tests/run.sh` builds everything (including the Windows app) and runs the tests; it installs the .NET 10 SDK into
+  `/opt/dotnet` if it's missing. Test data goes in `tests/data`: copies of `%LocalAppData%\HearthStoner` under
+  `tests/data/appdata/HearthStoner`, and Hearthstone's `Logs\Hearthstone_*` folders under `tests/data/install/Logs`.
+- `HearthStoner screenshot [folder]` draws every page of the app to PNGs, and `HearthStoner preview [out.png]
+  [--log Power.log] [--turn N]` draws the overlay at a turn of a saved game. `build.bat` makes
+  `screenshots\preview.png` after every build.
+
+### Releases
+
+The version is in `VERSION` (major.minor.patch: patch for fixes, minor for features), with an entry in
+`CHANGELOG.md` and a git tag `v<number>` for each. Pushing the tag runs `.github/workflows/release.yml`: it checks
+the tag, `VERSION` and the changelog agree, builds, tests, and publishes `HearthStoner.exe` and its SHA-256 as a
+GitHub release with that version's changelog section as the notes. Installed copies pick it up within a day.
+`ci.yml` builds and tests every push and pull request, and Dependabot proposes package and workflow updates weekly.
+
+### Projects
+
+| Project | What's in it |
+|---|---|
+| `HearthStoner.csproj` (Windows, .NET 10) | The command line (`Program.cs`, commands in `Cli/`), the overlay (`Overlay/`), the tray app, window and updater (`App/`, pages in `App/Pages/`), replay art (`Art/`) |
+| `Core/HearthStoner.Core.csproj` (.NET 10, any OS) | All the logic: `Game/` (rebuilding the game from the log), `Advice/`, `Meta/`, `Knowledge/` (card profiles, secrets), `Stats/` (records, reviews, practice), `Live/` (the live pipeline and memory), plus deck codes, card data, settings and updates. Each folder is its own namespace |
+| `vendor/UnitySpy.csproj` | UnitySpy, the memory reader (MIT) |
+| `tests/HsTest/HsTest.csproj` | xUnit tests |
+
+When Standard rotates (each March), update `CardDb.StandardSets` and `Core/Knowledge/Secrets.cs`.
+
+### How memory reading works
+
+Hearthstone is a Unity game running on the Mono runtime. UnitySpy opens the process **read-only**, finds Mono's root
+domain through `mono_get_root_domain` in `mono-2.0-bdwgc.dll`, and walks to the `Assembly-CSharp` image. From there
+it reads classes, static fields and object fields using Mono's own metadata. Nothing is injected or written.
 
 | Data | Path in memory |
 |---|---|
 | Collection | `CollectionManager.s_instance.m_collectibleCards` (each card: `m_EntityDef.m_cardIdInternal`, `<OwnedCount>k__BackingField`, `m_PremiumType`) |
 | Decks | `CollectionManager.s_instance.m_decks` (`keySlots` = deck ids, `valueSlots` = decks with `m_name`, `m_slots`, `<HeroCardID>k__BackingField`) |
 
-## When a Hearthstone patch breaks something
+`HearthStoner find <text>` searches Hearthstone's class names, and `HearthStoner explore CollectionManager.s_instance`
+shows an object's live fields.
 
-1. Check whether the vendored library has been updated upstream: compare `vendor/UNITYSPY_COMMIT.txt` with the latest commit at https://github.com/Zero-to-Heroes/unity-spy-.net4.5 . If it has, copy the new `UnitySpy` and `UnitySpy.HearthstoneLib` folders into `vendor/`.
-2. Or fix it yourself: `HearthStoner explore CollectionManager.s_instance` shows the live field names. Update the path in `Core/HsMemory.cs` or the vendored reader.
+### When a Hearthstone patch breaks something
 
-## Files
+HearthStoner warns when the Hearthstone client build changes, and once a day checks whether the Firestone team has
+published a newer UnitySpy.
 
-| File | What it does |
-|---|---|
-| `Core/HsMemory.cs` | Thin layer over UnitySpy: attach, collection, all decks, match/account info, `find`/`explore` |
-| `Core/PowerLog.cs` | Follows the newest `Logs\Hearthstone_*\Power.log` |
-| `Core/Live/GameSession.cs` | The live pipeline: follows Power.log, tracks and records the game, finds your deck, reads the match info, saves each game. Raises events; the console, overlay and app listen |
-| `Core/Live/LiveMemory.cs` | One attachment to Hearthstone that re-attaches when the game restarts (behind `ILiveMemory`) |
-| `Core/Game/GameTracker*.cs` | Rebuilds the game from Power.log: entities, zones, mana, hands, origins, mulligan, secrets (split by job: parsing, players, secrets, queries) |
-| `Core/Advice/Advisor*.cs` | Deck prediction, secret helper, mulligan, threats and answers, lethal checks, draw odds (split into opponent, board and deck sections) |
-| `Core/Meta/MetaStats.cs` | Downloads and caches Firestone's meta stats |
-| `Core/Knowledge/` | Card profiles from card text, and the Standard secrets table |
-| `Overlay/OverlayWindow.cs` | The click-through WPF overlay |
-| `Core/DeckCode.cs` | Builds importable deck codes |
-| `Core/CardDb.cs` | Card names from HearthstoneJSON, cached in `%LocalAppData%\HearthStoner` |
-| `Core/HearthstoneLocator.cs` | Finds the install via the registry and writes `log.config` |
-| `Program.cs`, `Cli/` | Option parsing, and the commands grouped by kind (live, memory, reports) |
-| `Core/Diag.cs` | Where deliberately caught errors are recorded (hearthstoner.log in the app, `--verbose` on the command line) |
-| `vendor/` | UnitySpy sources (MIT, see `vendor/LICENSE-UnitySpy.txt`) |
-
-## A note on Blizzard's rules
-
-Reading log files is what Blizzard expects trackers to do. Reading memory read-only is how HDT and Firestone work, and Blizzard has tolerated it for years, but it isn't officially approved. HearthStoner never writes to the game or automates play.
+1. Compare `vendor/UNITYSPY_COMMIT.txt` with the latest commit at
+   https://github.com/Zero-to-Heroes/unity-spy-.net4.5 . If it moved, copy the new `UnitySpy` and
+   `UnitySpy.HearthstoneLib` folders into `vendor/`.
+2. Or fix it yourself: `HearthStoner explore CollectionManager.s_instance` shows the live field names; update the path
+   in `Core/HsMemory.cs` or the vendored reader.
+3. Run `HearthStoner selftest` and `dotnet test` after your first game on the new patch.
