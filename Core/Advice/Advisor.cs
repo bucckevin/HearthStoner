@@ -39,6 +39,8 @@ namespace HearthStoner.Advice
         public string Aside;
         /// <summary>A short hint under a tag row (e.g. "ping it first").</summary>
         public string Hint;
+        /// <summary>When set, the app draws this line as a table row, one cell per column (the console prints Text).</summary>
+        public string[] Cells;
 
         public AdviceLine(string text, Tone tone = Tone.Normal) { Text = text; Tone = tone; }
 

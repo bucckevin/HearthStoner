@@ -74,6 +74,8 @@ namespace HearthStoner.Stats
         public Row First = new Row { Name = "Going first" }, Coin = new Row { Name = "On the coin" };
         /// <summary>Results of the most recent games, oldest first (true = win).</summary>
         public List<bool> Recent = new List<bool>();
+        /// <summary>The games behind <see cref="Recent"/>, in the same order.</summary>
+        public List<GameRecord> RecentGames = new List<GameRecord>();
         public List<Row> ByDeck = new List<Row>();
         public List<Row> ByClass = new List<Row>();
         public string Rank;
@@ -90,7 +92,8 @@ namespace HearthStoner.Stats
                 var r = g.WentFirst ? s.First : s.Coin;
                 if (g.Won) r.Wins++; else r.Losses++;
             }
-            s.Recent = ranked.Skip(Math.Max(0, ranked.Count - 30)).Select(g => g.Won).ToList();
+            s.RecentGames = ranked.Skip(Math.Max(0, ranked.Count - 30)).ToList();
+            s.Recent = s.RecentGames.Select(g => g.Won).ToList();
             Row Bump(List<Row> rows, string name, string cls, bool won)
             {
                 var row = rows.FirstOrDefault(x => x.Name == name);

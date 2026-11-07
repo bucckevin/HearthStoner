@@ -80,8 +80,10 @@ namespace HearthStoner.Stats
                 .Take(8).ToList();
             if (habits.Count == 0) mull.Add(picks.Count == 0 ? "No mulligans with data yet." : "Your mulligans line up with the data.", Tone.Good);
             foreach (var h in habits)
-                mull.Add($"{cards.NameOf(h.Id)}: you keep it {h.KeptRate:P0}; it's worth {(h.AvgDelta >= 0 ? "+" : "")}{h.AvgDelta * 100:F1}% when kept -> {(h.AvgDelta >= 0 ? "keep it more" : "throw it back more")}",
-                    Tone.Warn);
+                mull.Lines.Add(new AdviceLine($"{cards.NameOf(h.Id)}: you keep it {h.KeptRate:P0}; it's worth {(h.AvgDelta >= 0 ? "+" : "")}{h.AvgDelta * 100:F1}% when kept -> {(h.AvgDelta >= 0 ? "keep it more" : "throw it back more")}", Tone.Warn)
+                {
+                    Cells = new[] { cards.NameOf(h.Id), $"{h.KeptRate:P0}", $"{(h.AvgDelta >= 0 ? "+" : "")}{h.AvgDelta * 100:F1}%", h.AvgDelta >= 0 ? "Keep more" : "Toss more" },
+                });
 
             // ---- tilt: results after a loss vs. after a win, and by game number in a session
             var tilt = new AdviceSection("Tilt check");
@@ -97,11 +99,16 @@ namespace HearthStoner.Stats
                 if (i >= 2 && !ranked[i - 1].Won && !ranked[i - 2].Won && ranked[i - 1].Start - ranked[i - 2].End < TimeSpan.FromMinutes(30))
                     after2Losses.Add(ranked[i]);
             }
-            tilt.Add($"After a win: {Wr(afterWin)}   After a loss: {Wr(afterLoss)}   After 2 losses in a row: {Wr(after2Losses)}");
             var sessions = SplitSessions(ranked);
             var early = sessions.SelectMany(s => s.Take(5)).ToList();
             var late = sessions.SelectMany(s => s.Skip(5)).ToList();
-            tilt.Add($"Games 1-5 of a session: {Wr(early)}   Game 6+: {Wr(late)}");
+            // One row each; a row with no games is left out instead of showing "-".
+            foreach (var (label, list) in new[] { ("After a win", afterWin), ("After a loss", afterLoss), ("After 2 losses in a row", after2Losses), ("Games 1-5 of a session", early), ("Game 6+ of a session", late) })
+            {
+                if (list.Count == 0) continue;
+                var w = list.Count(x => x.Won);
+                tilt.Lines.Add(new AdviceLine($"{label}: {Wr(list)}") { Cells = new[] { label, $"{w}-{list.Count - w}", $"{(double)w / list.Count:P0}" } });
+            }
             if (after2Losses.Count >= 8 && Rate(after2Losses) + 0.05 < Rate(ranked))
                 tilt.Add($"You win {Rate(after2Losses):P0} after two straight losses vs {Rate(ranked):P0} overall: take a break after two losses.", Tone.Warn);
             if (late.Count >= 10 && Rate(late) + 0.05 < Rate(early))
