@@ -30,8 +30,8 @@ The solution has four projects:
 
 | Project | What's in it |
 |---|---|
-| `HearthStoner.csproj` (Windows, .NET 10) | The commands (`Program.cs`), the overlay (`Overlay/`) and the tray app (`App/AppHost.cs`, `App/MainWindow.cs`) |
-| `Core/HearthStoner.Core.csproj` (.NET 10, any OS) | All the logic, in `Core/`: `Game/`, `Advice/`, `Meta/`, `Knowledge/`, `Stats/`, deck codes, card data, settings, memory reads. Every .cs file in `Core/` is part of it |
+| `HearthStoner.csproj` (Windows, .NET 10) | The command line (`Program.cs`, commands in `Cli/`), the overlay (`Overlay/`), the tray app and window (`App/`, pages in `App/Pages/`) |
+| `Core/HearthStoner.Core.csproj` (.NET 10, any OS) | All the logic, in `Core/`: `Game/`, `Advice/`, `Meta/`, `Knowledge/`, `Stats/`, `Live/` (the live pipeline), deck codes, card data, settings, memory reads. Every .cs file in `Core/` is part of it, and each folder is its own namespace (`HearthStoner.Game`, ...) |
 | `vendor/UnitySpy.csproj` | UnitySpy, the memory reader (MIT) |
 | `tests/HsTest/HsTest.csproj` | xUnit tests: unit tests, plus every saved game replayed through the full self-test |
 
@@ -172,15 +172,18 @@ The data lives at paths like:
 |---|---|
 | `Core/HsMemory.cs` | Thin layer over UnitySpy: attach, collection, all decks, match/account info, `find`/`explore` |
 | `Core/PowerLog.cs` | Follows the newest `Logs\Hearthstone_*\Power.log` |
-| `Core/Game/GameTracker.cs` | Rebuilds the game from Power.log: entities, zones, mana, hands, origins, mulligan, secrets |
-| `Core/Advice/Advisor.cs` | Deck prediction, secret helper, mulligan, threats and answers, lethal checks, draw odds |
+| `Core/Live/GameSession.cs` | The live pipeline: follows Power.log, tracks and records the game, finds your deck, reads the match info, saves each game. Raises events; the console, overlay and app listen |
+| `Core/Live/LiveMemory.cs` | One attachment to Hearthstone that re-attaches when the game restarts (behind `ILiveMemory`) |
+| `Core/Game/GameTracker*.cs` | Rebuilds the game from Power.log: entities, zones, mana, hands, origins, mulligan, secrets (split by job: parsing, players, secrets, queries) |
+| `Core/Advice/Advisor*.cs` | Deck prediction, secret helper, mulligan, threats and answers, lethal checks, draw odds (split into opponent, board and deck sections) |
 | `Core/Meta/MetaStats.cs` | Downloads and caches Firestone's meta stats |
-| `Knowledge/` | Card profiles from card text, and the Standard secrets table |
+| `Core/Knowledge/` | Card profiles from card text, and the Standard secrets table |
 | `Overlay/OverlayWindow.cs` | The click-through WPF overlay |
 | `Core/DeckCode.cs` | Builds importable deck codes |
 | `Core/CardDb.cs` | Card names from HearthstoneJSON, cached in `%LocalAppData%\HearthStoner` |
 | `Core/HearthstoneLocator.cs` | Finds the install via the registry and writes `log.config` |
-| `Program.cs` | The commands |
+| `Program.cs`, `Cli/` | Option parsing, and the commands grouped by kind (live, memory, reports) |
+| `Core/Diag.cs` | Where deliberately caught errors are recorded (hearthstoner.log in the app, `--verbose` on the command line) |
 | `vendor/` | UnitySpy sources (MIT, see `vendor/LICENSE-UnitySpy.txt`) |
 
 ## A note on Blizzard's rules
