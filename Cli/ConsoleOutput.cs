@@ -98,7 +98,8 @@ namespace HearthStoner
                 var path = AppPaths.Data("hearthstoner.log");
                 if (File.Exists(path) && new FileInfo(path).Length > MaxLogBytes) File.Delete(path);
                 var w = TextWriter.Synchronized(new StreamWriter(path, append: true) { AutoFlush = true });
-                w.WriteLine($"==== HearthStoner started {DateTime.Now:G} ====");
+                var version = typeof(Program).Assembly.GetName().Version;
+                w.WriteLine($"==== HearthStoner {version?.ToString(3) ?? "?"} started {DateTime.Now:G} ====");
                 Console.SetOut(w);
                 Console.SetError(w);
             }
