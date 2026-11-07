@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using HackF5.UnitySpy.HearthstoneLib.Detail.Deck;
 
-namespace HearthStoner
+namespace HearthStoner.Live
 {
     /// <summary>
     /// Finds your deck list for the current game and hands it to the tracker. Tries Decks.log first (the deck you

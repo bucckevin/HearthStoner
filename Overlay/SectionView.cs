@@ -6,7 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace HearthStoner
+namespace HearthStoner.Overlay
 {
     /// <summary>Draws advice sections (text lines and card bars). Shared by the overlay and the app window.</summary>
     public static class SectionView

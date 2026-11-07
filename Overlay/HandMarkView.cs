@@ -5,7 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace HearthStoner
+namespace HearthStoner.Overlay
 {
     /// <summary>Draws the marks over the opponent's hand (shared by the overlay and 'HearthStoner preview').</summary>
     public static class HandMarkView

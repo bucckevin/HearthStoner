@@ -5,7 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>Decks: pick a deck on the left; see its list, the swaps the data favours and the best list of its archetype.</summary>
     public static class DecksPage

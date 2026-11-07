@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Stats
 {
     /// <summary>
     /// Personal stats from your saved games: win rates by deck and matchup compared with the meta, mulligan habits,

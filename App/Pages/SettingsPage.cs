@@ -7,7 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>Settings: the overlay, meta data, startup and your collection, saved as you change them.</summary>
     public static class SettingsPage

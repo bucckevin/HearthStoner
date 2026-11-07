@@ -5,7 +5,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>
     /// The Play page's game button. Hearthstone closed: "Launch Hearthstone" (starts it through Battle.net).

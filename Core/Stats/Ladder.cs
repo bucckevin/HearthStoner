@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Stats
 {
     /// <summary>
     /// Your ranked ladder per format: rank game by game, seasons (calendar months: Hearthstone resets the ladder on

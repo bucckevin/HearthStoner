@@ -5,7 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>Stats: your record, recent form, results by matchup and by deck, then habits and tilt notes.</summary>
     public static class StatsPage

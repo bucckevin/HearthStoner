@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Knowledge
 {
     /// <summary>What a secret reacts to. Every Standard secret triggers on its owner's opponent's turn (i.e. yours).</summary>
     public enum SecretTrigger

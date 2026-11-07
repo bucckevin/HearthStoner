@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace HearthStoner
+namespace HearthStoner.Knowledge
 {
     /// <summary>
     /// What a card does, derived automatically from its text and keywords in HearthstoneJSON.

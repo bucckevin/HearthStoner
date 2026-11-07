@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>Everything the app's pages show, loaded in one go off the UI thread.</summary>
     public sealed class AppData

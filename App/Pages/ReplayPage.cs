@@ -10,7 +10,7 @@ using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>
     /// Replays: step through a recorded game without Hearthstone. The board in the middle (heroes, minions, hands,

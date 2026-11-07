@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
 
-namespace HearthStoner
+namespace HearthStoner.Meta
 {
     /// <summary>
     /// A daily snapshot of the meta numbers HearthStoner shows (each archetype's share and win rate, and your decks'

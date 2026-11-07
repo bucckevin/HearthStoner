@@ -11,7 +11,7 @@ using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     public static partial class ReplayBoard
     {

@@ -11,7 +11,7 @@ using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>
     /// The replay's board, drawn to read like Hearthstone's: a table with the two heroes in arched frames, minions in

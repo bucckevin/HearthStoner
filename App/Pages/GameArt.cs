@@ -10,7 +10,7 @@ using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>
     /// The board art pulled from your own Hearthstone install by Art/GameArtBuilder, in

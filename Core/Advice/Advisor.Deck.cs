@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Advice
 {
     public sealed partial class Advisor
     {

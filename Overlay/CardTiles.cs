@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace HearthStoner
+namespace HearthStoner.Overlay
 {
     /// <summary>
     /// Card "tile" art (the wide strip of a card's artwork that deck trackers show) from HearthstoneJSON's art

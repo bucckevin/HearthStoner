@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Live
 {
     /// <summary>Reads your quests, the reward track and the season end from game memory into a <see cref="QuestLog"/>.</summary>
     public static class QuestReader

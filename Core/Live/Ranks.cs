@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using HackF5.UnitySpy.HearthstoneLib;
 
-namespace HearthStoner
+namespace HearthStoner.Live
 {
     /// <summary>Ladder ranks as Hearthstone stores them (star levels 1-50, legend rank), turned into names and meta brackets.</summary>
     public static class Ranks

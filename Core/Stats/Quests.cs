@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 
-namespace HearthStoner
+namespace HearthStoner.Stats
 {
     /// <summary>One of your quests: its definition from the game's Quest table and your progress.</summary>
     public sealed class QuestEntry

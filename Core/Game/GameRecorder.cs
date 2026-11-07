@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Game
 {
     /// <summary>
     /// Watches a game as it's tracked and turns it into a <see cref="GameRecord"/>: a snapshot per turn, your mulligan

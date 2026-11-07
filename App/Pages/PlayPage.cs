@@ -5,7 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>
     /// Play: your decks ranked by expected win rate against today's field. The best one is a large banner of its

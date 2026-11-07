@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Stats
 {
     /// <summary>The numbers the History page shows for one game.</summary>
     public sealed class GameSummary

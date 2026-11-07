@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Stats
 {
     /// <summary>
     /// The versions of one of your decks: each distinct 30-card list you played with it (from your game records),

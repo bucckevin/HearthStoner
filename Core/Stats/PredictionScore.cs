@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Stats
 {
     /// <summary>
     /// How early HearthStoner names the opponent's deck correctly. For each round, the share of games where its guess at

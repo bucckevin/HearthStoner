@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Game
 {
     /// <summary>
     /// A recorded game turned into a sequence of board states ("frames") you can step through, made by feeding the

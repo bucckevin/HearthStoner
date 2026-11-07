@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace HearthStoner
+namespace HearthStoner.Game
 {
     /// <summary>The deck you queued with, as Hearthstone logs it.</summary>
     public sealed class QueuedDeck

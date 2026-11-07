@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using HackF5.UnitySpy.HearthstoneLib;
 
-namespace HearthStoner
+namespace HearthStoner.Live
 {
     /// <summary>
     /// The live pipeline while Hearthstone runs: follows Power.log, rebuilds the game (<see cref="GameTracker"/>),

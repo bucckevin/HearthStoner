@@ -11,7 +11,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 
-namespace HearthStoner
+namespace HearthStoner.Overlay
 {
     /// <summary>
     /// A transparent, click-through, always-on-top window laid over the Hearthstone window. Opponent info sits on the

@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>Meta: every archetype at your rank, grouped by class, with how often it's played and how it does.</summary>
     public static class MetaPage

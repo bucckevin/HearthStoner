@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Advice
 {
     public enum HandMarkKind { Drawn, Kept, Mulliganed, Coin, Created, Returned, Stolen }
 

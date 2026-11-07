@@ -7,7 +7,7 @@ using System.Net.Http;
 using System.Text;
 using Newtonsoft.Json.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Meta
 {
     /// <summary>How one card does in an archetype (all games, or one matchup).</summary>
     public sealed class CardStat

@@ -6,7 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>History: your games on the left; the selected game's verdict, key numbers, swing chart and review.</summary>
     public static class HistoryPage

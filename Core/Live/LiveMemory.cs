@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 
-namespace HearthStoner
+namespace HearthStoner.Live
 {
     /// <summary>Read access to the running Hearthstone client that survives the game being closed and reopened.</summary>
     public interface ILiveMemory : IDisposable

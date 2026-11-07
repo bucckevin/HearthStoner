@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Stats
 {
     /// <summary>
     /// A review of a game worked out from its replay, on top of the notes taken live (missed lethal, unspent mana,

@@ -7,7 +7,7 @@ using System.Windows.Input;
 using System.Windows.Documents;
 using System.Windows.Media;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>
     /// The app's frame: the navigation rail on the left (with your name and rank at the bottom) and the current

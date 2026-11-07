@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Advice
 {
     /// <summary>
     /// Can your attackers get through the enemy Taunts and still deal enough face damage? Tries every way of

@@ -8,7 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace HearthStoner
+namespace HearthStoner.Overlay
 {
     /// <summary>
     /// 'HearthStoner preview [out.png] [--log Power.log] [--turn N]': replays a saved game up to turn N and renders the

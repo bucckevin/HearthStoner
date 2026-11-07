@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Windows.Threading;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>
     /// What the Practice page remembers between redraws: which quiz hand and puzzle you're on, your keep/toss picks

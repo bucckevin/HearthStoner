@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using HackF5.UnitySpy.HearthstoneLib;
 
-namespace HearthStoner
+namespace HearthStoner.Live
 {
     /// <summary>
     /// Keeps collection.json and quests.json current for as long as the app runs. At the menu it checks the card count

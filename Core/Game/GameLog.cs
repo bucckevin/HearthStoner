@@ -6,7 +6,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 
-namespace HearthStoner
+namespace HearthStoner.Game
 {
     /// <summary>
     /// Each game's own part of Power.log, kept (gzip) next to its record in the games folder so it can be replayed

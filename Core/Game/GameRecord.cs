@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
 
-namespace HearthStoner
+namespace HearthStoner.Game
 {
     /// <summary>State at the end of one turn.</summary>
     public sealed class TurnSnapshot

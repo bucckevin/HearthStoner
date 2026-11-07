@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace HearthStoner
+namespace HearthStoner.Stats
 {
     /// <summary>
     /// 'HearthStoner selftest': known-answer tests for the pure logic (card profiles, deck codes, secrets, hotkeys,

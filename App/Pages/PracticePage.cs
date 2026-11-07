@@ -5,7 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>
     /// Practice, from your own games: lethal puzzles (every turn HearthStoner saw you had lethal; the ones you missed are

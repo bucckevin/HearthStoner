@@ -5,7 +5,7 @@ using System.Linq;
 using HackF5.UnitySpy.HearthstoneLib;
 using Newtonsoft.Json;
 
-namespace HearthStoner
+namespace HearthStoner.Stats
 {
     /// <summary>
     /// How many copies of each card you own (any finish), saved to %LocalAppData%\HearthStoner\collection.json whenever

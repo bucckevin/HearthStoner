@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
-using static HearthStoner.LethalSolver;
+using static HearthStoner.Advice.LethalSolver;
 
 namespace HearthStoner.Tests
 {

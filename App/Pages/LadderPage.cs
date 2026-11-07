@@ -5,7 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
-namespace HearthStoner
+namespace HearthStoner.Pages
 {
     /// <summary>
     /// Ladder: where you stand, the season's climb chart with the floors, pace to your goals before the reset, the deck

@@ -1,4 +1,4 @@
-namespace HearthStoner
+namespace HearthStoner.Game
 {
     /// <summary>
     /// What kind of game a record or log is, from the names the game itself uses (its PegasusShared.GameType and
