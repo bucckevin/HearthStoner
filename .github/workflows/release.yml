@@ -16,9 +16,9 @@ jobs:
   release:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -61,7 +61,7 @@ jobs:
 
       - name: Keep the exe (manual runs)
         if: github.ref_type != 'tag'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: HearthStoner-${{ steps.version.outputs.number }}
           path: publish/HearthStoner.exe*

@@ -3,6 +3,15 @@
 Every installed version, newest first. The number is in `VERSION`: patch (1.0.x) for fixes, minor (1.x.0) for new
 features, major (x.0.0) for big changes, such as a new data format. Each version is tagged in git as `v<number>`.
 
+## 1.3.1 - 2026-11-07
+
+Dependency updates (from Dependabot).
+
+- Newtonsoft.Json 13.0.4 (the app's JSON reading and writing).
+- Tests: xunit 2.9.3, xunit.runner.visualstudio 4.0.1, Microsoft.NET.Test.Sdk 18.11.0. UnitySpy build-time
+  annotations: JetBrains.Annotations 2026.2.0.
+- GitHub workflows: actions/checkout v7, actions/setup-dotnet v6, actions/upload-artifact v7.
+
 ## 1.3.0 - 2026-11-07
 
 Downloads and updates from GitHub.
