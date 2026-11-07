@@ -3,6 +3,10 @@
 Every installed version, newest first. The number is in `VERSION`: patch (1.0.x) for fixes, minor (1.x.0) for new
 features, major (x.0.0) for big changes, such as a new data format. Each version is tagged in git as `v<number>`.
 
+## 1.0.1 - 2026-11-07
+
+- The version shows just the number and build date, without the git commit.
+
 ## 1.0.0 - 2026-11-07
 
 The first numbered version: everything HearthStoner does up to now, plus tonight's cleanup.

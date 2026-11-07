@@ -18,8 +18,8 @@ Double-click `install.bat`. It builds one `HearthStoner.exe` into `%LOCALAPPDATA
 ## Versions
 
 The version number lives in `VERSION` (major.minor.patch). Every installed change bumps it (patch for fixes, minor for
-features), gets a line in `CHANGELOG.md` and a git tag `v<number>`. Each build also records when it was built and its
-git commit. See it with `HearthStoner --version`, at the bottom of the Settings page, in the tray menu, or in Windows'
+features), gets a line in `CHANGELOG.md` and a git tag `v<number>`. Each build also records when it was built. See it
+with `HearthStoner --version`, at the bottom of the Settings page, in the tray menu, or in Windows'
 installed apps list.
 
 ## Build

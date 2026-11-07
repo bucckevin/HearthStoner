@@ -18,9 +18,11 @@
     <RootNamespace>HearthStoner</RootNamespace>
     <AssemblyName>HearthStoner</AssemblyName>
     <!-- The version (major.minor.patch) lives in the VERSION file; bump it with each release and add a CHANGELOG entry.
-         The SDK appends the git commit ("1.2.3+sha"); the build time is stamped below. Shown on the Settings page, in
-         the tray menu, by 'HearthStoner version', in Windows' installed apps list and in hearthstoner.log. -->
+         The build time is stamped below. Shown on the Settings page, in the tray menu, by 'HearthStoner version', in
+         Windows' installed apps list and in hearthstoner.log. -->
     <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</Version>
+    <!-- Just the number: no "+<git commit>" added to the product version. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <!-- Hearthstone is 64-bit; reading its memory needs a 64-bit reader. -->
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>

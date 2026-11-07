@@ -6,15 +6,11 @@ using System.Reflection;
 
 namespace HearthStoner
 {
-    /// <summary>
-    /// Which HearthStoner this is: the major.minor.patch number from the VERSION file, when it was built, and the git
-    /// commit it was built from (the SDK adds that to the informational version as "1.2.3+&lt;sha&gt;").
-    /// </summary>
+    /// <summary>Which HearthStoner this is: the major.minor.patch number from the VERSION file, and when it was built.</summary>
     public sealed class AppVersion
     {
         /// <summary>The metadata key the app project stamps the build time under (see HearthStoner.csproj).</summary>
         public const string BuildDateKey = "BuildDate";
-        private const int ShortCommit = 7;
 
         private static readonly Lazy<AppVersion> _current =
             new Lazy<AppVersion>(() => Of(Assembly.GetEntryAssembly() ?? typeof(AppVersion).Assembly));
@@ -23,30 +19,19 @@ namespace HearthStoner
         public string Number { get; }
         /// <summary>When this exe was built (local time), or null if unknown.</summary>
         public DateTime? BuildDate { get; }
-        /// <summary>The first 7 characters of the git commit it was built from, or null if unknown.</summary>
-        public string? Commit { get; }
 
         /// <summary>The running app's version.</summary>
         public static AppVersion Current => _current.Value;
 
-        private AppVersion(string number, DateTime? buildDate, string? commit)
+        private AppVersion(string number, DateTime? buildDate)
         {
             Number = number;
             BuildDate = buildDate;
-            Commit = commit;
         }
 
-        /// <summary>"1.2.3, built Nov 7, 2026 (commit 2c99dcb)": the number with whatever else is known.</summary>
-        public string Detail
-        {
-            get
-            {
-                var text = Number;
-                if (BuildDate is DateTime d) text += ", built " + d.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
-                if (Commit != null) text += $" (commit {Commit})";
-                return text;
-            }
-        }
+        /// <summary>"1.2.3, built Nov 7, 2026", or just "1.2.3" when the build date is unknown.</summary>
+        public string Detail =>
+            BuildDate is DateTime d ? $"{Number}, built {d.ToString("MMM d, yyyy", CultureInfo.InvariantCulture)}" : Number;
 
         /// <summary>Reads the version an assembly was built with.</summary>
         /// <param name="assembly">Usually the app's exe; must not be null.</param>
@@ -60,7 +45,7 @@ namespace HearthStoner
         }
 
         /// <summary>Builds a version from the raw strings.</summary>
-        /// <param name="informationalVersion">"1.2.3" or "1.2.3+&lt;full sha&gt;"; null or blank means unknown.</param>
+        /// <param name="informationalVersion">"1.2.3"; anything after a "+" (build metadata) is dropped. Null or blank means unknown.</param>
         /// <param name="buildDate">"yyyy-MM-ddTHH:mm" as the project stamps it; anything else means unknown.</param>
         public static AppVersion Parse(string? informationalVersion, string? buildDate)
         {
@@ -68,12 +53,10 @@ namespace HearthStoner
             var plus = raw.IndexOf('+');
             var number = (plus >= 0 ? raw.Substring(0, plus) : raw).Trim();
             if (number.Length == 0) number = "0.0.0";
-            var sha = plus >= 0 ? raw.Substring(plus + 1).Trim() : "";
-            string? commit = sha.Length == 0 ? null : sha.Substring(0, Math.Min(ShortCommit, sha.Length));
             DateTime? built = DateTime.TryParseExact(buildDate, "yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
                 ? d
                 : null;
-            return new AppVersion(number, built, commit);
+            return new AppVersion(number, built);
         }
     }
 }
