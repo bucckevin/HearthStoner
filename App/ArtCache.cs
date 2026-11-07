@@ -86,7 +86,10 @@ namespace HearthStoner
             Arrived?.Invoke();
         }
 
-        /// <summary>Loads the image and cuts away the white border around the painting.</summary>
+        /// <summary>
+        /// Loads the image and cuts away the white border around the painting, then any black letterbox bands some
+        /// paintings have at their sides or top and bottom (they showed as a dark strip on deck banners).
+        /// </summary>
         private static ImageSource Trim(string file)
         {
             var bmp = new BitmapImage();
@@ -106,10 +109,32 @@ namespace HearthStoner
             while (top < h / 3 && White(w / 2, top)) top++;
             while (bottom > h * 2 / 3 && White(w / 2, bottom)) bottom--;
             const int pad = 6;   // the border fades in over a few pixels
-            var rect = new Int32Rect(left + pad, top + pad, Math.Max(1, right - left - 2 * pad), Math.Max(1, bottom - top - 2 * pad));
+            left += pad; right -= pad; top += pad; bottom -= pad;
+
+            // Black bands: a whole column (or row) that is almost all near-black. Testing the whole line, not one
+            // pixel, keeps dark paintings from being cut. Never more than a quarter from any side.
+            bool Black(int x, int y) { var i = (y * w + x) * 4; return px[i] + px[i + 1] + px[i + 2] < 40; }
+            bool BlackColumn(int x) => MostlyBlack(top, bottom, y => Black(x, y));
+            bool BlackRow(int y) => MostlyBlack(left, right, x => Black(x, y));
+            var maxX = (right - left) / 4;
+            var maxY = (bottom - top) / 4;
+            for (var n = 0; n < maxX && BlackColumn(left); n++) left++;
+            for (var n = 0; n < maxX && BlackColumn(right); n++) right--;
+            for (var n = 0; n < maxY && BlackRow(top); n++) top++;
+            for (var n = 0; n < maxY && BlackRow(bottom); n++) bottom--;
+
+            var rect = new Int32Rect(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
             var cropped = new CroppedBitmap(bmp, rect);
             cropped.Freeze();
             return cropped;
+        }
+
+        /// <summary>True when at least 90% of the sampled points from <paramref name="from"/> to <paramref name="to"/> are black.</summary>
+        private static bool MostlyBlack(int from, int to, Func<int, bool> black)
+        {
+            int dark = 0, total = 0;
+            for (var i = from; i <= to; i += 4) { total++; if (black(i)) dark++; }
+            return total > 0 && dark >= total * 0.9;
         }
     }
 }

@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -18,22 +19,36 @@ namespace HearthStoner.Live
         T? Use<T>(Func<HsMemory, T> read);
     }
 
-    /// <summary>Keeps one attachment to Hearthstone and transparently re-attaches if the game restarts.</summary>
+    /// <summary>
+    /// Keeps one attachment to Hearthstone and transparently re-attaches if the game restarts. An attachment made
+    /// while the game is still loading can miss classes the game hasn't loaded yet; its reads then quietly come back
+    /// empty instead of failing. So a new attachment counts as unproven until a read returns something, and an
+    /// unproven one is dropped (and made again on the next read) once it is <see cref="ProveWithin"/> old.
+    /// </summary>
     public sealed class LiveMemory : ILiveMemory
     {
         private const int Attempts = 2;
+
+        /// <summary>How long a new attachment may return only empty reads before it is made again.</summary>
+        public static readonly TimeSpan ProveWithin = TimeSpan.FromSeconds(90);
+
         private readonly bool _verbose;
         private readonly Action<string>? _log;
+        private readonly Func<DateTime> _now;
         private readonly object _lock = new object();
         private HsMemory? _mem;
+        private DateTime _attachedAt;
+        private bool _proven;
 
         /// <summary>Creates the holder; nothing is attached until the first <see cref="Use{T}"/>.</summary>
         /// <param name="verbose">Show UnitySpy's internal log and report failed reads.</param>
-        /// <param name="log">Where failed reads are reported when <paramref name="verbose"/> is on; may be null.</param>
-        public LiveMemory(bool verbose, Action<string>? log = null)
+        /// <param name="log">Where failed reads are reported when <paramref name="verbose"/> is on, and stale attachments always; may be null.</param>
+        /// <param name="now">The clock (UTC); null for the system clock.</param>
+        public LiveMemory(bool verbose, Action<string>? log = null, Func<DateTime>? now = null)
         {
             _verbose = verbose;
             _log = log;
+            _now = now ?? (() => DateTime.UtcNow);
         }
 
         /// <inheritdoc />
@@ -47,7 +62,9 @@ namespace HearthStoner.Live
                     try
                     {
                         if (!EnsureAttached()) return default;
-                        return read(_mem);
+                        var result = read(_mem);
+                        Judge(!IsEmpty(result));
+                        return result;
                     }
                     catch (Exception ex)
                     {
@@ -57,6 +74,24 @@ namespace HearthStoner.Live
                 }
                 return default;
             }
+        }
+
+        /// <summary>
+        /// True when an attachment that has returned only empty reads since <paramref name="attachedAt"/> should be
+        /// made again: it never returned anything and is at least <see cref="ProveWithin"/> old.
+        /// </summary>
+        public static bool IsStale(bool proven, DateTime attachedAt, DateTime now) => !proven && now - attachedAt >= ProveWithin;
+
+        /// <summary>A read "returned something": not null and not its type's default (0, an empty tuple...).</summary>
+        private static bool IsEmpty<T>(T value) => value == null || EqualityComparer<T>.Default.Equals(value, default!);
+
+        /// <summary>Marks the attachment proven after a useful read, or drops it when it has stayed empty too long.</summary>
+        private void Judge(bool useful)
+        {
+            if (useful) { _proven = true; return; }
+            if (!IsStale(_proven, _attachedAt, _now())) return;
+            _log?.Invoke($"[memory] reads stayed empty for {ProveWithin.TotalSeconds:0} s after attaching (the game was probably still loading): attaching again");
+            Detach();
         }
 
         /// <summary>Drops the attachment.</summary>
@@ -73,6 +108,8 @@ namespace HearthStoner.Live
             Detach();
             if (!HsMemory.IsHearthstoneRunning) return false;
             _mem = HsMemory.Attach(_verbose);
+            _attachedAt = _now();
+            _proven = false;
             return true;
         }
 

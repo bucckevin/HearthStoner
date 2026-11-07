@@ -3,6 +3,13 @@
 Every installed version, newest first. The number is in `VERSION`: patch (1.0.x) for fixes, minor (1.x.0) for new
 features, major (x.0.0) for big changes, such as a new data format. Each version is tagged in git as `v<number>`.
 
+## 1.1.1 - 2026-11-07
+
+- Quests, collection, ranks and decks read from the game again when HearthStoner started before Hearthstone: an
+  attachment made while the game was still loading only read empty and was never made again. Now one that reads
+  nothing for 90 seconds is made again (logged as "[memory] reads stayed empty...").
+- Card art: black bands some paintings have at their edges are trimmed (the dark strip on the Hunter deck's row).
+
 ## 1.1.0 - 2026-11-07
 
 The UI review (built on the `ui-review` branch).
