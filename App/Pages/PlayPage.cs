@@ -24,15 +24,18 @@ namespace HearthStoner.Pages
             body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(330) });
 
             var left = new StackPanel();
-            var mine = d.Picks.Where(p => !p.Deck.Imported).ToList();   // pasted-in decks are analyzed on Decks only
+            var all = d.Picks.Where(p => !p.Deck.Imported).ToList();   // pasted-in decks are analyzed on Decks only
+            // Decks with the same 40 cards share one row: four rows of the same 55.0% read like a bug.
+            var copies = SameLists(all);
+            var mine = all.Where(copies.ContainsKey).ToList();
             var matched = mine.Where(p => p.Archetype != null).ToList();
             if (mine.Count == 0)
                 left.Children.Add(Empty("No decks yet", "Open Hearthstone once. It writes your saved decks to its log, and they'll show up here."));
             else if (matched.Count > 0)
-                left.Children.Add(Hero(matched[0], d));
+                left.Children.Add(Hero(matched[0], d, copies[matched[0]]));
             foreach (var p in mine.Where(p => p != matched.FirstOrDefault()))
-                left.Children.Add(Row(p, shell));
-            if (d.Meta?.Archetypes.Count > 0) left.Children.Add(MetaChanges(d));
+                left.Children.Add(Row(p, shell, copies[p]));
+            if (d.Meta?.Archetypes.Count > 0) left.Children.Add(MetaChanges(d, copies.Values.SelectMany(c => c).ToList()));
             body.Children.Add(left);
 
             var right = new StackPanel();
@@ -50,9 +53,34 @@ namespace HearthStoner.Pages
                 Theme.Button("Refresh", () => shell.ReloadRequested?.Invoke(), primary: false));
         }
 
+        /// <summary>
+        /// The first deck of each distinct card list (in the given order), mapped to the names of the other decks
+        /// with exactly the same cards.
+        /// </summary>
+        public static Dictionary<DeckPlanner.DeckPick, List<string>> SameLists(IEnumerable<DeckPlanner.DeckPick> picks)
+        {
+            var result = new Dictionary<DeckPlanner.DeckPick, List<string>>();
+            foreach (var g in picks.GroupBy(p => string.Join(",", (p.Deck.Cards ?? new List<string>()).OrderBy(c => c, StringComparer.Ordinal))))
+            {
+                var list = g.ToList();
+                result[list[0]] = list.Skip(1).Select(p => p.Deck.Name).ToList();
+            }
+            return result;
+        }
+
+        /// <summary>"Aura Paladin · +3 copies", with the copies' names as a tooltip.</summary>
+        private static TextBlock SubtitleWithCopies(string sub, List<string> copies, double size)
+        {
+            var t = Theme.Text(sub, size, Theme.Dusk);
+            if (copies.Count == 0) return t;
+            t.Inlines.Add(new System.Windows.Documents.Run($"  ·  +{copies.Count} {(copies.Count == 1 ? "copy" : "copies")}") { Foreground = Theme.Vellum });
+            t.ToolTip = "Same 40 cards as: " + string.Join(", ", copies);
+            return t;
+        }
+
         // ------------------------------------------------------------------ the best deck
 
-        private static UIElement Hero(DeckPlanner.DeckPick p, AppData d)
+        private static UIElement Hero(DeckPlanner.DeckPick p, AppData d, List<string> copies)
         {
             var into = Theme.Rgb(0x19, 0x14, 0x30);
             var g = new Grid { Height = 208 };
@@ -63,7 +91,7 @@ namespace HearthStoner.Pages
             var name = Theme.Text(p.Deck.Name, 34, Theme.Vellum, FontWeights.SemiBold, display: true);
             name.Margin = new Thickness(0, 4, 0, 0);
             top.Children.Add(name);
-            top.Children.Add(Theme.Text(p.Archetype.Name, 13.5, Theme.Dusk));
+            top.Children.Add(SubtitleWithCopies(p.Archetype.Name, copies, 13.5));
             body.Children.Add(top);
 
             var bottom = new DockPanel { VerticalAlignment = VerticalAlignment.Bottom, LastChildFill = false };
@@ -107,10 +135,20 @@ namespace HearthStoner.Pages
 
         // ------------------------------------------------------------------ the other decks
 
-        private static UIElement Row(DeckPlanner.DeckPick p, AppShell shell)
+        private static UIElement Row(DeckPlanner.DeckPick p, AppShell shell, List<string> copies)
         {
             var g = new Grid { Height = 66 };
             g.Children.Add(AppShell.ArtBanner(p.SignatureCardId, Theme.SlateC, 340, 0.6, 0.0, 0.7));
+            // A dark fade behind the number so it stays readable on bright art.
+            g.Children.Add(new Border
+            {
+                Width = 190, HorizontalAlignment = HorizontalAlignment.Right,
+                Background = new LinearGradientBrush(new GradientStopCollection
+                {
+                    new GradientStop(Color.FromArgb(0, Theme.NightC.R, Theme.NightC.G, Theme.NightC.B), 0),
+                    new GradientStop(Color.FromArgb(215, Theme.NightC.R, Theme.NightC.G, Theme.NightC.B), 0.5),
+                }, new Point(0, 0), new Point(1, 0)),
+            });
             g.Children.Add(new Border { Width = 4, HorizontalAlignment = HorizontalAlignment.Left, Background = Theme.B(Theme.ClassColor(p.Deck.Class)) });
             var row = new DockPanel { Margin = new Thickness(20, 0, 20, 0), LastChildFill = true };
             var num = p.Archetype != null
@@ -138,7 +176,7 @@ namespace HearthStoner.Pages
             row.Children.Add(mu);
             var names = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             names.Children.Add(Theme.Text(p.Deck.Name, 17, Theme.Vellum, FontWeights.SemiBold));
-            names.Children.Add(Theme.Text(p.Archetype?.Name ?? MetaStats.ClassName(p.Deck.Class), 12.5, Theme.Dusk));
+            names.Children.Add(SubtitleWithCopies(p.Archetype?.Name ?? MetaStats.ClassName(p.Deck.Class), copies, 12.5));
             row.Children.Add(names);
             g.Children.Add(row);
 
@@ -150,7 +188,8 @@ namespace HearthStoner.Pages
 
         // ------------------------------------------------------------------ what changed
 
-        private static UIElement MetaChanges(AppData d)
+        /// <summary>What moved since the last meta snapshot; alerts about a merged copy of a deck are left out (the first one already says it).</summary>
+        private static UIElement MetaChanges(AppData d, List<string> copyNames)
         {
             var p = new StackPanel { Margin = new Thickness(0, 18, 0, 0) };
             var h = Theme.Heading(d.MetaSince.HasValue ? $"Meta changes since {d.MetaSince.Value:MMM d}" : "Meta changes");
@@ -165,7 +204,7 @@ namespace HearthStoner.Pages
                 p.Children.Add(Theme.Text("Nothing notable: your decks' odds and the common decks' shares have held steady.", 13, Theme.Dusk, wrap: true));
                 return p;
             }
-            foreach (var a in d.MetaAlerts)
+            foreach (var a in d.MetaAlerts.Where(a => !(a.AboutYourDeck && copyNames.Any(n => a.Text.StartsWith(n + ":", StringComparison.Ordinal)))))
             {
                 var row = new Grid { Margin = new Thickness(0, 0, 0, 8) };
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
@@ -205,24 +244,52 @@ namespace HearthStoner.Pages
                 bar.Children.Add(seg);
             }
             p.Children.Add(clip);
-            foreach (var m in best.Matchups.Take(8))
+            p.Children.Add(FieldRow(null, AppShell.ColumnLabel("Class"), AppShell.ColumnLabel("Share", TextAlignment.Right), AppShell.ColumnLabel("You win", TextAlignment.Right), 24));
+            const int shownRows = 5;
+            foreach (var m in best.Matchups.Take(shownRows)) p.Children.Add(FieldMatchup(m));
+            var more = best.Matchups.Skip(shownRows).Take(8 - shownRows).ToList();
+            if (more.Count > 0)
             {
-                var row = new Grid { Height = 34 };
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(56) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });
-                row.Children.Add(new Border { Width = 10, Height = 10, CornerRadius = new CornerRadius(3), Background = Theme.B(Theme.ClassColor(m.Class)), HorizontalAlignment = HorizontalAlignment.Left });
-                var n = Theme.Text(MetaStats.ClassName(m.Class), 13.5); n.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(n, 1); row.Children.Add(n);
-                var s = Theme.Text(AppShell.Pct(m.Share), 13.5, Theme.Dusk); s.TextAlignment = TextAlignment.Right; s.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(s, 2); row.Children.Add(s);
-                var v = m.FromData ? Theme.Text(AppShell.Pct(m.WinRate), 13.5, Theme.RateBrush(m.WinRate), FontWeights.SemiBold) : Theme.Text("-", 13.5, Theme.Dusk);
-                v.TextAlignment = TextAlignment.Right; v.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(v, 3); row.Children.Add(v);
-                p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = row });
+                var rest = new StackPanel();
+                foreach (var m in more) rest.Children.Add(FieldMatchup(m));
+                var c = AppShell.Collapsible($"{more.Count} more class{(more.Count == 1 ? "" : "es")}", rest);
+                c.Margin = new Thickness(0, 6, 0, 0);
+                p.Children.Add(c);
             }
             var note = Theme.Text($"Share of games at {AppData.RankBracketName(d.Meta.Rank)}, and {best.Deck.Name}'s win rate against each class.", 12, Theme.Dusk, wrap: true);
             note.Margin = new Thickness(0, 8, 0, 0);
             p.Children.Add(note);
             return p;
+        }
+
+        /// <summary>One class of the field: its colour, name, share of games and your win rate against it.</summary>
+        private static UIElement FieldMatchup(DeckPlanner.ClassMatchup m)
+        {
+            var dot = new Border { Width = 10, Height = 10, CornerRadius = new CornerRadius(3), Background = Theme.B(Theme.ClassColor(m.Class)), HorizontalAlignment = HorizontalAlignment.Left };
+            var n = Theme.Text(MetaStats.ClassName(m.Class), 13.5);
+            var s = Theme.Text(AppShell.Pct(m.Share), 13.5, Theme.Mist); s.TextAlignment = TextAlignment.Right;
+            var v = m.FromData ? Theme.Text(AppShell.Pct(m.WinRate), 13.5, Theme.RateBrush(m.WinRate), FontWeights.SemiBold) : Theme.Text("-", 13.5, Theme.Dusk);
+            v.TextAlignment = TextAlignment.Right;
+            return FieldRow(dot, n, s, v, 34);
+        }
+
+        /// <summary>The field table's columns: dot, class, share, your win rate.</summary>
+        private static UIElement FieldRow(UIElement dot, TextBlock name, TextBlock share, TextBlock win, double height)
+        {
+            var row = new Grid { Height = height };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(56) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(72) });
+            if (dot != null) row.Children.Add(dot);
+            var col = 1;
+            foreach (var t in new[] { name, share, win })
+            {
+                t.VerticalAlignment = VerticalAlignment.Center;
+                Grid.SetColumn(t, col++);
+                row.Children.Add(t);
+            }
+            return new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = row };
         }
 
         // ------------------------------------------------------------------ quests
@@ -271,8 +338,15 @@ namespace HearthStoner.Pages
             }
             if (!any) p.Children.Add(Theme.Text("All your quests are done. New ones arrive with the next daily reset.", 13.5, Theme.Dusk, wrap: true));
             // The game keeps these in its separate Battlegrounds quest log, with their own reward track.
+            // Collapsed: they don't move your main track, and open they pushed Craft next off the screen.
             var battlegrounds = log.Quests.Where(q => q.Open && q.IsBattlegrounds).ToList();
-            if (battlegrounds.Count > 0) QuestGroup(p, "BATTLEGROUNDS (separate quest log and reward track)", battlegrounds, plan);
+            if (battlegrounds.Count > 0)
+            {
+                var bg = new StackPanel();
+                bg.Children.Add(Theme.Text("Separate quest log and reward track.", 12, Theme.Dusk));
+                foreach (var q in battlegrounds) bg.Children.Add(QuestRow(q, plan));
+                p.Children.Add(AppShell.Collapsible($"Battlegrounds quests ({battlegrounds.Count})", bg));
+            }
 
             if (any)
             {

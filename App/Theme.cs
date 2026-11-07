@@ -27,9 +27,37 @@ namespace HearthStoner
         public static readonly Color GoldC = Rgb(0xF0, 0xB9, 0x54);
         public static readonly Color WinC = Rgb(0x62, 0xD4, 0x8C);
         public static readonly Color LossC = Rgb(0xF0, 0x70, 0x6A);
+        /// <summary>Small explanatory text: brighter than Dusk so it reads at caption sizes.</summary>
+        public static readonly Color MistC = Rgb(0xA9, 0xAE, 0xD0);
+        /// <summary>"Look at this": review notes, warnings, mistakes. Gold stays for rewards and rank.</summary>
+        public static readonly Color AmberC = Rgb(0xFF, 0x9A, 0x4D);
 
         public static readonly Brush Night = B(NightC), Rail = B(RailC), Slate = B(SlateC), Raised = B(RaisedC), Line = B(LineC),
-            Vellum = B(VellumC), Dusk = B(DuskC), Mana = B(ManaC), Gold = B(GoldC), Win = B(WinC), Loss = B(LossC);
+            Vellum = B(VellumC), Dusk = B(DuskC), Mana = B(ManaC), Gold = B(GoldC), Win = B(WinC), Loss = B(LossC),
+            Mist = B(MistC), Amber = B(AmberC);
+
+        /// <summary>Captions are never drawn smaller than this.</summary>
+        public const double CaptionSize = 12.5;
+
+        /// <summary>Line icon for a navigation page, on a 24-unit grid (drawn as a stroke).</summary>
+        public static Geometry NavIcon(string page)
+        {
+            switch (page)
+            {
+                case "Play": return Geo("M8,5 L19,12 L8,19 Z");
+                case "Decks": return Geo("M4,8 H15 V21 H4 Z M8,4 H19 V17");
+                case "Ladder": return Geo("M3,19 L9,13 L13,16 L21,7 M16,7 H21 V12");
+                case "History": return Geo("M12,3.5 A8.5,8.5 0 1 1 11.99,3.5 Z M12,7.5 V12 L15,14");
+                case "Replays": return Geo("M3,5 H21 V19 H3 Z M10,9 L15,12 L10,15 Z");
+                case "Practice": return Geo("M12,3.5 A8.5,8.5 0 1 1 11.99,3.5 Z M12,8.5 A3.5,3.5 0 1 1 11.99,8.5 Z");
+                case "Stats": return Geo("M5,20 V13 M10,20 V5 M15,20 V10 M20,20 V15");
+                case "Meta": return Geo("M12,3.5 A8.5,8.5 0 1 1 11.99,3.5 Z M3.5,12 H20.5 M12,3.5 C8,8 8,16 12,20.5 M12,3.5 C16,8 16,16 12,20.5");
+                case "Settings": return Geo("M4,7 H20 M4,17 H20 M9,4 V10 M15,14 V20");
+                default: return Geo("M12,4 L19,8 L19,16 L12,20 L5,16 L5,8 Z");
+            }
+        }
+
+        private static Geometry Geo(string data) { var g = Geometry.Parse(data); g.Freeze(); return g; }
 
         private static readonly Uri FontBase = new Uri("pack://application:,,,/HearthStoner;component/");
         public static readonly FontFamily Body = new FontFamily(FontBase, "./App/Fonts/#Barlow");
@@ -64,13 +92,20 @@ namespace HearthStoner
 
         // ------------------------------------------------------------------ text helpers
 
-        public static TextBlock Text(string text, double size = 14, Brush fg = null, FontWeight? weight = null, bool display = false, bool wrap = false) =>
-            new TextBlock
+        /// <summary>
+        /// A text block. Small grey text (Dusk under 13 px) is a caption: it is drawn in the brighter Mist, at least
+        /// <see cref="CaptionSize"/>, so it stays readable on a big screen.
+        /// </summary>
+        public static TextBlock Text(string text, double size = 14, Brush fg = null, FontWeight? weight = null, bool display = false, bool wrap = false)
+        {
+            if (ReferenceEquals(fg, Dusk) && size < 13) { fg = Mist; size = Math.Max(size + 1, CaptionSize); }
+            return new TextBlock
             {
                 Text = text ?? "", FontSize = size, Foreground = fg ?? Vellum, FontWeight = weight ?? FontWeights.Normal,
                 FontFamily = display ? Display : Body, TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
                 TextTrimming = wrap ? TextTrimming.None : TextTrimming.CharacterEllipsis,
             };
+        }
 
         /// <summary>Page title in the display face.</summary>
         public static TextBlock Title(string text, double size = 38) => Text(text, size, Vellum, FontWeights.SemiBold, display: true);
@@ -201,22 +236,24 @@ namespace HearthStoner
             </Border>
             <Border x:Name='Bar' Width='3' HorizontalAlignment='Left' Margin='0,7' CornerRadius='0,2,2,0' Background='#5AA0FF' Opacity='0'/>
             <StackPanel Orientation='Horizontal' Margin='22,0,0,0' VerticalAlignment='Center'>
-              <Path x:Name='Gem' Width='12' Height='13' Stretch='Fill' Fill='#2C3158' Data='M 6,0 L 12,3.25 L 12,9.75 L 6,13 L 0,9.75 L 0,3.25 Z'/>
+              <Path x:Name='Gem' Width='24' Height='24' Stretch='None' Fill='{x:Null}' Stroke='#8B90B8' StrokeThickness='2'
+                    StrokeLineJoin='Round' StrokeStartLineCap='Round' StrokeEndLineCap='Round'
+                    Data='{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}'>
+                <Path.LayoutTransform><ScaleTransform ScaleX='0.75' ScaleY='0.75'/></Path.LayoutTransform>
+              </Path>
               <ContentPresenter Margin='12,0,0,0' VerticalAlignment='Center'/>
             </StackPanel>
           </Grid>
           <ControlTemplate.Triggers>
-            <Trigger Property='IsMouseOver' Value='True'><Setter Property='Foreground' Value='#EDE6D6'/></Trigger>
+            <Trigger Property='IsMouseOver' Value='True'><Setter Property='Foreground' Value='#EDE6D6'/><Setter TargetName='Gem' Property='Stroke' Value='#EDE6D6'/></Trigger>
             <Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='Row' Property='Background' Value='#1B1F3A'/></Trigger>
             <Trigger Property='IsChecked' Value='True'>
               <Setter Property='Foreground' Value='#EDE6D6'/>
               <Setter TargetName='Glow' Property='Opacity' Value='1'/>
               <Setter TargetName='Bar' Property='Opacity' Value='1'/>
-              <Setter TargetName='Gem' Property='Fill'>
-                <Setter.Value><LinearGradientBrush StartPoint='0,0' EndPoint='0,1'><GradientStop Color='#8CC0FF' Offset='0'/><GradientStop Color='#2B5FC0' Offset='1'/></LinearGradientBrush></Setter.Value>
-              </Setter>
+              <Setter TargetName='Gem' Property='Stroke' Value='#5AA0FF'/>
               <Setter TargetName='Gem' Property='Effect'>
-                <Setter.Value><DropShadowEffect Color='#5AA0FF' BlurRadius='10' ShadowDepth='0' Opacity='0.9'/></Setter.Value>
+                <Setter.Value><DropShadowEffect Color='#5AA0FF' BlurRadius='8' ShadowDepth='0' Opacity='0.8'/></Setter.Value>
               </Setter>
             </Trigger>
           </ControlTemplate.Triggers>

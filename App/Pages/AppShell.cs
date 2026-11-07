@@ -57,7 +57,7 @@ namespace HearthStoner.Pages
             rail.Children.Add(mark);
             foreach (var p in Pages)
             {
-                var rb = new RadioButton { Content = p, GroupName = "nav", Style = (Style)Theme.Styles["Nav"], IsChecked = p == Current };
+                var rb = new RadioButton { Content = p, Tag = Theme.NavIcon(p), GroupName = "nav", Style = (Style)Theme.Styles["Nav"], IsChecked = p == Current };
                 var page = p;
                 rb.Checked += (s, e) => Show(page);
                 DockPanel.SetDock(rb, Dock.Top);
@@ -251,7 +251,8 @@ namespace HearthStoner.Pages
                 g.Children.Add(new Border
                 {
                     Width = artWidth, HorizontalAlignment = HorizontalAlignment.Right, Opacity = opacity,
-                    Background = new ImageBrush(img) { Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top, Viewbox = new Rect(0, 0.12, 1, 0.76) },
+                    // Trims the art's edges too: some card art has a dark band at one side that showed as a black block.
+                    Background = new ImageBrush(img) { Stretch = Stretch.UniformToFill, AlignmentY = AlignmentY.Top, Viewbox = new Rect(0.04, 0.12, 0.92, 0.76) },
                 });
                 g.Children.Add(new Border
                 {
@@ -279,6 +280,33 @@ namespace HearthStoner.Pages
                 Background = Theme.B(Theme.NightC, 0.75), BorderBrush = Theme.Line, BorderThickness = new Thickness(1),
             };
         }
+
+        /// <summary>
+        /// A "▸ label" toggle that shows or hides <paramref name="content"/> (hidden at first). The content is built
+        /// when the page is, so opening it is instant.
+        /// </summary>
+        public static StackPanel Collapsible(string label, UIElement content, bool open = false)
+        {
+            var p = new StackPanel();
+            var holder = new Border { Child = content, Visibility = open ? Visibility.Visible : Visibility.Collapsed };
+            var head = new TextBlock { FontSize = 13, Foreground = Theme.Mist, Cursor = System.Windows.Input.Cursors.Hand, Margin = new Thickness(0, 2, 0, 6), Text = (open ? "▾  " : "▸  ") + label };
+            head.MouseLeftButtonUp += (s, e) =>
+            {
+                var show = holder.Visibility != Visibility.Visible;
+                holder.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+                head.Text = (show ? "▾  " : "▸  ") + label;
+            };
+            p.Children.Add(head);
+            p.Children.Add(holder);
+            return p;
+        }
+
+        /// <summary>Small grey capitals, e.g. a table's column headings.</summary>
+        public static TextBlock ColumnLabel(string text, TextAlignment align = TextAlignment.Left) => new TextBlock
+        {
+            Text = text.ToUpperInvariant(), FontSize = 11.5, FontWeight = FontWeights.SemiBold, Foreground = Theme.Dusk,
+            FontFamily = Theme.Body, TextAlignment = align, VerticalAlignment = VerticalAlignment.Center,
+        };
 
         public static string Pct(double v, int decimals = 0) => (v * 100).ToString(decimals == 0 ? "0" : "0.0") + "%";
     }
