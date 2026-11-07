@@ -64,9 +64,7 @@ namespace HearthStoner.Pages
                     ? (UIElement)new Image { Source = img, Width = 116, Opacity = keep ? 1 : 0.35 }
                     : new Border { Height = 160, CornerRadius = new CornerRadius(8), Background = Theme.Slate, Child = Theme.Text(d.Cards.NameOf(m.CardId), 13, wrap: true) };
                 card.Children.Add(pic);
-                var label = Theme.Text(keep ? "Keep" : "Toss", 13.5, keep ? Theme.Vellum : Theme.Dusk, FontWeights.SemiBold);
-                label.HorizontalAlignment = HorizontalAlignment.Center;
-                card.Children.Add(label);
+                card.Children.Add(KeepTossButton(keep));
                 if (shell.Practice.Checked && (m.Advice == "KEEP" || m.Advice == "TOSS"))
                 {
                     var right = keep == (m.Advice == "KEEP");
@@ -112,6 +110,112 @@ namespace HearthStoner.Pages
             return p;
         }
 
+        // ------------------------------------------------------------------ the puzzle drawn as a board
+
+        /// <summary>A minion as the recorder saved it: "Name 3/2 (Taunt, Shield, ready)".</summary>
+        private static readonly System.Text.RegularExpressions.Regex MinionText =
+            new System.Text.RegularExpressions.Regex(@"^(?<name>.*) (?<atk>-?\d+)/(?<hp>-?\d+)(?: \((?<tags>[^)]*)\))?$");
+
+        /// <summary>
+        /// The puzzle as a little board: their hero's health, their minions, a divider, your minions, then your weapon,
+        /// hand and mana. Shrinks to fit the column.
+        /// </summary>
+        private static UIElement PuzzleBoard(LethalPuzzle z)
+        {
+            var felt = Theme.Rgb(0x2A, 0x24, 0x18);
+            var edge = Theme.Rgb(0x5A, 0x4A, 0x2A);
+            var board = new StackPanel { Width = 600 };
+            var hero = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 18) };
+            hero.Children.Add(new Border
+            {
+                Width = 54, Height = 54, CornerRadius = new CornerRadius(27), Background = Theme.B(Theme.Rgb(0x3A, 0x30, 0x20)), BorderBrush = Theme.B(Theme.Rgb(0x8A, 0x70, 0x40)), BorderThickness = new Thickness(2),
+                Child = new TextBlock { Text = (z.TheirHealth + z.TheirArmor).ToString(), FontFamily = Theme.Display, FontSize = 24, FontWeight = FontWeights.Bold, Foreground = Theme.Loss, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            });
+            var hl = Theme.Text(z.TheirArmor > 0 ? $"Opponent: {z.TheirHealth} health + {z.TheirArmor} armor" : "Opponent health", 13, Theme.Mist);
+            hl.VerticalAlignment = VerticalAlignment.Center;
+            hl.Margin = new Thickness(10, 0, 0, 0);
+            hero.Children.Add(hl);
+            board.Children.Add(hero);
+            board.Children.Add(MinionRow(z.TheirMinions, "Their board is empty"));
+            board.Children.Add(new Border { Height = 1, Background = Theme.B(edge), Margin = new Thickness(0, 20, 0, 20) });
+            board.Children.Add(MinionRow(z.YourMinions, "Your board is empty"));
+            var info = new TextBlock { FontSize = 13, Foreground = Theme.Vellum, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 18, 0, 0), TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center };
+            if (z.Weapon != null) info.Inlines.Add(new System.Windows.Documents.Run($"Weapon: {z.Weapon}    "));
+            info.Inlines.Add(new System.Windows.Documents.Run($"Hand: {(z.Hand.Count > 0 ? string.Join(", ", z.Hand) : "empty")}    "));
+            info.Inlines.Add(new System.Windows.Documents.Run($"{z.Mana} mana") { Foreground = Theme.Mana, FontWeight = FontWeights.SemiBold });
+            board.Children.Add(info);
+            return new Border
+            {
+                Background = Theme.B(felt), BorderBrush = Theme.B(edge), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14),
+                Padding = new Thickness(18), Margin = new Thickness(0, 0, 0, 14),
+                Child = new Viewbox { Child = board, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Center },
+            };
+        }
+
+        private static UIElement MinionRow(List<string> minions, string empty)
+        {
+            if (minions.Count == 0)
+            {
+                var t = Theme.Text(empty, 13, Theme.Mist);
+                t.HorizontalAlignment = HorizontalAlignment.Center;
+                return t;
+            }
+            var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
+            foreach (var m in minions) row.Children.Add(MinionToken(m));
+            return row;
+        }
+
+        /// <summary>One minion: an arch with its name, attack (gold) and health (red) gems; Taunt, Shield and ready marked.</summary>
+        private static UIElement MinionToken(string text)
+        {
+            var match = MinionText.Match(text ?? "");
+            var name = match.Success ? match.Groups["name"].Value : text;
+            var tags = match.Success ? match.Groups["tags"].Value.Split(',').Select(s => s.Trim()).ToList() : new List<string>();
+            var body = new Border
+            {
+                Width = 74, Height = 90, CornerRadius = new CornerRadius(37, 37, 10, 10), Padding = new Thickness(6, 4, 6, 16),
+                Background = Theme.B(tags.Contains("Frozen") ? Theme.Rgb(0x2A, 0x4A, 0x70) : Theme.Rgb(0x2E, 0x35, 0x66)),
+                BorderBrush = Theme.B(tags.Contains("ready") ? Theme.WinC : Theme.Rgb(0x4A, 0x52, 0x90)), BorderThickness = new Thickness(2),
+                Child = new TextBlock { Text = name, FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = Theme.Vellum, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            };
+            if (tags.Contains("Shield")) body.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0xF0, 0xE0, 0x8A), BlurRadius = 14, ShadowDepth = 0, Opacity = 1 };
+            var g = new Grid { Width = 84, Height = 100, Margin = new Thickness(3, 0, 3, 0), ToolTip = text };
+            if (tags.Contains("Taunt"))
+                g.Children.Add(new Border { Width = 82, Height = 98, CornerRadius = new CornerRadius(41, 41, 12, 12), BorderBrush = Theme.B(Theme.Rgb(0x9A, 0x9E, 0xB8)), BorderThickness = new Thickness(3) });
+            g.Children.Add(body);
+            if (match.Success)
+            {
+                g.Children.Add(StatGem(match.Groups["atk"].Value, Theme.Rgb(0xC8, 0xA0, 0x30), Theme.NightC, HorizontalAlignment.Left));
+                g.Children.Add(StatGem(match.Groups["hp"].Value, Theme.Rgb(0xC0, 0x40, 0x3A), Colors.White, HorizontalAlignment.Right));
+            }
+            if (tags.Contains("Windfury"))
+                g.Children.Add(new Border { VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Center, CornerRadius = new CornerRadius(3), Background = Theme.Raised, Padding = new Thickness(4, 0, 4, 1),
+                    Child = new TextBlock { Text = "Windfury", FontSize = 9.5, Foreground = Theme.Vellum } });
+            return g;
+        }
+
+        private static Border StatGem(string value, Color fill, Color text, HorizontalAlignment side) => new Border
+        {
+            Width = 26, Height = 26, CornerRadius = new CornerRadius(13), Background = Theme.B(fill), HorizontalAlignment = side, VerticalAlignment = VerticalAlignment.Bottom,
+            Child = new TextBlock { Text = value, FontSize = 13, FontWeight = FontWeights.Bold, Foreground = Theme.B(text), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+        };
+
+        /// <summary>The card's Keep / Toss state as a button: green with a tick, or red with a cross (the whole card toggles it).</summary>
+        private static Border KeepTossButton(bool keep)
+        {
+            var c = keep ? Theme.WinC : Theme.LossC;
+            return new Border
+            {
+                Height = 32, Margin = new Thickness(0, 8, 0, 0), CornerRadius = new CornerRadius(7),
+                Background = Theme.B(c, 0.14), BorderBrush = Theme.B(c), BorderThickness = new Thickness(1.5),
+                Child = new TextBlock
+                {
+                    Text = keep ? "✓  Keep" : "✕  Toss", FontSize = 14, FontWeight = FontWeights.Bold, Foreground = Theme.B(c),
+                    HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                },
+            };
+        }
+
         // ------------------------------------------------------------------ lethal puzzles
 
         public static List<(GameRecord Game, TurnSnapshot Turn)> PuzzleList(AppData d) =>
@@ -132,25 +236,11 @@ namespace HearthStoner.Pages
             var (g, t) = list[shell.Practice.Puzzle];
             var z = t.Puzzle;
             var missed = g.Review.Any(r => r.Kind == "MissedLethal" && r.Turn == t.Turn);
-            var head = Theme.Text($"Turn {(t.Turn + 1) / 2} vs {g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass)}, {g.Start:MMM d}" + (missed ? ". You missed this one." : ""), 13.5, missed ? Theme.Gold : Theme.Dusk, wrap: true);
+            var head = Theme.Text($"Turn {(t.Turn + 1) / 2} vs {g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass)}, {g.Start:MMM d}. " +
+                $"Find {z.TheirHealth + z.TheirArmor} damage." + (missed ? " You missed this one." : ""), 13.5, missed ? Theme.Amber : Theme.Dusk, wrap: true);
             head.Margin = new Thickness(0, -4, 0, 12);
             p.Children.Add(head);
-
-            void Line(string label, string value)
-            {
-                var g2 = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-                g2.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
-                g2.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                g2.Children.Add(Theme.Text(label, 13.5, Theme.Dusk));
-                var v = Theme.Text(value, 14, Theme.Vellum, wrap: true);
-                Grid.SetColumn(v, 1);
-                g2.Children.Add(v);
-                p.Children.Add(g2);
-            }
-            Line("Opponent", $"{z.TheirHealth} health{(z.TheirArmor > 0 ? $" + {z.TheirArmor} armor" : "")}");
-            Line("Their board", z.TheirMinions.Count > 0 ? string.Join(", ", z.TheirMinions) : "empty");
-            Line("Your board", (z.YourMinions.Count > 0 ? string.Join(", ", z.YourMinions) : "empty") + (z.Weapon != null ? $"; weapon {z.Weapon}" : ""));
-            Line($"Your hand", $"{z.Mana} mana: {(z.Hand.Count > 0 ? string.Join(", ", z.Hand) : "empty")}");
+            p.Children.Add(PuzzleBoard(z));
 
             if (shell.Practice.SolutionShown)
             {
@@ -186,6 +276,9 @@ namespace HearthStoner.Pages
                 actions.Children.Add(next);
             }
             p.Children.Add(actions);
+            var key = Theme.Text("Grey ring: Taunt. Yellow glow: Divine Shield. Green edge: can attack now.", 12, Theme.Dusk, wrap: true);
+            key.Margin = new Thickness(0, 12, 0, 0);
+            p.Children.Add(key);
             var count = Theme.Text($"Puzzle {shell.Practice.Puzzle + 1} of {list.Count}{(list.Count(x => x.Game.Review.Any(r => r.Kind == "MissedLethal" && r.Turn == x.Turn.Turn)) is int m && m > 0 ? $", {m} of them missed in the game" : "")}.", 12, Theme.Dusk);
             count.Margin = new Thickness(0, 12, 0, 0);
             p.Children.Add(count);
