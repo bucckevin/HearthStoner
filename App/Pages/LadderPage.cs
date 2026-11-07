@@ -92,7 +92,7 @@ namespace HearthStoner.Pages
             // Decks on the left; opponents and time of day on the right.
             var row2 = Columns(out var left2, out var right2);
             left2.Children.Add(Theme.Heading("Best deck for climbing"));
-            Decks(left2, r, legend);
+            Decks(left2, r, legend, d);
             right2.Children.Add(Theme.Heading("Your opponents"));
             Opponents(right2, r.Opp);
             Caption(right2, "Best time to play");
@@ -159,31 +159,43 @@ namespace HearthStoner.Pages
                 var after = c.AfterThreeLosses is double a
                     ? $" After 3 straight losses you've won {AppShell.Pct(a)} of the next games ({c.AfterThreeLossesGames} games){(a < usual - 0.05 ? $", below your usual {AppShell.Pct(usual)}" : "")}."
                     : "";
-                Para(p, $"{c.LossStreak} losses in a row.{after} A short break often helps.", Theme.Gold);
+                Para(p, $"{c.LossStreak} losses in a row.{after} A short break often helps.", Theme.Amber);
             }
             else if (c.Current && s.Games.Count >= 3 && s.WinRate >= 0.6) Para(p, "Going well: keep it up.", Theme.Dusk, 12.5);
         }
 
-        private static void Decks(Panel p, LadderReport r, bool legend)
+        private static void Decks(Panel p, LadderReport r, bool legend, AppData d)
         {
-            var list = r.Decks.Where(x => x.Best.HasValue || x.Games > 0).Take(6).ToList();
+            // Decks you've played first; a deck with the same cards as one above it (and no games) is merged into it.
+            var cardsByName = d.Decks.GroupBy(x => x.Name).ToDictionary(g => g.Key, g => DeckVersions.Key(g.First().Cards));
+            var rows = new System.Collections.Generic.List<(LadderReport.DeckClimb Deck, int Copies)>();
+            foreach (var x in r.Decks.Where(x => x.Best.HasValue || x.Games > 0).OrderByDescending(x => x.Games > 0))
+            {
+                var key = cardsByName.TryGetValue(x.Name ?? "", out var k) ? k : null;
+                var same = x.Games == 0 && key != null ? rows.FindIndex(o => cardsByName.TryGetValue(o.Deck.Name ?? "", out var ok) && ok == key) : -1;
+                if (same >= 0) rows[same] = (rows[same].Deck, rows[same].Copies + 1);
+                else rows.Add((x, 0));
+            }
+            var list = rows.Take(6).ToList();
             if (list.Count == 0) { Para(p, "Play a few ranked games: this ranks your decks by stars per hour.", Theme.Dusk); return; }
             var unit = legend ? "wins/hour" : "stars/hour";
-            p.Children.Add(DeckRow(null, "Deck", "Record", "Min/game", unit, Theme.Dusk, null, 12));
-            foreach (var x in list)
+            p.Children.Add(DeckRow(null, "Deck", "Record", "Min/game", unit, Theme.Dusk, null, 12, false));
+            foreach (var (x, copies) in list)
             {
-                var rec = x.Games > 0 ? $"{x.Wins}-{x.Games - x.Wins}" : "no games";
-                var min = x.Minutes is double m ? $"{m:0}" : "-";
+                var played = x.Games > 0;
+                var rec = played ? $"{x.Wins}-{x.Games - x.Wins}" : "—";
+                var min = x.Minutes is double m ? $"{m:0}" : "—";
                 var fromMeta = x.Games < LadderReport.MinGames && x.MetaStarsPerHour.HasValue;
-                var val = x.Best is double b ? $"{b:+0.0;-0.0;0.0}{(fromMeta ? "*" : "")}" : "-";
-                p.Children.Add(DeckRow(x.Class, x.Name, rec, min, val, x.Best > 0 ? Theme.Win : x.Best < 0 ? Theme.Loss : Theme.Dusk,
-                    x.Expected is double e ? $"Meta expected win rate {AppShell.Pct(e)}" : null, 13.5));
+                var val = x.Best is double b ? $"{b:+0.0;-0.0;0.0}" : "—";
+                var name = copies > 0 ? $"{x.Name}  +{copies} {(copies == 1 ? "copy" : "copies")}" : x.Name;
+                p.Children.Add(DeckRow(x.Class, name, rec, min, val, !played ? Theme.Mist : x.Best > 0 ? Theme.Win : x.Best < 0 ? Theme.Loss : Theme.Dusk,
+                    x.Expected is double e ? $"Meta expected win rate {AppShell.Pct(e)}" : null, 13.5, fromMeta, dim: !played));
             }
             Note(p, $"Net {(legend ? "wins" : "stars")} an hour: your win rate (streaks included{(legend ? "; none in Legend" : "")}) over your average game length, so a fast deck can out-climb a slower one with a higher win rate. " +
-                $"* = under {LadderReport.MinGames} games with it: the meta's expected win rate at your average game length.", 6, 0);
+                $"\"meta\" = under {LadderReport.MinGames} games with it: the meta's expected win rate at your average game length.", 6, 0);
         }
 
-        private static Border DeckRow(string cls, string name, string rec, string min, string val, Brush valBrush, string tip, double size)
+        private static Border DeckRow(string cls, string name, string rec, string min, string val, Brush valBrush, string tip, double size, bool metaTag, bool dim = false)
         {
             var g = new Grid { Height = size > 13 ? 32 : 24, ToolTip = tip };
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
@@ -202,10 +214,24 @@ namespace HearthStoner.Pages
                 g.Children.Add(t);
             }
             var header = size <= 13;
-            Cell(1, name, header ? Theme.Dusk : Theme.Vellum, header ? FontWeights.Normal : FontWeights.SemiBold);
-            Cell(2, rec, header ? Theme.Dusk : Theme.Vellum, FontWeights.Normal);
-            Cell(3, min, Theme.Dusk, FontWeights.Normal);
-            Cell(4, val, valBrush, header ? FontWeights.Normal : FontWeights.SemiBold);
+            var text = header ? Theme.Dusk : dim ? Theme.Mist : Theme.Vellum;
+            Cell(1, name, text, header || dim ? FontWeights.Normal : FontWeights.SemiBold);
+            Cell(2, rec, text, FontWeights.Normal);
+            Cell(3, min, header ? Theme.Dusk : Theme.Mist, FontWeights.Normal);
+            if (metaTag)
+            {
+                // The estimate is explained where it's shown: a small "meta" tag after the number.
+                var cell = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+                cell.Children.Add(Theme.Text(val, size, valBrush, FontWeights.SemiBold));
+                cell.Children.Add(new Border
+                {
+                    Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(5, 0, 5, 1), CornerRadius = new CornerRadius(3), Background = Theme.Raised, VerticalAlignment = VerticalAlignment.Center,
+                    Child = new TextBlock { Text = "meta", FontSize = 11, Foreground = Theme.Mist },
+                });
+                Grid.SetColumn(cell, 4);
+                g.Children.Add(cell);
+            }
+            else Cell(4, val, valBrush, header ? FontWeights.Normal : FontWeights.SemiBold);
             return new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = g };
         }
 
@@ -222,40 +248,45 @@ namespace HearthStoner.Pages
             string text;
             Brush tone = Theme.Dusk;
             if (o.Gap >= 5) { text = "Matchmaking pairs players by a hidden rating, not the rank badge. Yours is well above your rank, so you'll climb fast, but expect tougher games than the badge suggests."; tone = Theme.Win; }
-            else if (o.Gap <= -5) { text = "Your opponents rank below you: your hidden rating is lower than your rank, so climbing may slow down for a while."; tone = Theme.Gold; }
+            else if (o.Gap <= -5) { text = "Your opponents rank below you: your hidden rating is lower than your rank, so climbing may slow down for a while."; tone = Theme.Amber; }
             else text = "Your opponents are around your rank: your hidden rating matches your badge.";
             Para(p, text, tone, 12.5);
         }
 
         private static void Times(Panel p, LadderReport r)
         {
-            var max = Math.Max(1, r.Times.Max(t => t.Games));
             foreach (var t in r.Times)
             {
+                var enough = t.Games >= LadderReport.MinGames;
                 var g = new Grid { Height = 28 };
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(92) });
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
-                var n = Theme.Text(t.Name, 13.5, t == r.BestTime ? Theme.Vellum : Theme.Dusk, t == r.BestTime ? FontWeights.SemiBold : FontWeights.Normal);
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
+                var n = Theme.Text(t.Name, 13.5, t == r.BestTime ? Theme.Vellum : enough ? Theme.Mist : Theme.Dusk, t == r.BestTime ? FontWeights.SemiBold : FontWeights.Normal);
                 n.VerticalAlignment = VerticalAlignment.Center;
                 g.Children.Add(n);
-                var bar = new Border { Height = 8, CornerRadius = new CornerRadius(4), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
-                    Background = t.Games >= LadderReport.MinGames ? Theme.RateBrush(t.WinRate) : Theme.Dusk };
-                var track = new Grid();
-                track.Children.Add(new Border { Height = 8, CornerRadius = new CornerRadius(4), Background = Theme.Line, VerticalAlignment = VerticalAlignment.Center });
-                track.Children.Add(bar);
-                track.SizeChanged += (o, e) => bar.Width = Math.Max(t.Games > 0 ? 8 : 0, e.NewSize.Width * t.Games / max);
+                // Bar length is the win rate (easy to compare); too few games get a dashed track and no percentage.
+                UIElement track = enough
+                    ? AppShell.StatBar(t.WinRate, Theme.RateBrush(t.WinRate), 8)
+                    : new Border { Height = 8, CornerRadius = new CornerRadius(4), BorderBrush = Theme.Line, BorderThickness = new Thickness(1), Background = Brushes.Transparent };
+                ((FrameworkElement)track).VerticalAlignment = VerticalAlignment.Center;
                 Grid.SetColumn(track, 1);
                 g.Children.Add(track);
-                var v = Theme.Text(t.Games == 0 ? "no games" : $"{AppShell.Pct(t.WinRate)} of {t.Games}", 13, t.Games >= LadderReport.MinGames ? Theme.RateBrush(t.WinRate) : Theme.Dusk, FontWeights.SemiBold);
-                v.TextAlignment = TextAlignment.Right; v.VerticalAlignment = VerticalAlignment.Center;
+                var v = new TextBlock { FontSize = 13, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Foreground = Theme.Mist };
+                if (t.Games == 0) v.Text = "no games";
+                else if (!enough) v.Text = $"{t.Games} game{(t.Games == 1 ? "" : "s")} · too few";
+                else
+                {
+                    v.Inlines.Add(new System.Windows.Documents.Run(AppShell.Pct(t.WinRate)) { Foreground = Theme.RateBrush(t.WinRate), FontWeight = FontWeights.SemiBold });
+                    v.Inlines.Add(new System.Windows.Documents.Run($" of {t.Games}"));
+                }
                 Grid.SetColumn(v, 2);
                 g.Children.Add(v);
                 p.Children.Add(g);
             }
             Note(p, r.BestTime != null
-                ? $"You win most in the {r.BestTime.Name.ToLowerInvariant()}. Ranked and casual games, by the hour they started; bar length is how many games."
-                : $"Needs {LadderReport.MinGames}+ ranked or casual games in at least two of these to compare. Bar length is how many games.", 6, 0);
+                ? $"You win most in the {r.BestTime.Name.ToLowerInvariant()}. Ranked and casual games, by the hour they started; bar length is the win rate."
+                : $"Needs {LadderReport.MinGames}+ ranked or casual games in at least two of these to compare. Bar length is the win rate.", 6, 0);
         }
 
         // ------------------------------------------------------------------ layout helpers

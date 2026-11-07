@@ -25,7 +25,19 @@ namespace HearthStoner.Pages
             head.Children.Add(Theme.Text(d.Games.Count == 0 ? "No games yet" : $"{d.Games.Count} game{(d.Games.Count == 1 ? "" : "s")}, {wins} win{(wins == 1 ? "" : "s")}", 13, Theme.Dusk));
             list.Children.Add(head);
             if (shell.SelectedGame >= d.Games.Count) shell.SelectedGame = 0;
-            for (var i = 0; i < d.Games.Count; i++) list.Children.Add(GameRow(d.Games[i], i, shell));
+            if (d.Games.Count > 0) list.Children.Add(FilterChips(shell));
+            // One small header per day instead of the date on every row.
+            DateTime? day = null;
+            for (var i = 0; i < d.Games.Count; i++)
+            {
+                if (!Matches(d.Games[i], shell.HistoryFilter)) continue;
+                if (day != d.Games[i].Start.Date)
+                {
+                    day = d.Games[i].Start.Date;
+                    list.Children.Add(DayHeader(day.Value));
+                }
+                list.Children.Add(GameRow(d.Games[i], i, shell));
+            }
             if (d.OtherGames.Count > 0)
             {
                 // Modes HearthStoner doesn't track card by card: how often you played them and how it went.
@@ -55,6 +67,58 @@ namespace HearthStoner.Pages
 
         private static string Opponent(GameRecord g) => g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass);
 
+        private static readonly string[] Filters = { "All", "Ranked", "Casual", "Wins", "Losses" };
+
+        /// <summary>Whether a game shows under the History filter chip.</summary>
+        public static bool Matches(GameRecord g, string filter)
+        {
+            switch (filter)
+            {
+                case "Ranked": return g.GameType == "GT_RANKED";
+                case "Casual": return g.GameType == "GT_CASUAL";
+                case "Wins": return g.Won;
+                case "Losses": return g.Result == "LOST";
+                default: return true;
+            }
+        }
+
+        /// <summary>The row of filter chips above the game list; the chosen one is outlined in mana blue.</summary>
+        private static UIElement FilterChips(AppShell shell)
+        {
+            var wrap = new WrapPanel { Margin = new Thickness(22, 0, 22, 12) };
+            foreach (var f in Filters)
+            {
+                var on = f == shell.HistoryFilter;
+                var n = shell.Data.Games.Count(g => Matches(g, f));
+                var chip = new Border
+                {
+                    CornerRadius = new CornerRadius(13), Padding = new Thickness(11, 4, 11, 5), Margin = new Thickness(0, 0, 6, 6), Cursor = System.Windows.Input.Cursors.Hand,
+                    Background = on ? Theme.B(Theme.Rgb(0x2E, 0x35, 0x66)) : Theme.Raised, BorderBrush = on ? Theme.Mana : Theme.Line, BorderThickness = new Thickness(1),
+                    Child = new TextBlock { Text = f == "All" ? $"All {n}" : f, FontSize = 13, Foreground = on ? Theme.Vellum : Theme.Mist },
+                    ToolTip = $"{n} game{(n == 1 ? "" : "s")}",
+                };
+                var pick = f;
+                chip.MouseLeftButtonUp += (s, e) =>
+                {
+                    shell.HistoryFilter = pick;
+                    // Keep the detail on a game the list shows.
+                    var first = shell.Data.Games.FindIndex(g => Matches(g, pick));
+                    if (first >= 0 && !Matches(shell.Data.Games[shell.SelectedGame], pick)) shell.SelectedGame = first;
+                    shell.Redraw();
+                };
+                wrap.Children.Add(chip);
+            }
+            return wrap;
+        }
+
+        private static UIElement DayHeader(DateTime day)
+        {
+            var text = day == DateTime.Today ? "Today" : day == DateTime.Today.AddDays(-1) ? "Yesterday" : day.ToString("ddd, MMM d");
+            var t = AppShell.ColumnLabel(text);
+            t.Margin = new Thickness(22, 12, 22, 6);
+            return t;
+        }
+
         private static UIElement GameRow(GameRecord g, int index, AppShell shell)
         {
             var row = new Grid { Margin = new Thickness(22, 11, 22, 11) };
@@ -76,7 +140,7 @@ namespace HearthStoner.Pages
             Grid.SetColumn(names, 1);
             row.Children.Add(names);
             var when = new TextBlock { FontSize = 12, Foreground = Theme.Dusk, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
-            when.Text = (g.Start.Date == DateTime.Today ? g.Start.ToString("h:mm tt") : g.Start.ToString("MMM d")) + "\n" + $"{(g.Turns + 1) / 2} turns";
+            when.Text = g.Start.ToString("h:mm tt") + "\n" + $"{(g.Turns + 1) / 2} turns";   // the date is in the day header
             Grid.SetColumn(when, 2);
             row.Children.Add(when);
 
@@ -194,18 +258,31 @@ namespace HearthStoner.Pages
                 mh.Margin = new Thickness(0, 22, 0, 8);
                 p.Children.Add(mh);
                 var wrap = new WrapPanel();
-                foreach (var m in g.Mulligan)
-                {
-                    var against = m.Advice != null && ((m.Advice == "KEEP" && !m.Kept) || (m.Advice == "TOSS" && m.Kept));
-                    wrap.Children.Add(new Border
-                    {
-                        CornerRadius = new CornerRadius(14), Padding = new Thickness(10, 4, 10, 5), Margin = new Thickness(0, 0, 8, 8),
-                        Background = m.Kept ? Theme.Raised : Brushes.Transparent, BorderBrush = against ? Theme.Gold : Theme.Line, BorderThickness = new Thickness(1),
-                        Child = Theme.Text($"{d.Cards.NameOf(m.CardId)}{(m.Kept ? "" : " (tossed)")}", 13, m.Kept ? Theme.Vellum : Theme.Dusk),
-                    });
-                }
+                foreach (var m in g.Mulligan) wrap.Children.Add(MulliganCard(m, d));
                 p.Children.Add(wrap);
             }
+            return p;
+        }
+
+        /// <summary>
+        /// One opening-hand card as a small card picture: kept in full colour, tossed faded, and an amber frame when
+        /// what you did goes against the data. Falls back to a name chip until the picture is downloaded.
+        /// </summary>
+        private static UIElement MulliganCard(MulliganPick m, AppData d)
+        {
+            var against = m.Advice != null && ((m.Advice == "KEEP" && !m.Kept) || (m.Advice == "TOSS" && m.Kept));
+            var name = d.Cards.NameOf(m.CardId);
+            var p = new StackPanel { Width = 112, Margin = new Thickness(0, 0, 12, 8) };
+            var img = CardTiles.GetRender(m.CardId);
+            UIElement pic = img != null
+                ? new Image { Source = img, Width = 112, Opacity = m.Kept ? 1 : 0.4 }
+                : (UIElement)new Border { Height = 150, CornerRadius = new CornerRadius(8), Background = Theme.Raised, Opacity = m.Kept ? 1 : 0.5, Padding = new Thickness(8), Child = Theme.Text(name, 13, wrap: true) };
+            p.Children.Add(against ? new Border { BorderBrush = Theme.Amber, BorderThickness = new Thickness(2), CornerRadius = new CornerRadius(10), Child = pic } : pic);
+            var label = Theme.Text(m.Kept ? (against ? "kept · data says toss" : "kept") : (against ? "tossed · data says keep" : "tossed"), 12.5, against ? Theme.Amber : Theme.Mist, wrap: true);
+            label.TextAlignment = TextAlignment.Center;
+            label.Margin = new Thickness(0, 4, 0, 0);
+            p.Children.Add(label);
+            p.ToolTip = name;
             return p;
         }
 
@@ -214,7 +291,7 @@ namespace HearthStoner.Pages
             var g = new Grid { Margin = new Thickness(0, 8, 0, 8) };
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(16) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            g.Children.Add(new Border { Width = 4, CornerRadius = new CornerRadius(2), HorizontalAlignment = HorizontalAlignment.Left, Background = n.Severity >= 3 ? Theme.Loss : Theme.Gold });
+            g.Children.Add(new Border { Width = 4, CornerRadius = new CornerRadius(2), HorizontalAlignment = HorizontalAlignment.Left, Background = n.Severity >= 3 ? Theme.Loss : Theme.Amber });
             var t = new TextBlock { FontSize = 13.5, Foreground = Theme.Vellum, TextWrapping = TextWrapping.Wrap };
             t.Inlines.Add(new System.Windows.Documents.Run((n.Turn > 0 ? $"Turn {(n.Turn + 1) / 2}: " : "") + n.Text));
             if (watch != null)

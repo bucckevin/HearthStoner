@@ -30,6 +30,8 @@ namespace HearthStoner.Pages
         public int SelectedDeck, SelectedGame;
         /// <summary>Replays page: which game (index into the replayable games, newest first), which frame, hidden cards shown.</summary>
         public int ReplayGame, ReplayFrame;
+        /// <summary>The History list's filter chip: All, Ranked, Casual, Wins or Losses.</summary>
+        public string HistoryFilter = "All";
         public bool ReplayShowHidden;
         /// <summary>Practice page state that lasts between redraws.</summary>
         public PracticeState Practice { get; } = new PracticeState();
