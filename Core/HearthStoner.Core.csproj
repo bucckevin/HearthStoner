@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Everything that isn't UI: log parsing, game tracking, advice, meta stats, deck codes, stats, memory reads.
-       Plain .NET 10, so it builds and its tests run on any OS. The source files live in the folders above
-       (Game/, Advice/, ...); this project just lists them. -->
+       Plain .NET 10, so it builds and its tests run on any OS. Every .cs file in this folder is part of it. -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -9,12 +8,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>HearthStoner</RootNamespace>
     <AssemblyName>HearthStoner.Core</AssemblyName>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="../Game/**/*.cs;../Advice/**/*.cs;../Meta/**/*.cs;../Knowledge/**/*.cs;../Stats/**/*.cs" />
-    <Compile Include="../App/UpdateCheck.cs;../App/ArtJob.cs;../AppPaths.cs;../CardDb.cs;../DeckCode.cs;../Settings.cs;../PowerLog.cs;../HearthstoneLocator.cs;../HsMemory.cs;../GameLauncher.cs;../Web.cs" />
-  </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="HearthStoner" />
     <InternalsVisibleTo Include="HsTest" />

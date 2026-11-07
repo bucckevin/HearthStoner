@@ -28,13 +28,12 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- The mana crystal icon (sources: App/icon.svg for 48 px and up, App/icon-small.svg for 16-32 px). -->
     <ApplicationIcon>App\hearthstoner.ico</ApplicationIcon>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Core/**;vendor/**;tests/**</DefaultItemExcludes>
+    <!-- Every .cs file here except the other projects' folders (Program.cs, App/, Art/, Overlay/). -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Core/**;vendor/**;tests/**;screenshots/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Program.cs;Overlay/**/*.cs;Art/**/*.cs;App/AppHost.cs;App/Installer.cs;App/MainWindow.cs;App/Theme.cs;App/ArtCache.cs;App/WinChanceView.cs;App/Pages/**/*.cs" />
     <!-- Barlow and Barlow Condensed (SIL Open Font License, App/Fonts/OFL-Barlow.txt), built into the exe. -->
     <Resource Include="App/Fonts/*.ttf" />
     <Resource Include="App/hearthstoner.ico" />

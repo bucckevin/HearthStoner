@@ -19,7 +19,5 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../Core/HearthStoner.Core.csproj" />
-    <!-- The game-art builder's pure parts (no WPF, no asset reading) are tested from source. -->
-    <Compile Include="../../Art/Pixels.cs;../../Art/Rasterizer.cs" Link="Art/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

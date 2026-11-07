@@ -31,7 +31,7 @@ The solution has four projects:
 | Project | What's in it |
 |---|---|
 | `HearthStoner.csproj` (Windows, .NET 10) | The commands (`Program.cs`), the overlay (`Overlay/`) and the tray app (`App/AppHost.cs`, `App/MainWindow.cs`) |
-| `Core/HearthStoner.Core.csproj` (.NET 10, any OS) | All the logic: `Game/`, `Advice/`, `Meta/`, `Knowledge/`, `Stats/`, deck codes, card data, settings, memory reads. The source files stay in those folders; the project lists them |
+| `Core/HearthStoner.Core.csproj` (.NET 10, any OS) | All the logic, in `Core/`: `Game/`, `Advice/`, `Meta/`, `Knowledge/`, `Stats/`, deck codes, card data, settings, memory reads. Every .cs file in `Core/` is part of it |
 | `vendor/UnitySpy.csproj` | UnitySpy, the memory reader (MIT) |
 | `tests/HsTest/HsTest.csproj` | xUnit tests: unit tests, plus every saved game replayed through the full self-test |
 
@@ -73,11 +73,11 @@ Add `--verbose` to any command to see UnitySpy's internal log.
 It only uses information you're allowed to see: the game log your client writes, your own client's public state and aggregate meta stats. It never reads hidden opponent information and never sends input to the game.
 
 Data sources:
-- **Card text and stats:** [HearthstoneJSON](https://hearthstonejson.com). HearthStoner reads each card's text to profile it as removal, AoE, burn, healing, draw and so on (`Knowledge/CardProfile.cs`).
+- **Card text and stats:** [HearthstoneJSON](https://hearthstonejson.com). HearthStoner reads each card's text to profile it as removal, AoE, burn, healing, draw and so on (`Core/Knowledge/CardProfile.cs`).
 - **Meta stats:** [Firestone](https://www.firestoneapp.com)'s public Constructed data (archetypes, per-card mulligan and draw win rates, per-matchup splits), refreshed every 3 hours. Change the rank bracket with `--rank legend` and the period with `--period last-patch`.
-- **Secrets:** the 11 Standard secrets, with their triggers and play-around advice, are hand-written in `Knowledge/Secrets.cs`.
+- **Secrets:** the 11 Standard secrets, with their triggers and play-around advice, are hand-written in `Core/Knowledge/Secrets.cs`.
 
-Update `CardDb.StandardSets` and `Knowledge/Secrets.cs` when Standard rotates (each March).
+Update `CardDb.StandardSets` and `Core/Knowledge/Secrets.cs` when Standard rotates (each March).
 
 `setup`, `watch` and `overlay` also set `FileSizeLimit.Int=-1` in `client.config` in your Hearthstone folder. Without it, Hearthstone stops writing Power.log after about 10 MB, which is a few games, and tracking silently stops.
 
@@ -163,22 +163,22 @@ The data lives at paths like:
 ## When a Hearthstone patch breaks something
 
 1. Check whether the vendored library has been updated upstream: compare `vendor/UNITYSPY_COMMIT.txt` with the latest commit at https://github.com/Zero-to-Heroes/unity-spy-.net4.5 . If it has, copy the new `UnitySpy` and `UnitySpy.HearthstoneLib` folders into `vendor/`.
-2. Or fix it yourself: `HearthStoner explore CollectionManager.s_instance` shows the live field names. Update the path in `HsMemory.cs` or the vendored reader.
+2. Or fix it yourself: `HearthStoner explore CollectionManager.s_instance` shows the live field names. Update the path in `Core/HsMemory.cs` or the vendored reader.
 
 ## Files
 
 | File | What it does |
 |---|---|
-| `HsMemory.cs` | Thin layer over UnitySpy: attach, collection, all decks, match/account info, `find`/`explore` |
-| `PowerLog.cs` | Follows the newest `Logs\Hearthstone_*\Power.log` |
-| `Game/GameTracker.cs` | Rebuilds the game from Power.log: entities, zones, mana, hands, origins, mulligan, secrets |
-| `Advice/Advisor.cs` | Deck prediction, secret helper, mulligan, threats and answers, lethal checks, draw odds |
-| `Meta/MetaStats.cs` | Downloads and caches Firestone's meta stats |
+| `Core/HsMemory.cs` | Thin layer over UnitySpy: attach, collection, all decks, match/account info, `find`/`explore` |
+| `Core/PowerLog.cs` | Follows the newest `Logs\Hearthstone_*\Power.log` |
+| `Core/Game/GameTracker.cs` | Rebuilds the game from Power.log: entities, zones, mana, hands, origins, mulligan, secrets |
+| `Core/Advice/Advisor.cs` | Deck prediction, secret helper, mulligan, threats and answers, lethal checks, draw odds |
+| `Core/Meta/MetaStats.cs` | Downloads and caches Firestone's meta stats |
 | `Knowledge/` | Card profiles from card text, and the Standard secrets table |
 | `Overlay/OverlayWindow.cs` | The click-through WPF overlay |
-| `DeckCode.cs` | Builds importable deck codes |
-| `CardDb.cs` | Card names from HearthstoneJSON, cached in `%LocalAppData%\HearthStoner` |
-| `HearthstoneLocator.cs` | Finds the install via the registry and writes `log.config` |
+| `Core/DeckCode.cs` | Builds importable deck codes |
+| `Core/CardDb.cs` | Card names from HearthstoneJSON, cached in `%LocalAppData%\HearthStoner` |
+| `Core/HearthstoneLocator.cs` | Finds the install via the registry and writes `log.config` |
 | `Program.cs` | The commands |
 | `vendor/` | UnitySpy sources (MIT, see `vendor/LICENSE-UnitySpy.txt`) |
 
