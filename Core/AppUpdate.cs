@@ -35,21 +35,18 @@ namespace HearthStoner
         /// <summary>The release asset with the app's SHA-256.</summary>
         public const string Sha256Name = ExeName + ".sha256";
 
-        /// <summary>
-        /// Off while the repository is private: GitHub serves a private repo's releases only to a signed-in user, and
-        /// a token built into the exe would leak. Turn on once the repository is public.
-        /// </summary>
-        public static readonly bool Enabled = false;
-
         private static string LatestUrl => $"https://api.github.com/repos/{Repo}/releases/latest";
 
         /// <summary>Asks GitHub for the latest release and compares it with the running version.</summary>
         /// <param name="currentNumber">The running version, e.g. "1.2.0" (<see cref="AppVersion.Number"/>).</param>
         public static AppUpdateStatus Check(string currentNumber)
         {
-            if (!Enabled) return new AppUpdateStatus(null, "Updates are off until the GitHub repository is public.");
             string json;
             try { json = Web.GetString(LatestUrl, 20); }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return new AppUpdateStatus(null, "No releases on GitHub yet.");
+            }
             catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
             {
                 return new AppUpdateStatus(null, "Couldn't reach GitHub: " + ex.Message);

@@ -70,13 +70,5 @@ namespace HearthStoner.Tests
             Assert.True(AppUpdate.HashMatches(data, hex));
             Assert.False(AppUpdate.HashMatches(data, Hash));
         }
-
-        [Fact]
-        public void Stays_off_while_the_repo_is_private()
-        {
-            var status = AppUpdate.Check("1.0.0");
-            Assert.Null(status.Newer);
-            Assert.NotNull(status.Error);
-        }
     }
 }

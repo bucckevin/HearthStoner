@@ -3,6 +3,18 @@
 Every installed version, newest first. The number is in `VERSION`: patch (1.0.x) for fixes, minor (1.x.0) for new
 features, major (x.0.0) for big changes, such as a new data format. Each version is tagged in git as `v<number>`.
 
+## 1.3.0 - 2026-11-07
+
+Downloads and updates from GitHub.
+
+- Releases: pushing a version tag makes GitHub build, test and publish `HearthStoner.exe` (with its SHA-256) as a
+  release. Every push is also built and tested on GitHub.
+- HearthStoner updates itself: once a day (with "Check for updates" on) it looks for a newer release. Settings shows
+  your version with Check now, What's new and Update buttons; the tray menu gets "Update to x.y.z" and one
+  notification. The download is checked against its SHA-256, then installed when no game is in progress.
+- `HearthStoner update [--check]` does the same from the command line.
+- `install.bat` and GitHub publish with the same settings, kept in `HearthStoner.csproj`.
+
 ## 1.2.0 - 2026-11-07
 
 Practice drills (built on the `practice-drills` branch).

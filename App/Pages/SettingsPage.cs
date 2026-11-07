@@ -133,7 +133,8 @@ namespace HearthStoner.Pages
 
             Group(p, "App", null);
             p.Children.Add(Toggle("Start with Windows", "Sits in the tray and shows the overlay when Hearthstone is open.", Autostart.IsEnabled, v => { Autostart.Set(v); st.StartWithWindows = v; Save(); }));
-            p.Children.Add(Toggle("Check for updates", "Once a day: the memory reader and Hearthstone's version.", st.CheckForUpdates, v => { st.CheckForUpdates = v; Save(); }));
+            p.Children.Add(Toggle("Check for updates", "Once a day: new HearthStoner versions, the memory reader and Hearthstone's version.", st.CheckForUpdates, v => { st.CheckForUpdates = v; Save(); }));
+            p.Children.Add(UpdateRow());
 
             Group(p, "Your collection", null);
             var col = shell.Data.Collection;
@@ -191,6 +192,50 @@ namespace HearthStoner.Pages
             timer.Tick += (s, e) => Update();
             row.Loaded += (s, e) => timer.Start();
             row.Unloaded += (s, e) => timer.Stop();
+            return row;
+        }
+
+        /// <summary>This version, what the last update check found, and Check now / What's new / Update buttons; live while shown.</summary>
+        private static UIElement UpdateRow()
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 0, 0, 12), LastChildFill = true };
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(24, 0, 0, 0) };
+            var notes = Theme.Button("What's new", () =>
+            {
+                var page = AppUpdater.Available?.PageUrl;
+                if (string.IsNullOrEmpty(page)) return;
+                try { Process.Start(new ProcessStartInfo(page) { UseShellExecute = true }); } catch (Exception swallowed) { Diag.Ignored(swallowed, "SettingsPage"); }
+            }, primary: false);
+            var check = Theme.Button("Check now", AppUpdater.CheckNow, primary: false);
+            var install = Theme.Button("Update", AppUpdater.Install);
+            check.Margin = new Thickness(8, 0, 0, 0);
+            install.Margin = new Thickness(8, 0, 0, 0);
+            buttons.Children.Add(notes);
+            buttons.Children.Add(check);
+            buttons.Children.Add(install);
+            DockPanel.SetDock(buttons, Dock.Right);
+            row.Children.Add(buttons);
+
+            var label = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            label.Children.Add(Theme.Text("HearthStoner " + AppVersion.Current.Number, 14.5));
+            var status = Theme.Text("", 12.5, Theme.Dusk, wrap: true);
+            label.Children.Add(status);
+            row.Children.Add(label);
+
+            void Update()
+            {
+                var available = AppUpdater.Available;
+                var busy = AppUpdater.Busy;
+                status.Text = AppUpdater.Status;
+                status.Foreground = available != null ? Theme.Gold : Theme.Dusk;
+                notes.Visibility = install.Visibility = available != null ? Visibility.Visible : Visibility.Collapsed;
+                install.Content = available != null ? $"Update to {available.Version}" : "Update";
+                check.IsEnabled = install.IsEnabled = !busy;
+            }
+            void OnChanged() => row.Dispatcher.BeginInvoke((Action)Update);
+            row.Loaded += (s, e) => { AppUpdater.Changed -= OnChanged; AppUpdater.Changed += OnChanged; Update(); };
+            row.Unloaded += (s, e) => AppUpdater.Changed -= OnChanged;
+            Update();
             return row;
         }
 

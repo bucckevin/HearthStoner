@@ -184,6 +184,13 @@ namespace HearthStoner
 
         // ------------------------------------------------------------------ screenshots
 
+        /// <summary>A made-up release one patch above this version, for the settings-update screenshot.</summary>
+        private static AppRelease ScreenshotRelease()
+        {
+            AppUpdate.TryParseVersion(AppVersion.Current.Number, out var v);
+            return new AppRelease(new Version(v.Major, v.Minor, v.Build + 1), "", "", "", "");
+        }
+
         /// <summary>
         /// 'HearthStoner screenshot [folder]': renders every page at 1280x800 to PNGs (app-play.png, ...), the same way
         /// the window draws them. Downloads any card art it needs first. For checking the look without clicking.
@@ -244,6 +251,7 @@ namespace HearthStoner
                     shots.Add(("Decks", "decks-full", null, 1500));
                     shots.Add(("Play", "play-full", null, 1500));
                     shots.Add(("Settings", "settings-full", null, 2600));
+                    shots.Add(("Settings", "settings-update", null, 2600));   // with a newer version available
                     shots.Add(("Replays", "replays-large", null, 1060));   // at the default window size on a big screen
                     // The replay mid-animation: an attack, and a card being played.
                     var rg = rgames.FirstOrDefault();
@@ -292,6 +300,7 @@ namespace HearthStoner
                         else if (page == "Replays") shell.ReplayFrame = midFrame;
                         shell.ReplayShowHidden = name == "replays-hidden";
                         GameButton.Override = state;
+                        AppUpdater.Override = name == "settings-update" ? ScreenshotRelease() : null;
                         shell.Height = hgt;
                         shell.Show(page);
                         var wid = name == "replays-large" ? 1640 : 1280;
@@ -307,6 +316,7 @@ namespace HearthStoner
                         using (var f = File.Create(file)) enc.Save(f);
                         Console.WriteLine("Wrote " + Path.GetFullPath(file));
                     }
+                    AppUpdater.Override = null;
                     PracticeShots(shell, data, folder);
                 }
                 catch (Exception ex) { error = ex; }

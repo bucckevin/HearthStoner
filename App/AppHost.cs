@@ -87,6 +87,9 @@ namespace HearthStoner
                 };
                 var menu = new System.Windows.Forms.ContextMenuStrip();
                 menu.Items.Add(new System.Windows.Forms.ToolStripMenuItem("HearthStoner " + AppVersion.Current.Number) { Enabled = false, ToolTipText = AppVersion.Current.Detail });
+                var updateItem = new System.Windows.Forms.ToolStripMenuItem("Update") { Visible = false, Font = new System.Drawing.Font(menu.Font, System.Drawing.FontStyle.Bold) };
+                updateItem.Click += (s, e) => AppUpdater.Install();
+                menu.Items.Add(updateItem);
                 menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
                 menu.Items.Add("Open HearthStoner", null, (s, e) => app.Dispatcher.Invoke(ShowWindow));
                 var overlayItem = new System.Windows.Forms.ToolStripMenuItem("Overlay") { Checked = true, CheckOnClick = true };
@@ -99,6 +102,7 @@ namespace HearthStoner
                 menu.Items.Add("Quit", null, (s, e) => { tray.Visible = false; tray.Dispose(); Environment.Exit(0); });
                 tray.ContextMenuStrip = menu;
                 tray.DoubleClick += (s, e) => app.Dispatcher.Invoke(ShowWindow);
+                WatchForUpdates(app.Dispatcher, tray, updateItem, settings);
 
                 if (showWindow) ShowWindow();
                 app.Run();
@@ -108,6 +112,29 @@ namespace HearthStoner
             t.Name = "HearthStoner UI";
             t.Start();
             return t;
+        }
+
+        /// <summary>
+        /// Starts the daily update check and keeps the tray's "Update to x.y.z" item in step with it; a newer version
+        /// also gets one notification.
+        /// </summary>
+        private static void WatchForUpdates(System.Windows.Threading.Dispatcher ui, System.Windows.Forms.NotifyIcon tray,
+            System.Windows.Forms.ToolStripMenuItem updateItem, Settings settings)
+        {
+            Version announced = null;
+            AppUpdater.Changed += () => ui.BeginInvoke((Action)(() =>
+            {
+                var available = AppUpdater.Available;
+                updateItem.Visible = available != null;
+                updateItem.Enabled = !AppUpdater.Busy;
+                if (available == null) return;
+                updateItem.Text = $"Update to {available.Version}";
+                if (available.Version == announced) return;
+                announced = available.Version;
+                tray.ShowBalloonTip(10000, "HearthStoner " + available.Version,
+                    "A new version is ready. Right-click the HearthStoner icon and choose Update.", System.Windows.Forms.ToolTipIcon.Info);
+            }));
+            AppUpdater.StartDailyChecks(() => settings.CheckForUpdates);
         }
 
         /// <summary>The app icon at the tray's size (the .ico has hand-tuned 16-32 px versions).</summary>
