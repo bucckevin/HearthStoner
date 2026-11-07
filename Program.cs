@@ -19,6 +19,7 @@ namespace HearthStoner
 Usage:
   HearthStoner install [--no-start]      Install for your Windows user (Start menu, desktop, installed apps)
   HearthStoner uninstall [--yes]         Remove the program; your games and settings are kept
+  HearthStoner update [--check]          Install the latest release from GitHub if it's newer (--check: just say)
   HearthStoner setup                     Turn on Hearthstone's Power logging (restart Hearthstone after)
   HearthStoner collection [--csv F] [--json F]
                                          Every card you own, read from game memory
@@ -84,6 +85,7 @@ Options:
             var turnOpt = TakeOption(args, "--turn");
             var noStart = TakeFlag(args, "--no-start");
             var yes = TakeFlag(args, "--yes");
+            var checkOnly = TakeFlag(args, "--check");
             Diag.SetSink(msg => Log("[ignored] " + msg));   // command line: caught errors show with --verbose
 
             // Double-clicked from outside the install folder (e.g. Downloads): offer to install.
@@ -109,6 +111,7 @@ Options:
                 {
                     case "install": return Installer.Install(noStart);
                     case "uninstall": return Installer.Uninstall(yes);
+                    case "update": return UpdateCommand(checkOnly);
                     case "setup": return Setup(hsPath);
                     case "collection": return Collection(csvOut, jsonOut);
                     case "decks": return Decks(jsonOut);

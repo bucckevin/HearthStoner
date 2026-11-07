@@ -37,6 +37,14 @@
     <!-- Every .cs file here except the other projects' folders (Program.cs, App/, Art/, Overlay/). -->
     <DefaultItemExcludes>$(DefaultItemExcludes);Core/**;vendor/**;tests/**;screenshots/**</DefaultItemExcludes>
   </PropertyGroup>
+  <!-- 'dotnet publish' (install.bat and the GitHub release workflow) makes one self-contained exe: the .NET runtime
+       is inside, compressed (about 75 MB), so it runs on PCs without .NET. -->
+  <PropertyGroup Condition="'$(_IsPublishing)' == 'true'">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
   <ItemGroup>
     <!-- Read back by AppVersion (Core/AppVersion.cs). -->
     <AssemblyMetadata Include="BuildDate" Value="$([System.DateTime]::Now.ToString('yyyy-MM-ddTHH:mm'))" />

@@ -1,0 +1,28 @@
+# Builds and tests every push and pull request. Release tags are built by release.yml instead.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      # Same rule as build.bat: no warnings.
+      - name: Build
+        run: dotnet build HearthStoner.slnx -c Release -nologo -warnaserror
+
+      # MyGames tests replay your own saved games, which only exist on your PC.
+      - name: Test
+        run: dotnet test HearthStoner.slnx -c Release --no-build -nologo --filter "Category!=MyGames"

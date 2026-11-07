@@ -8,7 +8,8 @@ cd /d "%~dp0"
 set "PUB=%TEMP%\HearthStoner-publish"
 rmdir /s /q "%PUB%" 2>nul
 echo Building HearthStoner ...
-dotnet publish HearthStoner.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o "%PUB%" -nologo > install.log 2>&1
+rem The single-exe publish settings are in HearthStoner.csproj (shared with .github/workflows/release.yml).
+dotnet publish HearthStoner.csproj -c Release -o "%PUB%" -nologo > install.log 2>&1
 if errorlevel 1 (
   echo The build failed. Details are in install.log.
   exit /b 1

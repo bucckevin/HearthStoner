@@ -1,0 +1,67 @@
+# Pushing a tag v<number> builds, tests and publishes the single HearthStoner.exe as a GitHub Release, with a
+# SHA-256 file the in-app updater checks and that version's CHANGELOG.md section as the notes.
+# Run it by hand (Actions > Release > Run workflow) to build and test without releasing: the exe is kept as a
+# workflow artifact instead.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Check VERSION, tag and CHANGELOG agree
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw "Tag $env:GITHUB_REF_NAME doesn't match VERSION ($version)."
+          }
+          $lines = @(Get-Content CHANGELOG.md)
+          $start = -1
+          for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -like "## $version *") { $start = $i; break } }
+          if ($start -lt 0) { throw "CHANGELOG.md has no '## $version' section." }
+          $end = $start + 1
+          while ($end -lt $lines.Count -and $lines[$end] -notlike '## *') { $end++ }
+          ($lines[($start + 1)..($end - 1)] -join "`n").Trim() | Set-Content release-notes.md
+          "number=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Build
+        run: dotnet build HearthStoner.slnx -c Release -nologo -warnaserror
+
+      - name: Test
+        run: dotnet test HearthStoner.slnx -c Release --no-build -nologo --filter "Category!=MyGames"
+
+      # The publish settings (one self-contained exe) are in HearthStoner.csproj, shared with install.bat.
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish HearthStoner.csproj -c Release -o publish -nologo
+          $hash = (Get-FileHash publish/HearthStoner.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  HearthStoner.exe" | Set-Content -NoNewline publish/HearthStoner.exe.sha256
+
+      - name: Create the GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" publish/HearthStoner.exe publish/HearthStoner.exe.sha256 --title "HearthStoner ${{ steps.version.outputs.number }}" --notes-file release-notes.md
+
+      - name: Keep the exe (manual runs)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v5
+        with:
+          name: HearthStoner-${{ steps.version.outputs.number }}
+          path: publish/HearthStoner.exe*
