@@ -8,12 +8,12 @@ A Windows console app that reads your Hearthstone data:
 ## Requirements
 
 - Windows 10/11, 64-bit
-- The [.NET 10 SDK](https://dotnet.microsoft.com/download) to build. It includes the .NET 10 Desktop Runtime that the app runs on
+- The [.NET 10 SDK](https://dotnet.microsoft.com/download) to build. The installed app needs nothing: the runtime is inside the exe
 - Hearthstone running and sitting at the main menu when reading memory
 
 ## Install
 
-Double-click `install.bat`. It builds one `HearthStoner.exe` into `%LOCALAPPDATA%\Programs\HearthStoner`, adds HearthStoner to the Start menu (with its icon) and starts it. Run it again to update to the latest source. No admin rights needed; it uses the .NET 10 runtime that comes with the SDK. To remove it, use Windows' Settings > Apps > HearthStoner > Uninstall (or `HearthStoner uninstall`). That removes the program, the shortcut and start-with-Windows, and keeps your data in `%LOCALAPPDATA%\HearthStoner`.
+Double-click `install.bat`. It builds one `HearthStoner.exe` into `%LOCALAPPDATA%\Programs\HearthStoner`, adds HearthStoner to the Start menu (with its icon) and starts it. Run it again to update to the latest source. No admin rights needed. The installed exe is self-contained (the .NET runtime is built in, compressed, about 75 MB), so it also runs on a PC without .NET; copy it anywhere and double-click it to install there. To remove it, use Windows' Settings > Apps > HearthStoner > Uninstall (or `HearthStoner uninstall`). That removes the program, the shortcut and start-with-Windows, and keeps your data in `%LOCALAPPDATA%\HearthStoner`.
 
 ## Build
 
