@@ -200,8 +200,11 @@ namespace HearthStoner.Pages
                 ap.Children.Add(t);
             }
             side.Children.Add(actionBox);
-            var adviceTitle = Theme.Text($"HearthStoner at the start of turn {f.Round}", 13, Theme.Dusk);
-            adviceTitle.Margin = new Thickness(0, 0, 0, 6);
+            // Turn, whose turn and the win chance at the top, so you don't have to look down at the controls.
+            var adviceTitle = new TextBlock { FontSize = 11.5, FontWeight = FontWeights.SemiBold, Foreground = Theme.Dusk, Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
+            adviceTitle.Inlines.Add(new System.Windows.Documents.Run($"START OF TURN {f.Round}  ·  {(f.Mulligan ? "MULLIGAN" : f.YourTurn ? "YOUR TURN" : "THEIR TURN")}  ·  "));
+            adviceTitle.Inlines.Add(new System.Windows.Documents.Run(AppShell.Pct(chanceNow)) { Foreground = chanceNow >= 0.5 ? Theme.Win : Theme.Loss });
+            adviceTitle.Inlines.Add(new System.Windows.Documents.Run(" TO WIN"));
             side.Children.Add(adviceTitle);
             var advice = new StackPanel();
             // Your deck list is long and not what the replay is about: leave it out here.
@@ -292,7 +295,7 @@ namespace HearthStoner.Pages
                 foreach (var n in review.Where(n => n.Turn > 0 && n.Kind != "Swing"))
                 {
                     var fi = FrameOf(n, r);
-                    var dot = Pos(new Ellipse { Width = 9, Height = 9, Fill = n.Severity >= 3 ? Theme.Loss : Theme.Gold, ToolTip = n.Text }, X(fi) - 4.5, 0);
+                    var dot = Pos(new Ellipse { Width = 9, Height = 9, Fill = n.Severity >= 3 ? Theme.Loss : Theme.Amber, ToolTip = n.Text }, X(fi) - 4.5, 0);
                     dot.MouseLeftButtonDown += (s, e) => { e.Handled = true; go(fi); };
                     c.Children.Add(dot);
                 }
