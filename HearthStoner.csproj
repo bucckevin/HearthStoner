@@ -17,9 +17,10 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <RootNamespace>HearthStoner</RootNamespace>
     <AssemblyName>HearthStoner</AssemblyName>
-    <!-- The build date as the version (1.2026.1107 = built Nov 7, 2026): shown in Windows' installed apps list (the
-         installer's DisplayVersion) and at the top of each session in hearthstoner.log, so you can tell which build runs. -->
-    <Version>1.$([System.DateTime]::Now.ToString('yyyy')).$([System.DateTime]::Now.ToString('MMdd'))</Version>
+    <!-- The version (major.minor.patch) lives in the VERSION file; bump it with each release and add a CHANGELOG entry.
+         The SDK appends the git commit ("1.2.3+sha"); the build time is stamped below. Shown on the Settings page, in
+         the tray menu, by 'HearthStoner version', in Windows' installed apps list and in hearthstoner.log. -->
+    <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</Version>
     <!-- Hearthstone is 64-bit; reading its memory needs a 64-bit reader. -->
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -35,6 +36,8 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);Core/**;vendor/**;tests/**;screenshots/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Read back by AppVersion (Core/AppVersion.cs). -->
+    <AssemblyMetadata Include="BuildDate" Value="$([System.DateTime]::Now.ToString('yyyy-MM-ddTHH:mm'))" />
     <!-- Barlow and Barlow Condensed (SIL Open Font License, App/Fonts/OFL-Barlow.txt), built into the exe. -->
     <Resource Include="App/Fonts/*.ttf" />
     <Resource Include="App/hearthstoner.ico" />

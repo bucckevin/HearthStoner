@@ -160,7 +160,7 @@ namespace HearthStoner.Pages
             files.Children.Add(openSettings);
             files.Children.Add(openFolder);
             p.Children.Add(files);
-            var credits = Theme.Text("Card text and art: HearthstoneJSON. Meta stats: Firestone. Memory reading: UnitySpy (MIT). Fonts: Barlow (SIL Open Font License).", 12, Theme.Dusk, wrap: true);
+            var credits = Theme.Text($"HearthStoner {AppVersion.Current.Detail}. Card text and art: HearthstoneJSON. Meta stats: Firestone. Memory reading: UnitySpy (MIT). Fonts: Barlow (SIL Open Font License).", 12, Theme.Dusk, wrap: true);
             credits.Margin = new Thickness(0, 24, 0, 0);
             p.Children.Add(credits);
 

@@ -71,7 +71,7 @@ namespace HearthStoner
             {
                 k.SetValue("DisplayName", Name);
                 k.SetValue("DisplayIcon", Exe + ",0");
-                k.SetValue("DisplayVersion", Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0");
+                k.SetValue("DisplayVersion", AppVersion.Current.Number);
                 k.SetValue("Publisher", Name);
                 k.SetValue("InstallLocation", Dir);
                 k.SetValue("UninstallString", $"\"{Exe}\" uninstall");

@@ -50,6 +50,7 @@ Usage:
   HearthStoner find <text>               Search Hearthstone's class names (for fixing things after a patch)
   HearthStoner explore <Class[.field...]>  Show a class's fields, or follow a path like
                                          CollectionManager.s_instance.m_decks
+  HearthStoner --version                 Which version this is, when it was built, and its git commit
 
 Options:
   --hs PATH      Hearthstone install folder (default: from registry)
@@ -90,6 +91,11 @@ Options:
             {
                 ShowWindow(GetConsoleWindow(), 0);   // SW_HIDE
                 return Installer.Offer();
+            }
+            if (args.Count > 0 && args[0] is "-v" or "--version" or "version")
+            {
+                Console.WriteLine("HearthStoner " + AppVersion.Current.Detail);
+                return 0;
             }
             if (args.Count == 0 || args[0] is "-h" or "--help" or "help")
             {

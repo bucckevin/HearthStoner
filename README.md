@@ -15,6 +15,13 @@ A Windows console app that reads your Hearthstone data:
 
 Double-click `install.bat`. It builds one `HearthStoner.exe` into `%LOCALAPPDATA%\Programs\HearthStoner`, adds HearthStoner to the Start menu (with its icon) and starts it. Run it again to update to the latest source. No admin rights needed. The installed exe is self-contained (the .NET runtime is built in, compressed, about 75 MB), so it also runs on a PC without .NET; copy it anywhere and double-click it to install there. To remove it, use Windows' Settings > Apps > HearthStoner > Uninstall (or `HearthStoner uninstall`). That removes the program, the shortcut and start-with-Windows, and keeps your data in `%LOCALAPPDATA%\HearthStoner`.
 
+## Versions
+
+The version number lives in `VERSION` (major.minor.patch). Every installed change bumps it (patch for fixes, minor for
+features), gets a line in `CHANGELOG.md` and a git tag `v<number>`. Each build also records when it was built and its
+git commit. See it with `HearthStoner --version`, at the bottom of the Settings page, in the tray menu, or in Windows'
+installed apps list.
+
 ## Build
 
 Double-click `build.bat` (output goes to `build.log`), or:

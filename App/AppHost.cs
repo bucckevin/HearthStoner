@@ -81,11 +81,13 @@ namespace HearthStoner
 
                 var tray = new System.Windows.Forms.NotifyIcon
                 {
-                    Text = "HearthStoner",
+                    Text = "HearthStoner " + AppVersion.Current.Number,
                     Icon = AppIcon(),
                     Visible = true,
                 };
                 var menu = new System.Windows.Forms.ContextMenuStrip();
+                menu.Items.Add(new System.Windows.Forms.ToolStripMenuItem("HearthStoner " + AppVersion.Current.Number) { Enabled = false, ToolTipText = AppVersion.Current.Detail });
+                menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
                 menu.Items.Add("Open HearthStoner", null, (s, e) => app.Dispatcher.Invoke(ShowWindow));
                 var overlayItem = new System.Windows.Forms.ToolStripMenuItem("Overlay") { Checked = true, CheckOnClick = true };
                 overlayItem.CheckedChanged += (s, e) => app.Dispatcher.Invoke(() => overlay.UserHidden = !overlayItem.Checked);
