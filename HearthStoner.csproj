@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The Windows app: commands (Program.cs), the in-game overlay (WPF, built in code) and the tray app.
+    The logic is in Core/HearthStoner.Core.csproj, memory reading in vendor/UnitySpy.csproj (MIT, from the
+    Firestone team's https://github.com/Zero-to-Heroes/unity-spy-.net4.5), tests in tests/HsTest.
+    Build everything with: dotnet build HearthStoner.slnx -c Release
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- Lets the app build (not run) on Linux too, so changes can be compile-checked anywhere. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>HearthStoner</RootNamespace>
+    <AssemblyName>HearthStoner</AssemblyName>
+    <!-- Shown in Windows' installed apps list (the installer's DisplayVersion). -->
+    <Version>1.0.0</Version>
+    <!-- Hearthstone is 64-bit; reading its memory needs a 64-bit reader. -->
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <!-- exe at bin\Release\net10.0-windows\HearthStoner.exe -->
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- The mana crystal icon (sources: App/icon.svg for 48 px and up, App/icon-small.svg for 16-32 px). -->
+    <ApplicationIcon>App\hearthstoner.ico</ApplicationIcon>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Core/**;vendor/**;tests/**</DefaultItemExcludes>
+    <NoWarn>$(NoWarn);CS0168;CS0169;CS0219;CS0414;CS0649;CS0162;CS0618;CS1998;CS8632;CA1416;SYSLIB0014;WFAC010</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs;Overlay/**/*.cs;Art/**/*.cs;App/AppHost.cs;App/Installer.cs;App/MainWindow.cs;App/Theme.cs;App/ArtCache.cs;App/WinChanceView.cs;App/Pages/**/*.cs" />
+    <!-- Barlow and Barlow Condensed (SIL Open Font License, App/Fonts/OFL-Barlow.txt), built into the exe. -->
+    <Resource Include="App/Fonts/*.ttf" />
+    <Resource Include="App/hearthstoner.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Core/HearthStoner.Core.csproj" />
+    <ProjectReference Include="vendor/UnitySpy.csproj" />
+    <PackageReference Include="AssetsTools.NET" Version="3.0.5" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+</Project>

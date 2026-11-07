@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Core/">
+    <Project Path="Core/HearthStoner.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HsTest/HsTest.csproj" />
+  </Folder>
+  <Folder Name="/vendor/">
+    <Project Path="vendor/UnitySpy.csproj" />
+  </Folder>
+  <Project Path="HearthStoner.csproj" />
+</Solution>

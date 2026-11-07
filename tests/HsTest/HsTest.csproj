@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Tests for HearthStoner.Core. Run from the repo root with: dotnet test HearthStoner.slnx
+       Uses tests/data if present (copies of %LocalAppData%\HearthStoner and Hearthstone's Logs folder),
+       otherwise, on Windows, your real HearthStoner data folder and Hearthstone install. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>HearthStoner.Tests</RootNamespace>
+    <AssemblyName>HsTest</AssemblyName>
+    <NoWarn>$(NoWarn);CA1416;xUnit1026;CS0649</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Core/HearthStoner.Core.csproj" />
+    <!-- The game-art builder's pure parts (no WPF, no asset reading) are tested from source. -->
+    <Compile Include="../../Art/Pixels.cs;../../Art/Rasterizer.cs" Link="Art/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>
