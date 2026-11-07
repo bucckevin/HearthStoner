@@ -253,7 +253,7 @@ namespace HearthStoner
                 p.Children.Add(top);
                 p.Children.Add(Bar((double)t.Xp / t.XpNeeded, Theme.Mana, 6, new Thickness(0, 5, 0, 5)));
                 var weeks = plan.WeekliesGames is double wg ? $" All weeklies: ~{Math.Max(1, Math.Ceiling(wg - 0.05)):0} games" : "";
-                var days = plan.WeeklyReset is DateTime reset ? Math.Max(1, (int)Math.Ceiling((reset - DateTime.Now).TotalDays)) : 0;
+                var days = plan.DaysUntilWeeklyReset ?? 0;
                 if (weeks != "" && days > 0) weeks += $", {days} day{(days == 1 ? "" : "s")} until they reset.";
                 else if (weeks != "") weeks += ".";
                 var note = Theme.Text($"{t.ToNext:N0} XP to level {t.Level + 1}.{weeks}", 12, Theme.Dusk, wrap: true);

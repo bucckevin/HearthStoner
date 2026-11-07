@@ -145,6 +145,11 @@ namespace HearthStoner
         /// <summary>Games to finish every open weekly the rules understand, with one deck; null when there's none.</summary>
         public double? WeekliesGames;
         public DateTime? WeeklyReset;
+        /// <summary>Whole days (at least 1) from the time the plan was made until <see cref="WeeklyReset"/>; null without a reset day.</summary>
+        public int? DaysUntilWeeklyReset;
+
+        /// <summary>Whole days from <paramref name="now"/> until <paramref name="reset"/>, rounded up, and at least 1.</summary>
+        public static int DaysUntil(DateTime reset, DateTime now) => Math.Max(1, (int)Math.Ceiling((reset - now).TotalDays));
 
         public static QuestPlan Make(QuestLog log, List<PlayerDeck> decks, List<GameRecord> games, CardDb cards, Func<PlayerDeck, double?> expected, DateTime now)
         {
@@ -186,6 +191,7 @@ namespace HearthStoner
                 {
                     var n = (day - (int)now.DayOfWeek + 7) % 7;
                     plan.WeeklyReset = now.Date.AddDays(n == 0 ? 7 : n);
+                    plan.DaysUntilWeeklyReset = DaysUntil(plan.WeeklyReset.Value, now);
                 }
             }
             return plan;
