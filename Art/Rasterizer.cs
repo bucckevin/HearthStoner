@@ -81,6 +81,8 @@ namespace HearthStoner.Art
         }
     }
 
+    // CameraInfo and SceneObject are filled in by the game-art builder in the app (GameArtBuilder, BoardLayout), not here.
+#pragma warning disable CS0649
     /// <summary>The camera a board is seen through, as the game's BoardCameras prefab sets it up.</summary>
     internal sealed class CameraInfo
     {
@@ -88,6 +90,7 @@ namespace HearthStoner.Art
         public double Fov, OrthoSize, Near, Far;
         public bool Ortho;
     }
+#pragma warning restore CS0649
 
     /// <summary>
     /// Unity camera: view = R^T (world - position), R from the rotation (columns = right, up, forward);
@@ -174,6 +177,7 @@ namespace HearthStoner.Art
         }
     }
 
+#pragma warning disable CS0649   // filled in by the game-art builder in the app, see above
     /// <summary>One submesh of a board piece, placed in the world, with its material's look.</summary>
     internal sealed class SceneObject
     {
@@ -187,6 +191,7 @@ namespace HearthStoner.Art
         public int? RenderQueue;
         public bool Transparent, Active = true, Enabled = true;
     }
+#pragma warning restore CS0649
 
     internal enum Blend { Alpha, Add, Mul }
 

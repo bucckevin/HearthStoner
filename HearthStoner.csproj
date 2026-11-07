@@ -32,7 +32,6 @@
     <EnableDefaultPageItems>false</EnableDefaultPageItems>
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
     <DefaultItemExcludes>$(DefaultItemExcludes);Core/**;vendor/**;tests/**</DefaultItemExcludes>
-    <NoWarn>$(NoWarn);CS0168;CS0169;CS0219;CS0414;CS0649;CS0162;CS0618;CS1998;CS8632;CA1416;SYSLIB0014;WFAC010</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs;Overlay/**/*.cs;Art/**/*.cs;App/AppHost.cs;App/Installer.cs;App/MainWindow.cs;App/Theme.cs;App/ArtCache.cs;App/WinChanceView.cs;App/Pages/**/*.cs" />

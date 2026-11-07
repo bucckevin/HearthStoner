@@ -22,15 +22,6 @@ namespace HearthStoner
         private static readonly HashSet<string> Pending = new HashSet<string>();
         private static readonly HashSet<string> Failed = new HashSet<string>();
         private static readonly object Lock = new object();
-        private static readonly HttpClient Http = MakeClient();
-
-        // Headers are set once, before any request: changing them while downloads run throws.
-        private static HttpClient MakeClient()
-        {
-            var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-            http.DefaultRequestHeaders.UserAgent.ParseAdd("HearthStoner/1.0 (personal Hearthstone tracker)");
-            return http;
-        }
 
         /// <summary>True if the art for this card couldn't be downloaded (e.g. it doesn't exist for a hero skin).</summary>
         public static bool HasFailed(string cardId) { lock (Lock) return cardId != null && Failed.Contains(cardId); }
@@ -85,7 +76,7 @@ namespace HearthStoner
         {
             try
             {
-                var bytes = await Http.GetByteArrayAsync(string.Format(Url, cardId)).ConfigureAwait(false);
+                var bytes = await Web.GetBytesAsync(string.Format(Url, cardId), 30).ConfigureAwait(false);
                 File.WriteAllBytes(file + ".tmp", bytes);
                 if (File.Exists(file)) File.Delete(file);
                 File.Move(file + ".tmp", file);

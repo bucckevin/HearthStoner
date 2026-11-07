@@ -10,11 +10,10 @@
     <RootNamespace>HearthStoner</RootNamespace>
     <AssemblyName>HearthStoner.Core</AssemblyName>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <NoWarn>$(NoWarn);CS0168;CS0169;CS0219;CS0414;CS0649;CS0162;CS0618;CS1998;CS8632;CA1416;SYSLIB0014</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Game/**/*.cs;../Advice/**/*.cs;../Meta/**/*.cs;../Knowledge/**/*.cs;../Stats/**/*.cs" />
-    <Compile Include="../App/UpdateCheck.cs;../App/ArtJob.cs;../AppPaths.cs;../CardDb.cs;../DeckCode.cs;../Settings.cs;../PowerLog.cs;../HearthstoneLocator.cs;../HsMemory.cs;../GameLauncher.cs" />
+    <Compile Include="../App/UpdateCheck.cs;../App/ArtJob.cs;../AppPaths.cs;../CardDb.cs;../DeckCode.cs;../Settings.cs;../PowerLog.cs;../HearthstoneLocator.cs;../HsMemory.cs;../GameLauncher.cs;../Web.cs" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="HearthStoner" />

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Text;
 using Newtonsoft.Json.Linq;
@@ -333,16 +332,9 @@ namespace HearthStoner
             if (fresh) return File.ReadAllText(cachePath);
             try
             {
-                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-                var handler = new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate };
-                using (var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(60) })
-                {
-                    http.DefaultRequestHeaders.UserAgent.ParseAdd("HearthStoner/1.0 (personal Hearthstone tracker)");
-                    var bytes = http.GetByteArrayAsync(url).GetAwaiter().GetResult();
-                    var text = Decode(bytes);
-                    File.WriteAllText(cachePath, text);
-                    return text;
-                }
+                var text = Decode(Web.GetBytes(url, 60));
+                File.WriteAllText(cachePath, text);
+                return text;
             }
             catch (Exception ex)
             {

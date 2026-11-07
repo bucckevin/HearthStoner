@@ -11,7 +11,6 @@
     <IsTestProject>true</IsTestProject>
     <RootNamespace>HearthStoner.Tests</RootNamespace>
     <AssemblyName>HsTest</AssemblyName>
-    <NoWarn>$(NoWarn);CA1416;xUnit1026;CS0649</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />

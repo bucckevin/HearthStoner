@@ -14,6 +14,7 @@ namespace HearthStoner
         {
             if (!string.IsNullOrEmpty(overridePath)) return overridePath;
 
+            if (OperatingSystem.IsWindows())
             foreach (var hive in new[] { RegistryHive.LocalMachine, RegistryHive.CurrentUser })
             foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
             {

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,7 +24,6 @@ namespace HearthStoner
         private static readonly HashSet<string> Failed = new HashSet<string>();
         private static readonly object Lock = new object();
         private static readonly SemaphoreSlim Throttle = new SemaphoreSlim(4);
-        private static HttpClient _http;
         private static int _version;
 
         /// <summary>Increases every time a new tile becomes available.</summary>
@@ -99,14 +97,7 @@ namespace HearthStoner
             await Throttle.WaitAsync().ConfigureAwait(false);
             try
             {
-                if (_http == null)
-                {
-                    ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-                    var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-                    http.DefaultRequestHeaders.UserAgent.ParseAdd("HearthStoner/1.0 (personal Hearthstone tracker)");
-                    _http = http;
-                }
-                var bytes = await _http.GetByteArrayAsync(UrlFor(cardId)).ConfigureAwait(false);
+                var bytes = await Web.GetBytesAsync(UrlFor(cardId), 30).ConfigureAwait(false);
                 var tmp = FileFor(cardId) + ".tmp";
                 File.WriteAllBytes(tmp, bytes);
                 if (File.Exists(FileFor(cardId))) File.Delete(FileFor(cardId));

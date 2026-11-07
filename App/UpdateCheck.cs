@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Net;
 using System.Net.Http;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -48,16 +47,11 @@ namespace HearthStoner
             {
                 try
                 {
-                    ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-                    using (var http = new HttpClient { Timeout = TimeSpan.FromSeconds(20) })
-                    {
-                        http.DefaultRequestHeaders.UserAgent.ParseAdd("HearthStoner/1.0");
-                        var json = http.GetStringAsync(CommitsUrl).GetAwaiter().GetResult();
-                        var first = JArray.Parse(json)[0];
-                        st.LatestUnitySpyCommit = (string)first["sha"];
-                        st.LastUnitySpyCheck = DateTime.UtcNow;
-                        Save(st);
-                    }
+                    var json = Web.GetString(CommitsUrl, 20);
+                    var first = JArray.Parse(json)[0];
+                    st.LatestUnitySpyCommit = (string)first["sha"];
+                    st.LastUnitySpyCheck = DateTime.UtcNow;
+                    Save(st);
                 }
                 catch { return null; }
             }

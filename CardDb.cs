@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using Newtonsoft.Json.Linq;
 
@@ -72,13 +71,7 @@ namespace HearthStoner
             {
                 try
                 {
-                    ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-                    using (var http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) })
-                    {
-                        http.DefaultRequestHeaders.UserAgent.ParseAdd("HearthStoner/1.0");
-                        var json = http.GetStringAsync(Url).GetAwaiter().GetResult();
-                        File.WriteAllText(cache, json);
-                    }
+                    File.WriteAllText(cache, Web.GetString(Url, 60));
                 }
                 catch (Exception ex)
                 {
