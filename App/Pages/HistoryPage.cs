@@ -30,7 +30,7 @@ namespace HearthStoner.Pages
             DateTime? day = null;
             for (var i = 0; i < d.Games.Count; i++)
             {
-                if (!Matches(d.Games[i], shell.HistoryFilter)) continue;
+                if (!Matches(d.Games[i], shell)) continue;
                 if (day != d.Games[i].Start.Date)
                 {
                     day = d.Games[i].Start.Date;
@@ -67,48 +67,70 @@ namespace HearthStoner.Pages
 
         private static string Opponent(GameRecord g) => g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass);
 
-        private static readonly string[] Filters = { "All", "Ranked", "Casual", "Wins", "Losses" };
+        private static readonly string[] Modes = { "All", "Ranked", "Casual" };
+        private static readonly string[] Results = { "Any", "Wins", "Losses" };
 
-        /// <summary>Whether a game shows under the History filter chip.</summary>
-        public static bool Matches(GameRecord g, string filter)
+        /// <summary>Whether a game shows under the mode chip (All, Ranked, Casual) and the result chip (Any, Wins, Losses).</summary>
+        public static bool Matches(GameRecord g, string mode, string result)
         {
-            switch (filter)
+            var modeOk = mode switch
             {
-                case "Ranked": return g.GameType == "GT_RANKED";
-                case "Casual": return g.GameType == "GT_CASUAL";
-                case "Wins": return g.Won;
-                case "Losses": return g.Result == "LOST";
-                default: return true;
-            }
+                "Ranked" => g.GameType == "GT_RANKED",
+                "Casual" => g.GameType == "GT_CASUAL",
+                _ => true,
+            };
+            var resultOk = result switch
+            {
+                "Wins" => g.Won,
+                "Losses" => g.Result == "LOST",
+                _ => true,
+            };
+            return modeOk && resultOk;
         }
 
-        /// <summary>The row of filter chips above the game list; the chosen one is outlined in mana blue.</summary>
+        private static bool Matches(GameRecord g, AppShell shell) => Matches(g, shell.HistoryFilter, shell.HistoryResult);
+
+        /// <summary>Two rows of chips above the game list, mode then result; they combine ("Ranked" + "Losses").</summary>
         private static UIElement FilterChips(AppShell shell)
         {
-            var wrap = new WrapPanel { Margin = new Thickness(22, 0, 22, 12) };
-            foreach (var f in Filters)
+            var p = new StackPanel { Margin = new Thickness(22, 0, 22, 12) };
+            p.Children.Add(ChipRow(shell, Modes, shell.HistoryFilter, m => m == "All" ? $"All {shell.Data.Games.Count}" : m,
+                m => Filter(m, shell.HistoryResult), m => shell.HistoryFilter = m));
+            p.Children.Add(ChipRow(shell, Results, shell.HistoryResult, r => r == "Any" ? "Any result" : r,
+                r => Filter(shell.HistoryFilter, r), r => shell.HistoryResult = r));
+            return p;
+
+            static Func<GameRecord, bool> Filter(string mode, string result) => g => Matches(g, mode, result);
+        }
+
+        /// <summary>One row of chips; the chosen one is outlined in mana blue, and each shows its game count on hover.</summary>
+        private static UIElement ChipRow(AppShell shell, string[] options, string current, Func<string, string> label, Func<string, Func<GameRecord, bool>> filterFor, Action<string> choose)
+        {
+            var row = new WrapPanel();
+            foreach (var o in options)
             {
-                var on = f == shell.HistoryFilter;
-                var n = shell.Data.Games.Count(g => Matches(g, f));
+                var on = o == current;
+                var test = filterFor(o);
+                var n = shell.Data.Games.Count(test);
                 var chip = new Border
                 {
                     CornerRadius = new CornerRadius(13), Padding = new Thickness(11, 4, 11, 5), Margin = new Thickness(0, 0, 6, 6), Cursor = System.Windows.Input.Cursors.Hand,
                     Background = on ? Theme.B(Theme.Rgb(0x2E, 0x35, 0x66)) : Theme.Raised, BorderBrush = on ? Theme.Mana : Theme.Line, BorderThickness = new Thickness(1),
-                    Child = new TextBlock { Text = f == "All" ? $"All {n}" : f, FontSize = 13, Foreground = on ? Theme.Vellum : Theme.Mist },
+                    Child = new TextBlock { Text = label(o), FontSize = 13, Foreground = on ? Theme.Vellum : Theme.Mist },
                     ToolTip = $"{n} game{(n == 1 ? "" : "s")}",
                 };
-                var pick = f;
+                var pick = o;
                 chip.MouseLeftButtonUp += (s, e) =>
                 {
-                    shell.HistoryFilter = pick;
+                    choose(pick);
                     // Keep the detail on a game the list shows.
-                    var first = shell.Data.Games.FindIndex(g => Matches(g, pick));
-                    if (first >= 0 && !Matches(shell.Data.Games[shell.SelectedGame], pick)) shell.SelectedGame = first;
+                    var first = shell.Data.Games.FindIndex(g => Matches(g, shell));
+                    if (first >= 0 && !Matches(shell.Data.Games[shell.SelectedGame], shell)) shell.SelectedGame = first;
                     shell.Redraw();
                 };
-                wrap.Children.Add(chip);
+                row.Children.Add(chip);
             }
-            return wrap;
+            return row;
         }
 
         private static UIElement DayHeader(DateTime day)
@@ -170,7 +192,10 @@ namespace HearthStoner.Pages
             var review = replay != null ? analysis.Review : g.Review;
             var replayIndex = ReplayPage.Replayable(d).IndexOf(g);
             void Watch(int frame) { shell.ReplayGame = replayIndex; shell.ReplayFrame = frame; shell.Show("Replays"); }
-            var p = new StackPanel { MaxWidth = 860, HorizontalAlignment = HorizontalAlignment.Left };
+            var wide = shell.Size == PageWidth.Wide;
+            // Room for the review beside the chart: the game list (300), the main column and a usable second column.
+            var split = wide && shell.PageAreaWidth >= PageLayout.ExtraWideFrom;
+            var p = new StackPanel { MaxWidth = wide ? WideMainWidth : 860, HorizontalAlignment = HorizontalAlignment.Left };
 
             var verdict = new StackPanel { Orientation = Orientation.Horizontal };
             var word = g.Won ? "Win" : g.Result == "LOST" ? "Loss" : g.Result == "TIED" ? "Tie" : "Unfinished";
@@ -193,7 +218,7 @@ namespace HearthStoner.Pages
             }
 
             var facts = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 0, 0) };
-            void Fact(string v, string label) { var f = new StackPanel { Margin = new Thickness(0, 0, 40, 0) }; f.Children.Add(Theme.Text(v, 20, Theme.Vellum, FontWeights.SemiBold, display: true)); f.Children.Add(Theme.Text(label, 12.5, Theme.Dusk)); facts.Children.Add(f); }
+            void Fact(string v, string label, Brush color = null) { var f = new StackPanel { Margin = new Thickness(0, 0, 40, 0) }; f.Children.Add(Theme.Text(v, 20, color ?? Theme.Vellum, FontWeights.SemiBold, display: true)); f.Children.Add(Theme.Text(label, 12.5, Theme.Dusk)); facts.Children.Add(f); }
             Fact(sum.Rounds.ToString(), "turns");
             Fact($"{sum.RoundsAhead} of {sum.Swing.Count}", "rounds you were ahead");
             var chance = replay != null ? analysis.Chance : null;
@@ -211,7 +236,9 @@ namespace HearthStoner.Pages
                 if (sum.BestLead > 0) Fact("+" + sum.BestLead, $"best lead (turn {sum.BestLeadRound})");
                 if (sum.TurningDrop >= 10) Fact("Turn " + sum.TurningRound, "where it turned");
             }
-            Fact(review.Count.ToString(), review.Count == 1 ? "thing to review" : "things to review");
+            // A clean game reads as good news, not as a headline zero.
+            if (review.Count == 0) Fact("Clean", "nothing to review", Theme.Win);
+            else Fact(review.Count.ToString(), review.Count == 1 ? "thing to review" : "things to review", Theme.Amber);
             p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 1, 0, 1), Padding = new Thickness(0, 14, 0, 14), Margin = new Thickness(0, 20, 0, 22), Child = facts });
 
             if (chance != null)
@@ -220,7 +247,7 @@ namespace HearthStoner.Pages
                 var sub = Theme.Text($"HearthStoner's estimate at each moment, starting from the matchup's {AppShell.Pct(chance.Prior)}. Click a red dot to see that moment in the replay.", 12.5, Theme.Dusk, wrap: true);
                 sub.Margin = new Thickness(0, -6, 0, 8);
                 p.Children.Add(sub);
-                var c = new Canvas { Width = 760, Height = 210, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.Transparent };
+                var c = new Canvas { Width = wide ? WideMainWidth - 40 : 760, Height = wide ? 250 : 210, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.Transparent };
                 WinChanceView.Draw(c, chance, -1, replay, Watch);
                 p.Children.Add(c);
                 foreach (var m in chance.Drops.Concat(chance.Rises).OrderBy(m => m.Frame))
@@ -245,24 +272,34 @@ namespace HearthStoner.Pages
                 p.Children.Add(sum.Swing.Count >= 2 ? Chart(sum) : Theme.Text("Not enough turns were recorded to draw this game.", 13.5, Theme.Dusk));
             }
 
+            // Very wide screens: the review and mulligan get their own column beside the chart instead of going under it.
+            var notes = split ? new StackPanel() : p;
             var reviewHead = Theme.Heading("Review");
-            reviewHead.Margin = new Thickness(0, 22, 0, 6);
-            p.Children.Add(reviewHead);
-            if (review.Count == 0) p.Children.Add(Theme.Text("Nothing stood out: no missed lethal, wasted mana, held cards, lost trades or mulligan against the data.", 13.5, Theme.Dusk, wrap: true));
+            reviewHead.Margin = new Thickness(0, split ? 0 : 22, 0, 6);
+            notes.Children.Add(reviewHead);
+            if (review.Count == 0) notes.Children.Add(Theme.Text("Nothing stood out: no missed lethal, wasted mana, held cards, lost trades or mulligan against the data.", 13.5, Theme.Dusk, wrap: true));
             foreach (var n in review.OrderByDescending(n => n.Severity).ThenBy(n => n.Turn))
-                p.Children.Add(Note(n, replay != null && n.Turn > 0 ? () => Watch(ReplayPage.FrameOf(n, replay)) : (Action)null));
+                notes.Children.Add(Note(n, replay != null && n.Turn > 0 ? () => Watch(ReplayPage.FrameOf(n, replay)) : (Action)null));
 
             if (g.Mulligan.Count > 0)
             {
                 var mh = Theme.Heading("Mulligan");
                 mh.Margin = new Thickness(0, 22, 0, 8);
-                p.Children.Add(mh);
+                notes.Children.Add(mh);
                 var wrap = new WrapPanel();
                 foreach (var m in g.Mulligan) wrap.Children.Add(MulliganCard(m, d));
-                p.Children.Add(wrap);
+                notes.Children.Add(wrap);
             }
-            return p;
+            if (!split) return p;
+            var cols = PageLayout.Columns((p, WideMainWidth), (notes, 0));
+            cols.ColumnDefinitions[1].Width = new GridLength(56);   // a clear gutter between the chart and the notes
+            cols.ColumnDefinitions[2].MaxWidth = 700;
+            cols.HorizontalAlignment = HorizontalAlignment.Left;
+            return cols;
         }
+
+        /// <summary>The game's main column on a wide screen (verdict, numbers, chart); the review sits beside it.</summary>
+        private const double WideMainWidth = 1000;
 
         /// <summary>
         /// One opening-hand card as a small card picture: kept in full colour, tossed faded, and an amber frame when

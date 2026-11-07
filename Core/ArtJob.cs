@@ -41,7 +41,7 @@ namespace HearthStoner
                 "running" => Total > 0 ? $"Making board art: {Stage} {Done} of {Total}" : $"Making board art: {Stage}",
                 "done" => $"Board art: up to date for Hearthstone {Version} ({Boards} board{(Boards == 1 ? "" : "s")})",
                 "failed" => $"Couldn't make board art: {Error}",
-                _ => "Board art: not checked yet",
+                _ => "Board art is made from your Hearthstone install; it's checked when the app starts.",
             };
         }
 

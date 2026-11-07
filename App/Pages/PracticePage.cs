@@ -44,10 +44,11 @@ namespace HearthStoner.Pages
             var d = shell.Data;
             var today = DateTime.Today;
             var due = Store.Due(today).Where(id => GameFor(d, id) != null).ToList();
-            var p = new StackPanel { MaxWidth = 1200, HorizontalAlignment = HorizontalAlignment.Left };
+            var p = new StackPanel { MaxWidth = shell.Size == PageWidth.Wide ? 1600 : 1200, HorizontalAlignment = HorizontalAlignment.Left };
             p.Children.Add(ReviewBox(shell, due, Store.StreakDays(today)));
 
-            var tiles = new System.Windows.Controls.Primitives.UniformGrid { Columns = 3, Margin = new Thickness(0, 22, 0, 0) };
+            var columns = shell.Size == PageWidth.Compact ? 2 : 3;
+            var tiles = new System.Windows.Controls.Primitives.UniformGrid { Columns = columns, Margin = new Thickness(0, 22, 0, 0) };
             foreach (var drill in PracticeIds.Drills) tiles.Children.Add(Tile(shell, drill, due.Count(id => PracticeIds.DrillOf(id) == drill)));
             p.Children.Add(tiles);
             var note = Theme.Text("A question you miss comes back the next day; right answers push it back 3, then 7 days, and three right in a row retire it. New games add new questions by themselves.", 12.5, Theme.Dusk, wrap: true);
@@ -107,10 +108,13 @@ namespace HearthStoner.Pages
             b.Margin = new Thickness(0, 6, 0, 10);
             p.Children.Add(b);
             var what = drill == PracticeIds.Secret ? $"{ids.Count} game{(ids.Count == 1 ? "" : "s")} to search" : $"{ids.Count} question{(ids.Count == 1 ? "" : "s")}";
+            // An empty drill says why it's empty instead of "0 due · 0 questions".
+            var empty = ids.Count == 0;
             p.Children.Add(new Border
             {
-                CornerRadius = new CornerRadius(10), Padding = new Thickness(9, 3, 9, 4), HorizontalAlignment = HorizontalAlignment.Left, Background = Theme.B(Theme.Rgb(0x2E, 0x35, 0x66)),
-                Child = new TextBlock { Text = $"{due} due · {what}", FontSize = 12, FontWeight = FontWeights.Bold, Foreground = Theme.Mana },
+                CornerRadius = new CornerRadius(10), Padding = new Thickness(9, 3, 9, 4), HorizontalAlignment = HorizontalAlignment.Left,
+                Background = empty ? Theme.Raised : Theme.B(Theme.Rgb(0x2E, 0x35, 0x66)),
+                Child = new TextBlock { Text = empty ? "None yet · fills up as you play" : $"{due} due · {what}", FontSize = 12, FontWeight = FontWeights.Bold, Foreground = empty ? Theme.Mist : Theme.Mana },
             });
             var tile = new Border
             {

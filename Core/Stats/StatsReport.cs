@@ -30,7 +30,7 @@ namespace HearthStoner.Stats
             // ---- by deck, against the meta's win rate for that archetype
             var decks = new AdviceSection("By deck");
             result.Add(decks);
-            foreach (var d in ranked.GroupBy(g => g.DeckName ?? g.MyArchetype ?? MetaStats.ClassName(g.MyClass)).OrderByDescending(g => g.Count()))
+            foreach (var d in ranked.GroupBy(g => g.DeckLabel).OrderByDescending(g => g.Count()))
             {
                 var arch = d.Select(g => g.MyArchetype).FirstOrDefault(a => a != null);
                 var metaWr = arch != null ? meta?.Archetypes.FirstOrDefault(a => a.Name == arch)?.WinRate : null;

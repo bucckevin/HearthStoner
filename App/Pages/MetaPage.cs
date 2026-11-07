@@ -124,11 +124,12 @@ namespace HearthStoner.Pages
                 foreach (var a in Sorted(rows)) p.Children.Add(Row(a, maxShare, mine, indent: false));
         }
 
+        /// <summary>Archetype, played, games, win rate. The share bar takes the spare width, so names sit next to their bars.</summary>
         private static Grid Columns(double height)
         {
             var g = new Grid { Height = height };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(340) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
             return g;
@@ -176,11 +177,12 @@ namespace HearthStoner.Pages
                 });
             g.Children.Add(name);
 
-            var bar = new Grid { VerticalAlignment = VerticalAlignment.Center };
-            bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-            bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            bar.Children.Add(new Border { Height = 6, CornerRadius = new CornerRadius(3), Background = Theme.Raised });
-            bar.Children.Add(new Border { Height = 6, CornerRadius = new CornerRadius(3), HorizontalAlignment = HorizontalAlignment.Left, Width = Math.Max(3, 150 * a.Share / maxShare), Background = Theme.B(color, 0.85) });
+            var bar = new Grid { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 24, 0) };
+            bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = 420 });
+            bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });
+            var track = AppShell.StatBar(Math.Max(0.01, a.Share / maxShare), Theme.B(color, 0.85), 6);
+            track.VerticalAlignment = VerticalAlignment.Center;
+            bar.Children.Add(track);
             var s = Theme.Text(AppShell.Pct(a.Share, 1), 13, Theme.Mist); s.Margin = new Thickness(10, 0, 0, 0); Grid.SetColumn(s, 1); bar.Children.Add(s);
             Grid.SetColumn(bar, 1);
             g.Children.Add(bar);

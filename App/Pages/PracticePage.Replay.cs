@@ -47,8 +47,10 @@ namespace HearthStoner.Pages
             p.Children.Add(Felt(f.Them.Health + f.Them.Armor, "Opponent health", f.Them.Board.Select(m => ReplayMinion(d, m, false)), f.You.Board.Select(m => ReplayMinion(d, m, true)), footer));
 
             var label = AppShell.ColumnLabel($"Your hand · {used} of {limit} mana picked" + (coins > 0 ? " (The Coin adds 1)" : ""));
-            label.Margin = new Thickness(0, 14, 0, 8);
-            p.Children.Add(label);
+            var head = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 0, 8) };
+            head.Children.Add(label);
+            head.Children.Add(ManaCrystals(limit, used));
+            p.Children.Add(head);
             var row = new WrapPanel();
             foreach (var (card, slot) in hand)
             {
@@ -78,7 +80,9 @@ namespace HearthStoner.Pages
                 var lockIn = Theme.Button("Lock in", () => Answer(shell, id, used <= limit && used == best));
                 lockIn.IsEnabled = st.PickOrder.Count > 0 && used <= limit;
                 p.Children.Add(lockIn);
+                // A greyed-out button always says why.
                 if (used > limit) p.Children.Add(Note($"That's {used} mana: more than the {limit} you have."));
+                else if (st.PickOrder.Count == 0) p.Children.Add(Note("Click at least one card to lock in your plan."));
                 return p;
             }
             var chance = ReplayPage.Analyze(g, r, d).Chance;
@@ -92,6 +96,23 @@ namespace HearthStoner.Pages
             p.Children.Add(Note("This scores mana use, not card strength: sometimes holding a card is the better play."));
             p.Children.Add(NextButton(shell));
             return p;
+        }
+
+        /// <summary>One crystal per mana you have: filled while unspent, hollow once your picks use it.</summary>
+        private static UIElement ManaCrystals(int total, int used)
+        {
+            var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+            for (var i = 0; i < total; i++)
+            {
+                var spent = i >= total - used;
+                row.Children.Add(new System.Windows.Shapes.Path
+                {
+                    Data = Geometry.Parse("M 6,0 L 12,4 L 12,10 L 6,14 L 0,10 L 0,4 Z"),
+                    Fill = spent ? Brushes.Transparent : Theme.Mana, Stroke = spent ? Theme.Line : Theme.Mana, StrokeThickness = 1.5,
+                    Margin = new Thickness(0, 0, 4, 0), ToolTip = spent ? "Used by your picks" : "Unspent mana",
+                });
+            }
+            return row;
         }
 
         // ------------------------------------------------------------------ guess their hand

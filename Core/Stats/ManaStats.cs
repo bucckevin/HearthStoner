@@ -63,7 +63,7 @@ namespace HearthStoner.Stats
                     // Snapshots of the last turn of a game are taken when it ends, often mid-turn: skip it.
                     if (t == g.Snapshots.LastOrDefault()) continue;
                     var spent = Math.Max(0, Math.Min(t.ManaAvailable, t.ManaAvailable - t.ManaUnspent));
-                    turns.Add(new T { Round = round, Available = t.ManaAvailable, Spent = spent, Deck = g.DeckName ?? g.MyArchetype ?? MetaStats.ClassName(g.MyClass), Class = g.MyClass });
+                    turns.Add(new T { Round = round, Available = t.ManaAvailable, Spent = spent, Deck = g.DeckLabel, Class = g.MyClass });
                 }
             }
             s.Turns = turns.Count;

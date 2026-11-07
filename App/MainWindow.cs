@@ -193,7 +193,7 @@ namespace HearthStoner
 
         /// <summary>
         /// 'HearthStoner screenshot [folder]': renders every page at 1280x800 to PNGs (app-play.png, ...), the same way
-        /// the window draws them. Downloads any card art it needs first. For checking the look without clicking.
+        /// the window draws them, and again at a compact, a 1920 and a 3440 window size (app-play-1920.png, ...). Downloads any card art it needs first. For checking the look without clicking.
         /// </summary>
         public static int Screenshots(AppServices svc, string folder)
         {
@@ -301,22 +301,18 @@ namespace HearthStoner
                         shell.ReplayShowHidden = name == "replays-hidden";
                         GameButton.Override = state;
                         AppUpdater.Override = name == "settings-update" ? ScreenshotRelease() : null;
-                        shell.Height = hgt;
-                        shell.Show(page);
                         var wid = name == "replays-large" ? 1640 : 1280;
-                        shell.Width = wid;
-                        shell.Measure(new Size(wid, hgt));
-                        shell.Arrange(new Rect(0, 0, wid, hgt));
-                        shell.UpdateLayout();
-                        var bmp = new RenderTargetBitmap(wid, hgt, 96, 96, PixelFormats.Pbgra32);
-                        bmp.Render(shell);
-                        var enc = new PngBitmapEncoder();
-                        enc.Frames.Add(BitmapFrame.Create(bmp));
-                        var file = Path.Combine(folder, "app-" + name + ".png");
-                        using (var f = File.Create(file)) enc.Save(f);
-                        Console.WriteLine("Wrote " + Path.GetFullPath(file));
+                        Snap(shell, page, folder, name, wid, hgt);
                     }
                     AppUpdater.Override = null;
+                    GameButton.Override = null;
+                    shell.ReplayShowHidden = false;
+                    shell.ReplayFrame = midFrame;
+                    // Every page at the other window sizes the layout adapts to: a small window (compact), a
+                    // maximized 1920x1080 screen and a maximized 3440x1440 ultrawide (both wide).
+                    foreach (var (suffix, w, h) in new[] { ("compact", 1100, 800), ("1920", 1920, 1040), ("3440", 3440, 1400) })
+                        foreach (var page in AppShell.Pages)
+                            Snap(shell, page, folder, page.ToLowerInvariant() + "-" + suffix, w, h);
                     PracticeShots(shell, data, folder);
                 }
                 catch (Exception ex) { error = ex; }
@@ -349,13 +345,13 @@ namespace HearthStoner
             PracticePage.ShowForScreenshot(shell, null, false);
         }
 
-        /// <summary>Draws the shell's Practice page at the given size to app-&lt;name&gt;.png.</summary>
-        private static void Render(AppShell shell, string folder, string name, int wid, int hgt, bool quiet)
+        /// <summary>Draws <paramref name="page"/> at the given window size to app-&lt;name&gt;.png.</summary>
+        private static void Snap(AppShell shell, string page, string folder, string name, int wid, int hgt, bool quiet = false)
         {
+            // Width first: it decides the page's size class (compact, standard, wide) when the page is built.
             shell.Width = wid;
             shell.Height = hgt;
-            shell.Show("Practice");
-            shell.Redraw();
+            shell.Show(page);
             shell.Measure(new Size(wid, hgt));
             shell.Arrange(new Rect(0, 0, wid, hgt));
             shell.UpdateLayout();
@@ -367,5 +363,9 @@ namespace HearthStoner
             using (var f = File.Create(file)) enc.Save(f);
             if (!quiet) Console.WriteLine("Wrote " + Path.GetFullPath(file));
         }
+
+        /// <summary>Draws the shell's Practice page at the given size to app-&lt;name&gt;.png.</summary>
+        private static void Render(AppShell shell, string folder, string name, int wid, int hgt, bool quiet) =>
+            Snap(shell, "Practice", folder, name, wid, hgt, quiet);
     }
 }

@@ -42,6 +42,21 @@ namespace HearthStoner.Tests
             Assert.Equal(new[] { true, false, false }, s.Recent);
         }
 
+        [Fact]
+        public void Current_rank_prefers_standard_ranked_over_a_newer_wild_brawl()
+        {
+            var games = new List<GameRecord>
+            {
+                new GameRecord { GameType = "GT_RANKED", Format = "FT_STANDARD", Rank = "Gold 2" },
+                new GameRecord { GameType = "GT_RANKED", Format = "FT_WILD", Rank = "Silver 4" },
+                new GameRecord { GameType = "GT_TAVERNBRAWL", Format = "FT_WILD", Rank = "Bronze 10" },
+            };
+            Assert.Equal("Gold 2", StatsSummary.CurrentRank(games));
+            Assert.Equal("Silver 4", StatsSummary.CurrentRank(games.Skip(1).ToList()));
+            Assert.Equal("Bronze 10", StatsSummary.CurrentRank(games.Skip(2).ToList()));
+            Assert.Null(StatsSummary.CurrentRank(new List<GameRecord>()));
+        }
+
         [Trait("Category", TestData.MyGames)]
         [Fact]
         public void Each_deck_gets_its_own_signature_card()

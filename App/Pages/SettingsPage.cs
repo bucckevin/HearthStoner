@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -16,9 +17,10 @@ namespace HearthStoner.Pages
         {
             var st = shell.Data.Services.Settings ?? new Settings();
             void Save() { try { st.Save(); } catch (Exception swallowed) { Diag.Ignored(swallowed, "SettingsPage"); } }
-            var p = new StackPanel { MaxWidth = 760, HorizontalAlignment = HorizontalAlignment.Left };
+            var sections = new List<StackPanel>();
+            StackPanel p;
 
-            Group(p, "Overlay", "Panel and layout changes apply the next time the overlay starts; the rest apply right away.");
+            p = Section(sections, "Overlay", "Panel and layout changes apply the next time the overlay starts; the rest apply right away.");
             p.Children.Add(Choice("Where the panels go", "Both at the right edge suits wide screens.",
                 new[] { ("left", "Left"), ("right", "Right"), ("split", "Opponent left, you right") }, st.Layout ?? "right", v => { st.Layout = v; Save(); }));
             p.Children.Add(Choice("Panel background", null,
@@ -27,7 +29,7 @@ namespace HearthStoner.Pages
             p.Children.Add(Toggle("Draw odds in your deck list", "Each card's chance to be your next draw.", st.DeckShowOdds, v => { st.DeckShowOdds = v; Save(); }));
             p.Children.Add(Toggle("Marks over the opponent's hand", "The turn each card arrived, mulligan keeps, created and returned cards.", st.ShowOpponentHandMarks, v => { st.ShowOpponentHandMarks = v; Save(); }));
 
-            Group(p, "Panels", "What the overlay shows. Hotkeys hide whole sides while you play.");
+            p = Section(sections, "Panels", "What the overlay shows. Hotkeys hide whole sides while you play.");
             p.Children.Add(Toggle("Health and damage", null, st.ShowHealth, v => { st.ShowHealth = v; Save(); }));
             p.Children.Add(Toggle("Your deck", null, st.ShowDeck, v => { st.ShowDeck = v; Save(); }));
             p.Children.Add(Toggle("Opponent: likely deck and hand", null, st.ShowOpponent, v => { st.ShowOpponent = v; Save(); }));
@@ -41,7 +43,7 @@ namespace HearthStoner.Pages
 
             // The boards rendered from your Hearthstone install (GameArtBuilder): click one to use it in replays.
             var boards = GameArt.Boards();
-            Group(p, "Replay board", "The board drawn behind replays, rendered from your Hearthstone install.");
+            p = Section(sections, "Replay board", "The board drawn behind replays, rendered from your Hearthstone install.");
             if (boards.Count > 0)
             {
                 // The board in use and a button; the grid of every board only opens when you want to change it.
@@ -92,7 +94,7 @@ namespace HearthStoner.Pages
             }
             p.Children.Add(ArtStatus(shell));
 
-            Group(p, "Meta data", "Which games the win rates and archetypes come from (Firestone's public stats).");
+            p = Section(sections, "Meta data", "Which games the win rates and archetypes come from (Firestone's public stats).");
             p.Children.Add(Choice("Rank bracket", "Automatic follows your rank.",
                 new[] { ("auto", "Automatic"), ("all", "All"), ("diamond", "Diamond"), ("legend", "Legend"), ("top-2000-legend", "Top 2000") }, st.MetaRank ?? "auto",
                 v => { st.MetaRank = v; Save(); shell.Data.Services.ReloadMeta?.Invoke(); shell.ReloadRequested?.Invoke(); }));
@@ -100,7 +102,7 @@ namespace HearthStoner.Pages
                 new[] { ("past-3", "3 days"), ("past-7", "7 days"), ("past-20", "20 days"), ("last-patch", "Since the patch") }, st.MetaPeriod ?? "past-7",
                 v => { st.MetaPeriod = v; Save(); shell.Data.Services.ReloadMeta?.Invoke(); shell.ReloadRequested?.Invoke(); }));
 
-            Group(p, "Starting Hearthstone", "The Launch button on the Play page starts the game through the Battle.net app.");
+            p = Section(sections, "Starting Hearthstone", "The Launch button on the Play page starts the game through the Battle.net app.");
             var target = GameLauncher.Resolve(st.LaunchPath);
             var found = Theme.Text(target.Path == null
                 ? "Battle.net wasn't found. Choose Battle.net.exe (or Hearthstone.exe) below."
@@ -131,18 +133,18 @@ namespace HearthStoner.Pages
             }
             p.Children.Add(launchButtons);
 
-            Group(p, "App", null);
+            p = Section(sections, "App", null);
             p.Children.Add(Toggle("Start with Windows", "Sits in the tray and shows the overlay when Hearthstone is open.", Autostart.IsEnabled, v => { Autostart.Set(v); st.StartWithWindows = v; Save(); }));
             p.Children.Add(Toggle("Check for updates", "Once a day: new HearthStoner versions, the memory reader and Hearthstone's version.", st.CheckForUpdates, v => { st.CheckForUpdates = v; Save(); }));
             p.Children.Add(UpdateRow());
 
-            Group(p, "Your collection", null);
+            p = Section(sections, "Your collection", null);
             var col = shell.Data.Collection;
             var colText = Theme.Text(col != null ? $"{col.Owned.Count:N0} different cards, read {col.Updated:MMM d, h:mm tt}. Kept up to date by itself while Hearthstone is open (after packs, crafting and games)." : "Not read yet. It's read by itself once Hearthstone is open.", 13.5, Theme.Dusk, wrap: true);
             colText.Margin = new Thickness(0, 0, 0, 10);
             p.Children.Add(colText);
 
-            Group(p, "Hotkeys", "While Hearthstone is in front. Change them in the settings file.");
+            p = Section(sections, "Hotkeys", "While Hearthstone is in front. Change them in the settings file.");
             foreach (var (label, key) in new[] { ("Show or hide the overlay", st.HotkeyToggleOverlay), ("Your deck list", st.HotkeyToggleDeck), ("Opponent panels and hand marks", st.HotkeyToggleOpponent), ("Advice panels", st.HotkeyToggleAdvice), ("Hover mode: point at cards for details", st.HotkeyHoverMode) })
             {
                 var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
@@ -153,7 +155,7 @@ namespace HearthStoner.Pages
                 p.Children.Add(row);
             }
 
-            Group(p, "Files", null);
+            p = Section(sections, "Files", null);
             var files = new StackPanel { Orientation = Orientation.Horizontal };
             var openSettings = Theme.Button("Open settings file", () => { try { Process.Start(new ProcessStartInfo(Settings.Path) { UseShellExecute = true }); } catch (Exception swallowed) { Diag.Ignored(swallowed, "SettingsPage"); } }, primary: false);
             var openFolder = Theme.Button("Open data folder", () => { try { Process.Start(new ProcessStartInfo(Path.GetDirectoryName(Settings.Path)) { UseShellExecute = true }); } catch (Exception swallowed) { Diag.Ignored(swallowed, "SettingsPage"); } }, primary: false);
@@ -162,10 +164,7 @@ namespace HearthStoner.Pages
             files.Children.Add(openFolder);
             p.Children.Add(files);
             var credits = Theme.Text($"HearthStoner {AppVersion.Current.Detail}. Card text and art: HearthstoneJSON. Meta stats: Firestone. Memory reading: UnitySpy (MIT). Fonts: Barlow (SIL Open Font License).", 12, Theme.Dusk, wrap: true);
-            credits.Margin = new Thickness(0, 24, 0, 0);
-            p.Children.Add(credits);
-
-            return AppShell.Page("Settings", "Saved as you change them.", p);
+            return AppShell.Page("Settings", "Saved as you change them.", Arrange(shell.Size, sections, credits));
         }
 
         /// <summary>The board art job's state, live while the page is open, and a Regenerate button. New art redraws the page.</summary>
@@ -242,12 +241,43 @@ namespace HearthStoner.Pages
         private static string Closest(double v, params double[] options) =>
             options.OrderBy(o => Math.Abs(o - v)).First().ToString(System.Globalization.CultureInfo.InvariantCulture);
 
-        private static void Group(StackPanel p, string title, string sub)
+        /// <summary>Starts a new section (a heading and an optional line under it), adds it to <paramref name="sections"/> and returns it to fill.</summary>
+        private static StackPanel Section(List<StackPanel> sections, string title, string sub)
         {
+            var p = new StackPanel { Margin = new Thickness(0, 0, 0, 30) };
             var h = Theme.Text(title, 22, Theme.Vellum, FontWeights.SemiBold, display: true);
-            h.Margin = new Thickness(0, p.Children.Count == 0 ? 0 : 30, 0, sub == null ? 10 : 2);
+            h.Margin = new Thickness(0, 0, 0, sub == null ? 10 : 2);
             p.Children.Add(h);
             if (sub != null) { var s = Theme.Text(sub, 13, Theme.Dusk, wrap: true); s.Margin = new Thickness(0, 0, 0, 12); p.Children.Add(s); }
+            sections.Add(p);
+            return p;
+        }
+
+        /// <summary>The sections that make the left column on wide screens: everything about the overlay and replays.</summary>
+        private const int LeftColumnSections = 3;
+
+        /// <summary>
+        /// One column (760 px at most, so toggles stay near their labels) or, on wide screens, two: the overlay and
+        /// replay board on the left, everything else on the right. The credits go under both.
+        /// </summary>
+        private static UIElement Arrange(PageWidth size, List<StackPanel> sections, UIElement credits)
+        {
+            const double column = 760;
+            if (size != PageWidth.Wide)
+            {
+                var one = new StackPanel { MaxWidth = column, HorizontalAlignment = HorizontalAlignment.Left };
+                foreach (var s in sections) one.Children.Add(s);
+                one.Children.Add(credits);
+                return one;
+            }
+            var left = new StackPanel();
+            var right = new StackPanel();
+            for (var i = 0; i < sections.Count; i++) (i < LeftColumnSections ? left : right).Children.Add(sections[i]);
+            right.Children.Add(credits);
+            var cols = PageLayout.Columns((left, column), (right, column));
+            cols.ColumnDefinitions[1].Width = new GridLength(64);   // a wider gutter between two forms
+            cols.HorizontalAlignment = HorizontalAlignment.Left;
+            return cols;
         }
 
         private static UIElement Label(string title, string sub)

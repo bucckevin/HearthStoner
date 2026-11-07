@@ -103,14 +103,29 @@ namespace HearthStoner.Stats
             }
             foreach (var g in ranked)
             {
-                Bump(s.ByDeck, g.DeckName ?? g.MyArchetype ?? MetaStats.ClassName(g.MyClass), g.MyClass, g.Won);
+                Bump(s.ByDeck, g.DeckLabel, g.MyClass, g.Won);
                 Bump(s.ByClass, MetaStats.ClassName(g.OpponentClass ?? "?"), g.OpponentClass, g.Won);
             }
             s.ByDeck = s.ByDeck.OrderByDescending(r => r.Games).ToList();
             s.ByClass = s.ByClass.OrderByDescending(r => r.Games).ToList();
-            s.Rank = ranked.LastOrDefault(g => !string.IsNullOrEmpty(g.Rank))?.Rank;
+            s.Rank = CurrentRank(ranked);
             s.RankHistory = ranked.Where(g => g.LegendRank > 0 || g.StarLevel > 0).Select(g => (g.Start, g.LegendRank, g.StarLevel)).ToList();
             return s;
+        }
+
+        /// <summary>
+        /// The rank to show as "your rank": from the newest Standard ranked game, else the newest ranked game in any
+        /// format, else the newest game with a rank. A Wild Tavern Brawl records your Wild rank, which isn't the
+        /// ladder you're climbing. <paramref name="oldestFirst"/> must be sorted oldest first.
+        /// </summary>
+        public static string CurrentRank(IReadOnlyList<GameRecord> oldestFirst)
+        {
+            if (oldestFirst == null) throw new ArgumentNullException(nameof(oldestFirst));
+            bool HasRank(GameRecord g) => !string.IsNullOrEmpty(g.Rank);
+            bool Ranked(GameRecord g) => g.GameType == "GT_RANKED";
+            return (oldestFirst.LastOrDefault(g => HasRank(g) && Ranked(g) && g.Format == "FT_STANDARD")
+                ?? oldestFirst.LastOrDefault(g => HasRank(g) && Ranked(g))
+                ?? oldestFirst.LastOrDefault(HasRank))?.Rank;
         }
     }
 }

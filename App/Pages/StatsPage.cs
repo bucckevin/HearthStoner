@@ -47,20 +47,23 @@ namespace HearthStoner.Pages
 
             if (d.Mana != null && d.Mana.Turns > 0) p.Children.Add(Mana(d.Mana));
 
-            // Matchups on the left; decks and how early HearthStoner names the opponent's deck on the right.
-            var cols = new Grid();
-            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
-            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            cols.Children.Add(Table("By opponent's class", s.ByClass, r => Theme.ClassColor(r.Class)));
-            var right = new StackPanel();
-            right.Children.Add(Table("By deck", s.ByDeck, r => Theme.ClassColor(r.Class)));
+            // Matchups, decks, and how early HearthStoner names the opponent's deck: three columns on a wide screen,
+            // two (decks and the scorecard sharing one) on a normal one, one under the other in a small window.
+            var byClass = Table("By opponent's class", s.ByClass, r => Theme.ClassColor(r.Class));
+            var byDeck = Table("By deck", s.ByDeck, r => Theme.ClassColor(r.Class));
             var score = Scorecard(PredictionScore.Compute(d.Games));
-            ((FrameworkElement)score).Margin = new Thickness(0, 26, 0, 0);
-            right.Children.Add(score);
-            Grid.SetColumn(right, 2);
-            cols.Children.Add(right);
-            p.Children.Add(cols);
+            switch (shell.Size)
+            {
+                case PageWidth.Wide:
+                    p.Children.Add(PageLayout.Columns((byClass, 0), (byDeck, 0), (score, 0)));
+                    break;
+                case PageWidth.Compact:
+                    p.Children.Add(PageLayout.Stack(26, byClass, byDeck, score));
+                    break;
+                default:
+                    p.Children.Add(PageLayout.Columns((byClass, 0), (PageLayout.Stack(26, byDeck, score), 0)));
+                    break;
+            }
 
             // Habits, tilt and recurring review notes, from the stats report (its ladder notes are on the Ladder page).
             var notes = new WrapPanel { Margin = new Thickness(0, 26, 0, 0) };
@@ -106,7 +109,7 @@ namespace HearthStoner.Pages
                     ToolTip = $"{(g.Won ? "Win" : "Loss")} vs {g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass)}\n{g.DeckName ?? MetaStats.ClassName(g.MyClass)} · {g.Start:MMM d, h:mm tt} · {(g.Turns + 1) / 2} turns\nClick to open in History",
                 };
                 var index = shell.Data.Games.IndexOf(g);
-                sq.MouseLeftButtonUp += (o, e) => { if (index < 0) return; shell.SelectedGame = index; shell.HistoryFilter = "All"; shell.Show("History"); };
+                sq.MouseLeftButtonUp += (o, e) => { if (index < 0) return; shell.SelectedGame = index; shell.HistoryFilter = "All"; shell.HistoryResult = "Any"; shell.Show("History"); };
                 squares.Children.Add(sq);
             }
             row.Children.Add(squares);

@@ -168,11 +168,20 @@ namespace HearthStoner.Stats
             public int Stolen;
         }
 
+        /// <summary>
+        /// When a Power.log line was written: its time of day on the session folder's date, or the next day when the
+        /// session ran past midnight.
+        /// </summary>
+        private static DateTime LoggedAt(string powerLogPath, TimeSpan timeOfDay)
+        {
+            var start = GameLog.SessionStart(powerLogPath);
+            var at = start.Date + timeOfDay;
+            return at < start - TimeSpan.FromHours(12) ? at.AddDays(1) : at;
+        }
+
         private static void ReplayOne(CardDb cards, string path, MetaStats meta)
         {
             _out($"  {Path.GetFileName(Path.GetDirectoryName(path))}:");
-            var queued = DecksLog.LastQueuedDeck(path);
-            var deck = queued == null ? null : DeckCode.Decode(queued.DeckCode, cards);
 
             GameTracker tracker = null;
             Advisor advisor = null;
@@ -186,6 +195,9 @@ namespace HearthStoner.Stats
                 {
                     cur = new GameCheck { Index = games.Count + 1 };
                     games.Add(cur);
+                    // The deck queued before THIS game: a session can switch decks between games (the import does the same).
+                    var queued = DecksLog.LastQueuedDeck(path, LoggedAt(path, tracker.LastLineTime));
+                    var deck = queued == null ? null : DeckCode.Decode(queued.DeckCode, cards);
                     if (deck != null) { tracker.FriendlyDeckList = deck.ToList(); tracker.FriendlyDeckName = queued.Name; }
                 }
                 if (cur == null) return;

@@ -31,12 +31,12 @@ namespace HearthStoner.Pages
             {
                 var r = LadderReport.Make(f, d.Games, decks, end, DateTime.Now);
                 if (formats.Count > 1) p.Children.Add(Theme.Text(f.Name, 22, Theme.Vellum, FontWeights.SemiBold, display: true));
-                Format(p, r, d);
+                Format(p, r, d, shell.Size);
             }
             return AppShell.Page("Ladder", sub, p);
         }
 
-        private static void Format(StackPanel p, LadderReport r, AppData d)
+        private static void Format(StackPanel p, LadderReport r, AppData d, PageWidth size)
         {
             var f = r.Format;
             var season = f.Latest;
@@ -72,32 +72,54 @@ namespace HearthStoner.Pages
             chart.SizeChanged += (o, e) => DrawLadder(chart, season);
             p.Children.Add(chart);
             var extra = r.BonusStars + r.StreakStars > 0
-                ? $" This season your star bonus earned you {r.BonusStars:N0} extra stars and win streaks {r.StreakStars:N0}, on top of 1 a win." : "";
+                ? $" Extra stars this season: {r.BonusStars:N0} from your star bonus and {r.StreakStars:N0} from win streaks, on top of the 1 star each win gives." : "";
             Note(p, "Each dot is a game, at the rank you started it from (green: won, red: lost). Gold lines are floors (rank 10 and 5 of each league): once you reach one you can't drop below it." + extra, 6, 24);
 
-            // Pace on the left; this session and past seasons on the right.
-            var row = Columns(out var left, out var right);
-            left.Children.Add(Theme.Heading("Will you make it?"));
-            Goals(left, r, f);
-            right.Children.Add(Theme.Heading(r.Session?.Current == true ? "This session" : "Last session"));
-            Session(right, r, d);
+            // Pace, this session, decks and opponents: four blocks laid out to fit the window.
+            var pace = new StackPanel();
+            pace.Children.Add(Theme.Heading("Will you make it?"));
+            Goals(pace, r, f);
+            var session = new StackPanel();
+            session.Children.Add(Theme.Heading(r.Session?.Current == true ? "This session" : "Last session"));
+            Session(session, r, d);
             var past = f.Seasons.Take(f.Seasons.Count - 1).Reverse().Take(6).ToList();
             if (past.Count > 0)
             {
-                Caption(right, "Previous seasons");
-                foreach (var ps in past) Para(right, $"{ps.Name}: peak {ps.Peak.Rank}, finished {ps.Last.Rank}, {ps.Wins}-{ps.Losses}", Theme.Vellum);
+                Caption(session, "Previous seasons");
+                foreach (var ps in past) Para(session, $"{ps.Name}: peak {ps.Peak.Rank}, finished {ps.Last.Rank}, {ps.Wins}-{ps.Losses}", Theme.Vellum);
             }
-            p.Children.Add(row);
+            var climb = new StackPanel();
+            climb.Children.Add(Theme.Heading("Best deck for climbing"));
+            Decks(climb, r, legend, d);
+            var opponents = new StackPanel();
+            opponents.Children.Add(Theme.Heading("Your opponents"));
+            Opponents(opponents, r.Opp);
+            Caption(opponents, "Best time to play");
+            Times(opponents, r);
+            p.Children.Add(Blocks(size, pace, session, climb, opponents));
+        }
 
-            // Decks on the left; opponents and time of day on the right.
-            var row2 = Columns(out var left2, out var right2);
-            left2.Children.Add(Theme.Heading("Best deck for climbing"));
-            Decks(left2, r, legend, d);
-            right2.Children.Add(Theme.Heading("Your opponents"));
-            Opponents(right2, r.Opp);
-            Caption(right2, "Best time to play");
-            Times(right2, r);
-            p.Children.Add(row2);
+        /// <summary>
+        /// Wide: pace, decks and opponents side by side with this session under pace. Standard: two rows of two.
+        /// Compact: one under the other.
+        /// </summary>
+        private static UIElement Blocks(PageWidth size, UIElement pace, UIElement session, UIElement climb, UIElement opponents)
+        {
+            UIElement layout;
+            switch (size)
+            {
+                case PageWidth.Wide:
+                    layout = PageLayout.Columns((PageLayout.Stack(28, pace, session), 0), (climb, 0), (opponents, 0));
+                    break;
+                case PageWidth.Compact:
+                    layout = PageLayout.Stack(28, pace, session, climb, opponents);
+                    break;
+                default:
+                    layout = PageLayout.Stack(28, PageLayout.Columns((pace, 0), (session, 0)), PageLayout.Columns((climb, 0), (opponents, 0)));
+                    break;
+            }
+            ((FrameworkElement)layout).Margin = new Thickness(0, 0, 0, 28);
+            return layout;
         }
 
         // ------------------------------------------------------------------ parts
@@ -292,20 +314,6 @@ namespace HearthStoner.Pages
         }
 
         // ------------------------------------------------------------------ layout helpers
-
-        private static Grid Columns(out StackPanel left, out StackPanel right)
-        {
-            var row = new Grid { Margin = new Thickness(0, 0, 0, 28) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            left = new StackPanel();
-            right = new StackPanel();
-            row.Children.Add(left);
-            Grid.SetColumn(right, 2);
-            row.Children.Add(right);
-            return row;
-        }
 
         private static void Caption(Panel p, string text)
         {

@@ -190,7 +190,12 @@ namespace HearthStoner
             <Trigger Property='IsMouseOver' Value='True'><Setter TargetName='B' Property='Background' Value='#7BB4FF'/></Trigger>
             <Trigger Property='IsPressed' Value='True'><Setter TargetName='B' Property='Background' Value='#4A8AE6'/></Trigger>
             <Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='B' Property='BorderBrush' Value='#EDE6D6'/><Setter TargetName='B' Property='BorderThickness' Value='1.5'/></Trigger>
-            <Trigger Property='IsEnabled' Value='False'><Setter TargetName='B' Property='Opacity' Value='0.45'/></Trigger>
+            <!-- Disabled: flat grey, so it can't be mistaken for a dimmed live button -->
+            <Trigger Property='IsEnabled' Value='False'>
+              <Setter TargetName='B' Property='Background' Value='#232849'/>
+              <Setter Property='Foreground' Value='#6E7396'/>
+              <Setter Property='Cursor' Value='Arrow'/>
+            </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
@@ -210,6 +215,10 @@ namespace HearthStoner
             <Trigger Property='IsMouseOver' Value='True'><Setter TargetName='B' Property='BorderBrush' Value='#5AA0FF'/></Trigger>
             <Trigger Property='IsPressed' Value='True'><Setter TargetName='B' Property='Background' Value='#232849'/></Trigger>
             <Trigger Property='IsKeyboardFocused' Value='True'><Setter TargetName='B' Property='BorderBrush' Value='#EDE6D6'/></Trigger>
+            <Trigger Property='IsEnabled' Value='False'>
+              <Setter Property='Foreground' Value='#6E7396'/>
+              <Setter Property='Cursor' Value='Arrow'/>
+            </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>

@@ -18,11 +18,6 @@ namespace HearthStoner.Pages
         {
             var d = shell.Data;
             var bracket = d.Meta != null ? AppData.RankBracketName(d.Meta.Rank) : "your rank";
-            var body = new Grid();
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(330) });
-
             var left = new StackPanel();
             var all = d.Picks.Where(p => !p.Deck.Imported).ToList();   // pasted-in decks are analyzed on Decks only
             // Decks with the same 40 cards share one row: four rows of the same 55.0% read like a bug.
@@ -36,14 +31,10 @@ namespace HearthStoner.Pages
             foreach (var p in mine.Where(p => p != matched.FirstOrDefault()))
                 left.Children.Add(Row(p, shell, copies[p]));
             if (d.Meta?.Archetypes.Count > 0) left.Children.Add(MetaChanges(d, copies.Values.SelectMany(c => c).ToList()));
-            body.Children.Add(left);
 
-            var right = new StackPanel();
-            Grid.SetColumn(right, 2);
-            if (matched.Count > 0) right.Children.Add(Field(matched[0], d));
-            right.Children.Add(Quests(d));
-            right.Children.Add(Crafting(shell));
-            body.Children.Add(right);
+            var wide = shell.Size == PageWidth.Wide;
+            var field = matched.Count > 0 ? Field(matched[0], d, allClasses: wide) : null;
+            var body = Arrange(shell.Size, left, field, Quests(d), Crafting(shell));
 
             var when = MetaStats.PartOfDay(DateTime.Now);
             var title = when == "tonight" ? "Tonight's queue" : char.ToUpper(when[0]) + when.Substring(1) + "'s queue";
@@ -51,6 +42,23 @@ namespace HearthStoner.Pages
                 $"Your decks, ranked by expected win rate against today's {bracket} field.", body,
                 new GameButton(shell),
                 Theme.Button("Refresh", () => shell.ReloadRequested?.Invoke(), primary: false));
+        }
+
+        /// <summary>
+        /// Wide: decks | the field | quests and crafting, so nothing waits below the fold. Standard: decks with a
+        /// narrow side column. Compact: everything in one column, decks first.
+        /// </summary>
+        private static UIElement Arrange(PageWidth size, UIElement decks, UIElement field, UIElement quests, UIElement craft)
+        {
+            switch (size)
+            {
+                case PageWidth.Wide:
+                    return PageLayout.Columns((decks, -1.5), (field, -1), (PageLayout.Stack(0, quests, craft), -1));
+                case PageWidth.Compact:
+                    return PageLayout.Stack(24, decks, field, quests, craft);
+                default:
+                    return PageLayout.Columns((decks, 0), (PageLayout.Stack(0, field, quests, craft), 330));
+            }
         }
 
         /// <summary>
@@ -228,7 +236,8 @@ namespace HearthStoner.Pages
 
         // ------------------------------------------------------------------ the field
 
-        private static UIElement Field(DeckPlanner.DeckPick best, AppData d)
+        /// <param name="allClasses">Show all eight rows (wide screens have the room) instead of five and a "more" toggle.</param>
+        private static UIElement Field(DeckPlanner.DeckPick best, AppData d, bool allClasses)
         {
             var p = new StackPanel { Margin = new Thickness(0, 0, 0, 28) };
             p.Children.Add(Theme.Heading("The field " + MetaStats.PartOfDay(DateTime.Now)));
@@ -246,9 +255,10 @@ namespace HearthStoner.Pages
             }
             p.Children.Add(clip);
             p.Children.Add(FieldRow(null, AppShell.ColumnLabel("Class"), AppShell.ColumnLabel("Share", TextAlignment.Right), AppShell.ColumnLabel("You win", TextAlignment.Right), 24));
-            const int shownRows = 5;
+            const int maxRows = 8;
+            var shownRows = allClasses ? maxRows : 5;
             foreach (var m in best.Matchups.Take(shownRows)) p.Children.Add(FieldMatchup(m));
-            var more = best.Matchups.Skip(shownRows).Take(8 - shownRows).ToList();
+            var more = best.Matchups.Skip(shownRows).Take(maxRows - shownRows).ToList();
             if (more.Count > 0)
             {
                 var rest = new StackPanel();

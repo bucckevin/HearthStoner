@@ -44,7 +44,7 @@ namespace HearthStoner.Pages
             var pick = shell.Data.PickFor(deck);
             var selected = index == shell.SelectedDeck;
             var row = new DockPanel { Margin = new Thickness(22, 10, 22, 10) };
-            var wr = pick?.Archetype != null ? Theme.Text(AppShell.Pct(pick.Expected, 1), 18, Theme.Vellum, FontWeights.SemiBold, display: true) : Theme.Text("-", 15, Theme.Dusk);
+            var wr = pick?.Archetype != null ? Theme.Text(AppShell.Pct(pick.Expected, 1), 18, Theme.Vellum, FontWeights.SemiBold, display: true) : Theme.Text("No data", 13, Theme.Dusk);   // same words as the Play page
             wr.VerticalAlignment = VerticalAlignment.Center;
             DockPanel.SetDock(wr, Dock.Right);
             row.Children.Add(wr);
@@ -153,11 +153,6 @@ namespace HearthStoner.Pages
             banner.Children.Add(info);
             p.Children.Add(new Border { CornerRadius = new CornerRadius(12), Background = Theme.Slate, ClipToBounds = true, Child = banner, Margin = new Thickness(0, 0, 0, 24) });
 
-            var cols = new Grid();
-            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
-            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
-            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
             var listCol = new StackPanel();
             listCol.Children.Add(Theme.Heading("Card list"));
             foreach (var c in deck.Cards.GroupBy(x => x).Select(gr => new { Id = gr.Key, Info = d.Cards.ById(gr.Key), N = gr.Count() })
@@ -166,15 +161,13 @@ namespace HearthStoner.Pages
                 var badge = c.Info?.Rarity == "LEGENDARY" && c.N == 1 ? "★" : c.N > 1 ? c.N.ToString() : null;
                 listCol.Children.Add(SectionView.CardTile(AdviceLine.Card(c.Info, c.Id, $"{c.N}x {c.Info?.Name}", Tone.Normal, badge, null), true, true));
             }
-            cols.Children.Add(listCol);
-
-            var right = new StackPanel();
-            Grid.SetColumn(right, 2);
+            UIElement results = null;
             if (!deck.Imported)
             {
                 var versions = DeckVersions.For(deck, d.Decks, d.Games, d.Cards);
-                if (versions.Versions.Any(v => v.Games > 0)) right.Children.Add(Versions(versions, d));
+                if (versions.Versions.Any(v => v.Games > 0)) results = Versions(versions, d);
             }
+            var right = new StackPanel();
             right.Children.Add(Theme.Heading("Swaps the data favours"));
             if (plan == null)
                 right.Children.Add(Theme.Text("This deck doesn't match a meta archetype, so there's nothing to compare it with yet.", 13.5, Theme.Dusk, wrap: true));
@@ -196,9 +189,20 @@ namespace HearthStoner.Pages
                 right.Children.Add(note);
                 if (plan.Best != null) right.Children.Add(BestList(plan.Best, d));
             }
-            cols.Children.Add(right);
-            p.Children.Add(cols);
+            p.Children.Add(DetailColumns(shell.Size, listCol, results, right));
             return p;
+        }
+
+        /// <summary>
+        /// Wide: card list | your results | swaps and the best list. Otherwise the results go above the swaps, next
+        /// to the card list; in a small window the card list is narrower.
+        /// </summary>
+        private static UIElement DetailColumns(PageWidth size, UIElement cards, UIElement results, UIElement swaps)
+        {
+            var listWidth = size == PageWidth.Compact ? 240 : 280;
+            if (size == PageWidth.Wide && results != null)
+                return PageLayout.Columns((cards, listWidth), (results, 0), (swaps, 0));
+            return PageLayout.Columns((cards, listWidth), (PageLayout.Stack(0, results, swaps), 0));
         }
 
         /// <summary>Each list you've played this deck with, newest first: its record and what changed from the one before.</summary>

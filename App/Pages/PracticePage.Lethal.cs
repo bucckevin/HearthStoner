@@ -64,16 +64,17 @@ namespace HearthStoner.Pages
             return Felt(z.TheirHealth + z.TheirArmor, label, z.TheirMinions.Select(ParseMinion), z.YourMinions.Select(ParseMinion), info);
         }
 
-        /// <summary>A board on felt: their hero's health, their minions, a divider, your minions, then a line under it.</summary>
+        /// <summary>
+        /// A board in the app's own colours (the same night blue as every other page, lit a little in the middle):
+        /// their hero's health, their minions, a divider, your minions, then a line under it.
+        /// </summary>
         private static UIElement Felt(int theirHealth, string healthLabel, IEnumerable<UIElement> theirs, IEnumerable<UIElement> yours, UIElement footer)
         {
-            var felt = Theme.Rgb(0x2A, 0x24, 0x18);
-            var edge = Theme.Rgb(0x5A, 0x4A, 0x2A);
             var board = new StackPanel { Width = 640 };
             var hero = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 18) };
             hero.Children.Add(new Border
             {
-                Width = 54, Height = 54, CornerRadius = new CornerRadius(27), Background = Theme.B(Theme.Rgb(0x3A, 0x30, 0x20)), BorderBrush = Theme.B(Theme.Rgb(0x8A, 0x70, 0x40)), BorderThickness = new Thickness(2),
+                Width = 54, Height = 54, CornerRadius = new CornerRadius(27), Background = Theme.Raised, BorderBrush = Theme.B(Theme.LossC, 0.6), BorderThickness = new Thickness(2),
                 Child = new TextBlock { Text = theirHealth.ToString(), FontFamily = Theme.Display, FontSize = 24, FontWeight = FontWeights.Bold, Foreground = Theme.Loss, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
             });
             var hl = Theme.Text(healthLabel, 13, Theme.Mist);
@@ -82,12 +83,13 @@ namespace HearthStoner.Pages
             hero.Children.Add(hl);
             board.Children.Add(hero);
             board.Children.Add(MinionRow(theirs.ToList(), "Their board is empty"));
-            board.Children.Add(new Border { Height = 1, Background = Theme.B(edge), Margin = new Thickness(0, 20, 0, 20) });
+            board.Children.Add(new Border { Height = 1, Background = Theme.Line, Margin = new Thickness(0, 20, 0, 20) });
             board.Children.Add(MinionRow(yours.ToList(), "Your board is empty"));
             if (footer != null) board.Children.Add(footer);
             return new Border
             {
-                Background = Theme.B(felt), BorderBrush = Theme.B(edge), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14),
+                Background = new RadialGradientBrush(Theme.Rgb(0x2A, 0x2F, 0x55), Theme.SlateC) { RadiusX = 0.7, RadiusY = 0.7 },
+                BorderBrush = Theme.Line, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14),
                 Padding = new Thickness(18), Margin = new Thickness(0, 0, 0, 6),
                 Child = new Viewbox { Child = board, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Center },
             };
@@ -124,19 +126,27 @@ namespace HearthStoner.Pages
             if (m.Frozen) tags.Add("Frozen");
             if (yours && !m.Exhausted && !m.Frozen && m.Attack > 0) tags.Add("ready");
             var name = d.Cards.NameOf(m.CardId);
-            return MinionToken(name, m.Attack.ToString(), m.Health.ToString(), tags, $"{name} {m.Attack}/{m.Health}");
+            return MinionToken(name, m.Attack.ToString(), m.Health.ToString(), tags, $"{name} {m.Attack}/{m.Health}", m.CardId);
         }
 
-        /// <summary>One minion: an arch with its name, attack (gold) and health (red) gems; Taunt, Shield and ready marked.</summary>
-        private static UIElement MinionToken(string name, string atk, string hp, List<string> tags, string tip)
+        /// <summary>
+        /// One minion: an arch with its card art (or its name when there's no art, as in lethal puzzles), attack
+        /// (gold) and health (red) gems; Taunt, Shield and ready marked.
+        /// </summary>
+        private static UIElement MinionToken(string name, string atk, string hp, List<string> tags, string tip, string cardId = null)
         {
+            var art = cardId != null ? ArtCache.Get(cardId) : null;
             var body = new Border
             {
                 Width = 74, Height = 90, CornerRadius = new CornerRadius(37, 37, 10, 10), Padding = new Thickness(6, 4, 6, 16),
-                Background = Theme.B(tags.Contains("Frozen") ? Theme.Rgb(0x2A, 0x4A, 0x70) : Theme.Rgb(0x2E, 0x35, 0x66)),
-                BorderBrush = Theme.B(tags.Contains("ready") ? Theme.WinC : Theme.Rgb(0x4A, 0x52, 0x90)), BorderThickness = new Thickness(2),
-                Child = new TextBlock { Text = name, FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = Theme.Vellum, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+                Background = art != null
+                    ? new ImageBrush(art) { Stretch = Stretch.UniformToFill, Viewbox = new Rect(0.2, 0.08, 0.6, 0.8) }
+                    : Theme.B(tags.Contains("Frozen") ? Theme.Rgb(0x2A, 0x4A, 0x70) : Theme.Rgb(0x2E, 0x35, 0x66)),
+                BorderBrush = Theme.B(tags.Contains("ready") ? Theme.WinC : Theme.Rgb(0x6B, 0x5A, 0x3A)), BorderThickness = new Thickness(tags.Contains("ready") ? 2.5 : 2),
+                Child = art != null ? null : new TextBlock { Text = name, FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = Theme.Vellum, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
             };
+            if (tags.Contains("ready")) body.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Theme.WinC, BlurRadius = 12, ShadowDepth = 0, Opacity = 0.7 };
+            if (art != null && tags.Contains("Frozen")) body.Opacity = 0.75;
             if (tags.Contains("Shield")) body.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0xF0, 0xE0, 0x8A), BlurRadius = 14, ShadowDepth = 0, Opacity = 1 };
             var g = new Grid { Width = 84, Height = 100, Margin = new Thickness(3, 0, 3, 0), ToolTip = tip };
             if (tags.Contains("Taunt"))

@@ -26,13 +26,17 @@ namespace HearthStoner.Pages
 
         public AppData Data { get; private set; }
         public string Current { get; private set; } = "Play";
+        /// <summary>How much room the page area has; the page is rebuilt when this changes.</summary>
+        public PageWidth Size { get; private set; } = PageWidth.Standard;
+        /// <summary>The page area's width in px (the window minus the navigation rail), for layouts that need more than <see cref="Size"/>.</summary>
+        public double PageAreaWidth => (double.IsNaN(Width) ? ActualWidth : Width) - PageLayout.RailWidth;
         /// <summary>Selected item on pages with a list (deck index, game index).</summary>
         public int SelectedDeck, SelectedGame;
         /// <summary>Replays page: which game (index into the replayable games, newest first), which frame, hidden cards shown.</summary>
         public int ReplayGame, ReplayFrame;
         public bool ReplayShowHidden;
-        /// <summary>The History list's filter chip: All, Ranked, Casual, Wins or Losses.</summary>
-        public string HistoryFilter = "All";
+        /// <summary>The History list's filter chips: a mode (All, Ranked, Casual) and a result (Any, Wins, Losses).</summary>
+        public string HistoryFilter = "All", HistoryResult = "Any";
         /// <summary>The Meta page's search text, view chip and sort column.</summary>
         public string MetaSearch = "", MetaView = "By class", MetaSort = "Games";
         /// <summary>Practice page state that lasts between redraws.</summary>
@@ -49,7 +53,8 @@ namespace HearthStoner.Pages
             TextElement.SetFontFamily(this, Theme.Body);
             TextElement.SetForeground(this, Theme.Vellum);
             Resources.MergedDictionaries.Add(Theme.Styles);
-            ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(212) });
+            ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(PageLayout.RailWidth) });
+            SizeChanged += (s, e) => Fit(e.NewSize.Width);
             ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
             var rail = new DockPanel { Background = Theme.Rail, LastChildFill = false };
@@ -74,6 +79,8 @@ namespace HearthStoner.Pages
             _season.Margin = new Thickness(0, 2, 0, 0);
             who.Children.Add(_season);
             _metaLine.Margin = new Thickness(0, 2, 0, 0);
+            _metaLine.TextWrapping = TextWrapping.Wrap;   // "Meta: Bronze to Gold, last 7 days" was cut off at the rail's edge
+            _metaLine.TextTrimming = TextTrimming.None;
             who.Children.Add(_metaLine);
             var whoBorder = new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 1, 0, 0), Child = who };
             DockPanel.SetDock(whoBorder, Dock.Bottom);
@@ -164,10 +171,26 @@ namespace HearthStoner.Pages
             Show(Current);
         }
 
+        /// <summary>Rebuilds the page when the window crosses a breakpoint (compact, standard, wide).</summary>
+        private void Fit(double shellWidth)
+        {
+            var area = shellWidth - PageLayout.RailWidth;
+            var size = PageLayout.For(area);
+            var extraWide = area >= PageLayout.ExtraWideFrom;
+            if (size == Size && extraWide == _extraWide) return;
+            Size = size;
+            _extraWide = extraWide;
+            if (Data != null) Show(Current);
+        }
+
+        private bool _extraWide;
+
         /// <summary>Switch to a page (and rebuild it from the current data).</summary>
         public void Show(string page)
         {
             Current = page;
+            // A fixed Width (the screenshot command) decides the size class before the page is built.
+            if (!double.IsNaN(Width)) Size = PageLayout.For(Width - PageLayout.RailWidth);
             if (_nav.TryGetValue(page, out var rb) && rb.IsChecked != true) rb.IsChecked = true;
             if (Data == null) { _content.Child = Loading(); return; }
             UIElement el;
@@ -214,7 +237,9 @@ namespace HearthStoner.Pages
             var g = new Grid();
             g.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            var head = new DockPanel { Margin = new Thickness(34, 24, 34, 18), LastChildFill = true };
+            // Header and body share one maximum width and are centred beyond it (WPF centres a stretched element
+            // that hits its MaxWidth), so an ultrawide window doesn't spread a page across the whole screen.
+            var head = new DockPanel { Margin = new Thickness(34, 24, 34, 18), LastChildFill = true, MaxWidth = PageLayout.MaxContent };
             if (actions.Length > 0)
             {
                 var act = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Bottom };
@@ -227,7 +252,8 @@ namespace HearthStoner.Pages
             if (!string.IsNullOrEmpty(sub)) { var s = Theme.Text(sub, 14, Theme.Dusk); s.Margin = new Thickness(0, 4, 0, 0); titles.Children.Add(s); }
             head.Children.Add(titles);
             g.Children.Add(head);
-            var scroll = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(34, 0, 26, 26), Focusable = false };
+            var inner = new Border { Child = body, MaxWidth = PageLayout.MaxContent };
+            var scroll = new ScrollViewer { Content = inner, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(34, 0, 26, 26), Focusable = false };
             SetRow(scroll, 1);
             g.Children.Add(scroll);
             return g;
@@ -239,7 +265,7 @@ namespace HearthStoner.Pages
             var g = Page(title, sub, new Grid(), actions);
             var scroll = g.Children.OfType<ScrollViewer>().First();
             g.Children.Remove(scroll);
-            var holder = new Border { Child = body, Padding = new Thickness(34, 0, 26, 18) };
+            var holder = new Border { Child = new Border { Child = body, MaxWidth = PageLayout.MaxContent }, Padding = new Thickness(34, 0, 26, 18) };
             SetRow(holder, 1);
             g.Children.Add(holder);
             return g;

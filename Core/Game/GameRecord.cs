@@ -116,6 +116,11 @@ namespace HearthStoner.Game
 
         [JsonIgnore] public bool Won => Result == "WON";
         [JsonIgnore] public bool Decided => Result == "WON" || Result == "LOST";
+        /// <summary>
+        /// The deck's name for tables: your saved deck's name, else its archetype, else "Paladin, deck not saved"
+        /// (a bare "Paladin" next to "Aura Paladin" read like a deck of its own).
+        /// </summary>
+        [JsonIgnore] public string DeckLabel => DeckName ?? MyArchetype ?? MetaStats.ClassName(MyClass) + ", deck not saved";
         [JsonIgnore] public TimeSpan Duration => End - Start;
 
         public static string Dir

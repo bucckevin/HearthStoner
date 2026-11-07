@@ -79,6 +79,33 @@ namespace HearthStoner.Pages
         public static int FrameOf(ReviewNote n, Replay r) =>
             n.Frame >= 0 && n.Frame < r.Frames.Count ? n.Frame : r.TurnStarts.TryGetValue(n.Turn, out var i) ? i : 0;
 
+        /// <summary>
+        /// The advice sections in cards: each main section (the opponent, you, their deck, the board) starts a card
+        /// and its small sub-sections (still in their deck, hand) stay in it, so the long column reads in groups.
+        /// </summary>
+        private static UIElement AdviceCards(IEnumerable<AdviceSection> sections)
+        {
+            var p = new StackPanel();
+            StackPanel card = null;
+            AdviceSection previous = null;
+            foreach (var sec in sections)
+            {
+                // A sub-section about the other player ("their deck" after your own header) starts its own card too.
+                if (card == null || !sec.Minor || sec.Opponent != previous?.Opponent)
+                {
+                    card = new StackPanel();
+                    p.Children.Add(new Border
+                    {
+                        Child = card, Background = Theme.B(Theme.SlateC, 0.7), BorderBrush = Theme.Line, BorderThickness = new Thickness(1),
+                        CornerRadius = new CornerRadius(8), Padding = new Thickness(10, 8, 10, 10), Margin = new Thickness(0, 0, 0, 8),
+                    });
+                }
+                SectionView.Fill(card, new[] { sec }, true, true, 14);
+                previous = sec;
+            }
+            return p;
+        }
+
         public static UIElement Build(AppShell shell)
         {
             var d = shell.Data;
@@ -152,7 +179,7 @@ namespace HearthStoner.Pages
 
             // Controls + timeline under the board.
             var controls = new StackPanel { Margin = new Thickness(0, 10, 0, 0) };
-            var buttons = new StackPanel { Orientation = Orientation.Horizontal };
+            var buttons = new WrapPanel();   // in a narrow window the position text wraps instead of being cut off
             Button B(string text, Action a, string tip, bool primary = false) { var b = Theme.Button(text, a, primary); b.ToolTip = tip; b.Margin = new Thickness(0, 0, 6, 0); b.MinWidth = 42; return b; }
             buttons.Children.Add(B("⏮", () => Turn(-1), "Previous turn (Up)"));
             buttons.Children.Add(B("◀", () => Go(shell.ReplayFrame - 1), "Step back (Left)"));
@@ -206,11 +233,19 @@ namespace HearthStoner.Pages
             adviceTitle.Inlines.Add(new System.Windows.Documents.Run(AppShell.Pct(chanceNow)) { Foreground = chanceNow >= 0.5 ? Theme.Win : Theme.Loss });
             adviceTitle.Inlines.Add(new System.Windows.Documents.Run(" TO WIN"));
             side.Children.Add(adviceTitle);
-            var advice = new StackPanel();
             // Your deck list is long and not what the replay is about: leave it out here.
-            SectionView.Fill(advice, r.AdviceAt(shell.ReplayFrame).Where(s => !s.Lower || s.Opponent), true, true, 14);
-            side.Children.Add(advice);
+            side.Children.Add(AdviceCards(r.AdviceAt(shell.ReplayFrame).Where(s => !s.Lower || s.Opponent)));
             var sideScroll = new ScrollViewer { Content = side, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false };
+            // The side panel's text is drawn at the overlay's glance-in-game sizes; here you sit back and read it,
+            // so it's scaled up a little, and more on a wide screen where the column is wider too.
+            var (sideWidth, sideScale) = shell.Size switch
+            {
+                PageWidth.Wide => (400.0, 1.2),
+                PageWidth.Compact => (280.0, 1.0),
+                _ => (330.0, 1.1),
+            };
+            body.ColumnDefinitions[2].Width = new GridLength(sideWidth);
+            side.LayoutTransform = new ScaleTransform(sideScale, sideScale);
             Grid.SetColumn(sideScroll, 2);
             Grid.SetRowSpan(sideScroll, 2);
             body.Children.Add(sideScroll);
