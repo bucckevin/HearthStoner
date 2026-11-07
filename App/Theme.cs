@@ -295,7 +295,7 @@ namespace HearthStoner
                 var text = VellumC.R | (VellumC.G << 8) | (VellumC.B << 16);
                 DwmSetWindowAttribute(hwnd, 36, ref text, sizeof(int));                  // DWMWA_TEXT_COLOR
             }
-            catch { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "Theme"); }
         }
 
         [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);

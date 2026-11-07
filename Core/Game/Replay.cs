@@ -109,7 +109,7 @@ namespace HearthStoner
                 }
                 if (ev.Kind == GameEventKind.Turn)
                 {
-                    try { r.AdviceByTurn[t.Turn] = advisor.Compute().Sections; } catch { }
+                    try { r.AdviceByTurn[t.Turn] = advisor.Compute().Sections; } catch (Exception swallowed) { Diag.Ignored(swallowed, "Replay"); }
                     r.TurnStarts[t.Turn] = r.Frames.Count;
                 }
                 if (!string.IsNullOrEmpty(ev.Text) && ev.Kind != GameEventKind.Info) pending.Add(ev.Text);
@@ -238,7 +238,7 @@ namespace HearthStoner
             var f = new Frame { Turn = t.Turn, YourTurn = t.IsFriendlyTurn, Mulligan = t.InMulligan };
             f.You = SideOf(t, t.FriendlyPlayerId, null);
             List<HandMark> marks = null;
-            try { marks = advisor.OpponentHandMarks(); } catch { }
+            try { marks = advisor.OpponentHandMarks(); } catch (Exception swallowed) { Diag.Ignored(swallowed, "Replay"); }
             f.Them = SideOf(t, t.OpponentPlayerId, marks);
             return f;
         }

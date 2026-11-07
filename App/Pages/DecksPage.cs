@@ -97,7 +97,7 @@ namespace HearthStoner
                 if (st.ImportedDecks.Any(x => x.Code == code) || shell.Data.Decks.Any(x => x.Code == code)) { shell.Status?.Invoke("That deck is already in your list."); return; }
                 var count = st.ImportedDecks.Count + 1;
                 st.ImportedDecks.Add(new ImportedDeck { Name = string.IsNullOrWhiteSpace(name) ? $"Pasted deck {count}" : name, Code = code });
-                try { st.Save(); } catch { }
+                try { st.Save(); } catch (Exception swallowed) { Diag.Ignored(swallowed, "DecksPage"); }
                 shell.SelectedDeck = int.MaxValue;   // select it once the data reloads (clamped to the last deck)
                 shell.ReloadRequested?.Invoke();
             }, primary: false);
@@ -110,7 +110,7 @@ namespace HearthStoner
         {
             var st = shell.Data.Services.Settings;
             st.ImportedDecks.RemoveAll(x => x.Code == deck.Code);
-            try { st.Save(); } catch { }
+            try { st.Save(); } catch (Exception swallowed) { Diag.Ignored(swallowed, "DecksPage"); }
             shell.SelectedDeck = 0;
             shell.ReloadRequested?.Invoke();
         }

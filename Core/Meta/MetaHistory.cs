@@ -50,7 +50,7 @@ namespace HearthStoner
                 path = path ?? FilePath;
                 if (File.Exists(path)) return JsonConvert.DeserializeObject<MetaHistory>(File.ReadAllText(path)) ?? new MetaHistory();
             }
-            catch { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "MetaHistory"); }
             return new MetaHistory();
         }
 
@@ -62,7 +62,7 @@ namespace HearthStoner
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
                 File.WriteAllText(path, JsonConvert.SerializeObject(this, Formatting.Indented));
             }
-            catch { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "MetaHistory"); }
         }
 
         public static Snapshot Take(MetaStats meta, IEnumerable<DeckPlanner.DeckPick> picks, DateTime day)

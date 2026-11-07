@@ -75,7 +75,7 @@ namespace HearthStoner
                         _turn.OpponentGuess = guess.Name;
                         _turn.OpponentGuessProbability = guess.Probability;
                     }
-                    catch { }
+                    catch (Exception swallowed) { Diag.Ignored(swallowed, "GameRecorder"); }
                     break;
 
                 case GameEventKind.Play:

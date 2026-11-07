@@ -1,6 +1,6 @@
 # HearthStoner
 
-A Windows console app that reads your Hearthstone data, no Hearthstone Deck Tracker required:
+A Windows console app that reads your Hearthstone data:
 
 - **Collection, decks, account and match info** straight from game memory, using [UnitySpy](https://github.com/Zero-to-Heroes/unity-spy-.net4.5) (MIT). That's the open-source HearthMirror replacement maintained by the Firestone tracker, vendored in `vendor/`.
 - **Live gameplay** (draws, plays, deaths, turns, results, cards left in your deck) from Hearthstone's `Power.log`, combined with memory reads.

@@ -23,7 +23,11 @@ namespace HearthStoner
         /// <returns>The exit code.</returns>
         private static int Watch(string hsPath, bool overlay, bool tips, string rank, string period, bool app = false, bool minimized = false)
         {
-            if (app) ConsoleToLogFile();
+            if (app)
+            {
+                ConsoleToLogFile();
+                Diag.SetSink(Console.Error.WriteLine);   // the app always keeps caught errors in hearthstoner.log
+            }
             var install = PrepareInstall(hsPath);
             var settings = Settings.Load();
             var cards = CardDb.Load();

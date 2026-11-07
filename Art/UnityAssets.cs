@@ -113,7 +113,7 @@ namespace HearthStoner.Art
                 if (f.file.Metadata.TypeTreeEnabled && f.file.Metadata.FindTypeTreeTypeByID(typeId) != null)
                 {
                     try { Am.GetTemplateBaseField(f, f.file.Reader, 0, typeId, 0xffff, AssetReadFlags.None); return true; }
-                    catch (Exception) { }
+                    catch (Exception swallowed) { Diag.Ignored(swallowed, "UnityAssets"); }
                 }
             return false;
         }
@@ -202,7 +202,7 @@ namespace HearthStoner.Art
                     var o = go.Deref(c["component"]);
                     if (o != null) list.Add((scripts ? ClassName(o) : TypeName(o), o));
                 }
-                catch (Exception) { }
+                catch (Exception swallowed) { Diag.Ignored(swallowed, "UnityAssets"); }
             }
             return list;
         }
@@ -239,7 +239,7 @@ namespace HearthStoner.Art
                         var t = TransformOf(o);
                         if (t != null && t.F["m_Father"]["m_PathID"].AsLong == 0) return (o, t);
                     }
-                    catch (Exception) { }
+                    catch (Exception swallowed) { Diag.Ignored(swallowed, "UnityAssets"); }
                 }
             throw new KeyNotFoundException($"root {name} not found");
         }

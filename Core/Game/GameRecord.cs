@@ -154,7 +154,7 @@ namespace HearthStoner
                     if (string.IsNullOrEmpty(r.GameType)) Relabel(r, f);
                     list.Add(r);
                 }
-                catch { }
+                catch (Exception swallowed) { Diag.Ignored(swallowed, "GameRecord"); }
             }
             return list.OrderBy(r => r.Start).ToList();
         }
@@ -173,7 +173,7 @@ namespace HearthStoner
                 if (!GameModes.IsCardGame(r.GameType)) { r.Snapshots.Clear(); r.Mulligan.Clear(); r.Discovers.Clear(); r.Review.Clear(); }
                 File.WriteAllText(file, JsonConvert.SerializeObject(r, Formatting.Indented));
             }
-            catch { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "GameRecord"); }
         }
     }
 }

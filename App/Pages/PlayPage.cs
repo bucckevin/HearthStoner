@@ -101,7 +101,7 @@ namespace HearthStoner
         public static Button CopyButton(string code, AppData d, bool primary = true) =>
             Theme.Button("Copy deck code", () =>
             {
-                try { Clipboard.SetText(code ?? ""); } catch { }
+                try { Clipboard.SetText(code ?? ""); } catch (Exception swallowed) { Diag.Ignored(swallowed, "PlayPage"); }
             }, primary);
 
         // ------------------------------------------------------------------ the other decks

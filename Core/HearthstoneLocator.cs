@@ -27,7 +27,7 @@ namespace HearthStoner
                         if (!string.IsNullOrEmpty(loc) && Directory.Exists(loc)) return loc;
                     }
                 }
-                catch { /* keep looking */ }
+                catch (Exception swallowed) { Diag.Ignored(swallowed, "HearthstoneLocator"); /* keep looking */ }
             }
 
             var defaults = new[]

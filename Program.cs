@@ -83,6 +83,7 @@ Options:
             var turnOpt = TakeOption(args, "--turn");
             var noStart = TakeFlag(args, "--no-start");
             var yes = TakeFlag(args, "--yes");
+            Diag.SetSink(msg => Log("[ignored] " + msg));   // command line: caught errors show with --verbose
 
             // Double-clicked from outside the install folder (e.g. Downloads): offer to install.
             if (args.Count == 0 && !Installer.IsInstalledCopy && Installer.OwnConsole)

@@ -34,7 +34,7 @@ namespace HearthStoner
                     if (cur != null && cur != Command) k.SetValue(Name, Command);
                 }
             }
-            catch { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "AppHost"); }
         }
 
         public static void Set(bool on)
@@ -47,7 +47,7 @@ namespace HearthStoner
                     else if (k.GetValue(Name) != null) k.DeleteValue(Name);
                 }
             }
-            catch { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "AppHost"); }
         }
     }
 
@@ -116,13 +116,13 @@ namespace HearthStoner
                 var res = Application.GetResourceStream(new Uri("pack://application:,,,/HearthStoner;component/App/hearthstoner.ico"));
                 if (res != null) using (res.Stream) return new System.Drawing.Icon(res.Stream, System.Windows.Forms.SystemInformation.SmallIconSize);
             }
-            catch { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "AppHost"); }
             try
             {
                 var exe = Process.GetCurrentProcess().MainModule?.FileName;
                 if (exe != null) return System.Drawing.Icon.ExtractAssociatedIcon(exe) ?? System.Drawing.SystemIcons.Application;
             }
-            catch { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "AppHost"); }
             return System.Drawing.SystemIcons.Application;
         }
     }

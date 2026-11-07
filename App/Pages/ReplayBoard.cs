@@ -1174,7 +1174,7 @@ namespace HearthStoner
                         img = bi;
                     }
                 }
-                catch { }
+                catch (Exception swallowed) { Diag.Ignored(swallowed, "ReplayBoard"); }
                 Cache[key] = img;
                 return img;
             }

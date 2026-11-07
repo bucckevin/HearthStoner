@@ -88,14 +88,14 @@ namespace HearthStoner
                 return 0;
             CloseRunningCopies();
             foreach (var lnk in new[] { Path.Combine(StartMenu, Name + ".lnk"), Path.Combine(Desktop, Name + ".lnk") })
-                try { File.Delete(lnk); } catch { }
-            try { Registry.CurrentUser.DeleteSubKeyTree(UninstallKey, throwOnMissingSubKey: false); } catch { }
+                try { File.Delete(lnk); } catch (Exception swallowed) { Diag.Ignored(swallowed, "Installer"); }
+            try { Registry.CurrentUser.DeleteSubKeyTree(UninstallKey, throwOnMissingSubKey: false); } catch (Exception swallowed) { Diag.Ignored(swallowed, "Installer"); }
             try
             {
                 using (var k = Registry.CurrentUser.OpenSubKey(RunKey, writable: true))
                     if (k?.GetValue(Name) != null) k.DeleteValue(Name);
             }
-            catch { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "Installer"); }
             // This exe may be the one in the folder: a cmd outside it deletes the folder once this process has ended.
             if (File.Exists(Exe))
                 Process.Start(new ProcessStartInfo("cmd.exe", $"/c ping -n 4 127.0.0.1 >nul & rmdir /s /q \"{Dir}\"")
@@ -131,7 +131,7 @@ namespace HearthStoner
                     p.Kill();
                     p.WaitForExit(5000);
                 }
-                catch { }
+                catch (Exception swallowed) { Diag.Ignored(swallowed, "Installer"); }
             }
         }
 

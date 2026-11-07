@@ -80,7 +80,7 @@ namespace HearthStoner
                 }
                 catch
                 {
-                    try { File.Delete(file); } catch { }       // corrupt download: fetch it again
+                    try { File.Delete(file); } catch (Exception swallowed) { Diag.Ignored(swallowed, "CardTiles"); }       // corrupt download: fetch it again
                 }
             }
 

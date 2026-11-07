@@ -50,7 +50,7 @@ namespace HearthStoner
         {
             _svc = svc;
             Title = "HearthStoner";
-            try { Icon = BitmapFrame.Create(new Uri("pack://application:,,,/HearthStoner;component/App/hearthstoner.ico")); } catch { }
+            try { Icon = BitmapFrame.Create(new Uri("pack://application:,,,/HearthStoner;component/App/hearthstoner.ico")); } catch (Exception swallowed) { Diag.Ignored(swallowed, "MainWindow"); }
             // Roomy by default (the replay board grows with the window), within the screen.
             var work = SystemParameters.WorkArea;
             Width = Math.Min(1640, work.Width * 0.92); Height = Math.Min(1100, work.Height * 0.92);

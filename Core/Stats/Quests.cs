@@ -86,7 +86,7 @@ namespace HearthStoner
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path));
                 File.WriteAllText(Path, JsonConvert.SerializeObject(this, Formatting.Indented));
             }
-            catch { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "Quests"); }
         }
 
         public static QuestLog Load()
@@ -100,7 +100,7 @@ namespace HearthStoner
                     return log;
                 }
             }
-            catch { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "Quests"); }
             return null;
         }
     }

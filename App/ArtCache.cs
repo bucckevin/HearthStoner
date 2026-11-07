@@ -52,7 +52,7 @@ namespace HearthStoner
                     lock (Lock) Loaded[cardId] = img;
                     return img;
                 }
-                catch { try { File.Delete(file); } catch { } }
+                catch { try { File.Delete(file); } catch (Exception swallowed) { Diag.Ignored(swallowed, "ArtCache"); } }
             }
             lock (Lock) { if (Failed.Contains(cardId) || !Pending.Add(cardId)) return null; }
             Task.Run(() => Download(cardId, file));

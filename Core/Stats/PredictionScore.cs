@@ -60,7 +60,7 @@ namespace HearthStoner
             Advisor advisor = null;
             tracker = new GameTracker(cards, ev =>
             {
-                if (ev.Kind == GameEventKind.Turn) { try { guesses[tracker.Turn] = advisor.TopOpponentArchetype(); } catch { } }
+                if (ev.Kind == GameEventKind.Turn) { try { guesses[tracker.Turn] = advisor.TopOpponentArchetype(); } catch (Exception swallowed) { Diag.Ignored(swallowed, "PredictionScore"); } }
             });
             advisor = new Advisor(tracker, cards, meta, new Settings());
             foreach (var l in lines) tracker.Feed(l);

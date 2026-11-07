@@ -95,7 +95,7 @@ namespace HearthStoner
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path));
                 File.WriteAllText(Path, JsonConvert.SerializeObject(this, Formatting.Indented));
             }
-            catch { /* settings are best-effort */ }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "Settings"); /* settings are best-effort */ }
         }
     }
 

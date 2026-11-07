@@ -30,13 +30,13 @@ namespace HearthStoner
         private static State Load()
         {
             try { if (File.Exists(StatePath)) return JsonConvert.DeserializeObject<State>(File.ReadAllText(StatePath)) ?? new State(); }
-            catch { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "UpdateCheck"); }
             return new State();
         }
 
         private static void Save(State s)
         {
-            try { File.WriteAllText(StatePath, JsonConvert.SerializeObject(s, Formatting.Indented)); } catch { }
+            try { File.WriteAllText(StatePath, JsonConvert.SerializeObject(s, Formatting.Indented)); } catch (Exception swallowed) { Diag.Ignored(swallowed, "UpdateCheck"); }
         }
 
         /// <summary>Once a day: is there a newer UnitySpy upstream? Returns a message, or null.</summary>

@@ -72,7 +72,7 @@ namespace HearthStoner
                 var m = Regex.Match(Encoding.ASCII.GetString(db), @"\b\d+\.\d+\.\d+\.\d{4,}\b");
                 if (m.Success) return m.Value;
             }
-            catch (Exception) { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "GameArtBuilder"); }
             try
             {
                 foreach (var f in new DirectoryInfo(Path.Combine(hearthstoneDir, "Data", "config")).EnumerateFiles("*", SearchOption.AllDirectories)
@@ -82,7 +82,7 @@ namespace HearthStoner
                     if (m.Success) return m.Groups[2].Value + "." + m.Groups[1].Value;
                 }
             }
-            catch (Exception) { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "GameArtBuilder"); }
             try
             {
                 // else when the game data last changed
@@ -126,7 +126,7 @@ namespace HearthStoner
                             var name = ua.PeekName(o);
                             if (name != null && want.Contains(name) && !found.ContainsKey(name)) found[name] = ua.ReadTexture(o);
                         }
-                        catch (Exception) { }
+                        catch (Exception swallowed) { Diag.Ignored(swallowed, "GameArtBuilder"); }
                     }
             }
             return found;
@@ -313,7 +313,7 @@ namespace HearthStoner
                         Boards = j["boards"].Select(b => ((string)b[0], (string)b[1])).ToList(),
                     };
             }
-            catch (Exception) { }
+            catch (Exception swallowed) { Diag.Ignored(swallowed, "GameArtBuilder"); }
 
             var idx = new Index { Stamp = stamp };
             for (int i = 0; i < files.Length; i++)
@@ -340,7 +340,7 @@ namespace HearthStoner
                                 if (!gos.TryGetValue(n, out var l)) { gos[n] = l = new List<UObj>(); order.Add(n); }
                                 l.Add(o);
                             }
-                            catch (Exception) { }
+                            catch (Exception swallowed) { Diag.Ignored(swallowed, "GameArtBuilder"); }
                         }
                     if (gos.ContainsKey("BoardCameras")) idx.Camera = name;
                     if (!gos.ContainsKey("PlaySurface1")) continue;

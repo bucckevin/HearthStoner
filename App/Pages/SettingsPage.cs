@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -15,7 +15,7 @@ namespace HearthStoner
         public static UIElement Build(AppShell shell)
         {
             var st = shell.Data.Services.Settings ?? new Settings();
-            void Save() { try { st.Save(); } catch { } }
+            void Save() { try { st.Save(); } catch (Exception swallowed) { Diag.Ignored(swallowed, "SettingsPage"); } }
             var p = new StackPanel { MaxWidth = 760, HorizontalAlignment = HorizontalAlignment.Left };
 
             Group(p, "Overlay", "Panel and layout changes apply the next time the overlay starts; the rest apply right away.");
@@ -154,8 +154,8 @@ namespace HearthStoner
 
             Group(p, "Files", null);
             var files = new StackPanel { Orientation = Orientation.Horizontal };
-            var openSettings = Theme.Button("Open settings file", () => { try { Process.Start(new ProcessStartInfo(Settings.Path) { UseShellExecute = true }); } catch { } }, primary: false);
-            var openFolder = Theme.Button("Open data folder", () => { try { Process.Start(new ProcessStartInfo(Path.GetDirectoryName(Settings.Path)) { UseShellExecute = true }); } catch { } }, primary: false);
+            var openSettings = Theme.Button("Open settings file", () => { try { Process.Start(new ProcessStartInfo(Settings.Path) { UseShellExecute = true }); } catch (Exception swallowed) { Diag.Ignored(swallowed, "SettingsPage"); } }, primary: false);
+            var openFolder = Theme.Button("Open data folder", () => { try { Process.Start(new ProcessStartInfo(Path.GetDirectoryName(Settings.Path)) { UseShellExecute = true }); } catch (Exception swallowed) { Diag.Ignored(swallowed, "SettingsPage"); } }, primary: false);
             openFolder.Margin = new Thickness(8, 0, 0, 0);
             files.Children.Add(openSettings);
             files.Children.Add(openFolder);
