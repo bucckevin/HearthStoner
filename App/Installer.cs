@@ -60,6 +60,9 @@ namespace HearthStoner
                     catch (IOException) when (i < 20) { Thread.Sleep(500); }
                 }
             }
+            // This exe and the installed copy are the same build, so they share an unpack folder; older builds' folders go.
+            var removed = ExtractedFiles.RemoveStale(ExtractedFiles.AppFolder(Name), ExtractedFiles.InUse());
+            if (removed > 0) Console.WriteLine($"Removed {removed} old unpacked cop{(removed == 1 ? "y" : "ies")} from {ExtractedFiles.AppFolder(Name)}.");
             Directory.CreateDirectory(StartMenu);
             Directory.CreateDirectory(Desktop);
             Shortcut(Path.Combine(StartMenu, Name + ".lnk"));
