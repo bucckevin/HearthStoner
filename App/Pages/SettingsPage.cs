@@ -20,7 +20,7 @@ namespace HearthStoner.Pages
 
             Group(p, "Overlay", "Panel and layout changes apply the next time the overlay starts; the rest apply right away.");
             p.Children.Add(Choice("Where the panels go", "Both at the right edge suits wide screens.",
-                new[] { ("right", "Right"), ("left", "Left"), ("split", "Opponent left, you right") }, st.Layout ?? "right", v => { st.Layout = v; Save(); }));
+                new[] { ("left", "Left"), ("right", "Right"), ("split", "Opponent left, you right") }, st.Layout ?? "right", v => { st.Layout = v; Save(); }));
             p.Children.Add(Choice("Panel background", null,
                 new[] { ("0.6", "Light"), ("0.82", "Medium"), ("0.95", "Solid") }, Closest(st.OverlayOpacity, 0.6, 0.82, 0.95), v => { st.OverlayOpacity = double.Parse(v, System.Globalization.CultureInfo.InvariantCulture); Save(); }));
             p.Children.Add(Toggle("Card art in lists", null, st.CardArt, v => { st.CardArt = v; Save(); }));

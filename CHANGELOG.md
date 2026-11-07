@@ -3,6 +3,10 @@
 Every installed version, newest first. The number is in `VERSION`: patch (1.0.x) for fixes, minor (1.x.0) for new
 features, major (x.0.0) for big changes, such as a new data format. Each version is tagged in git as `v<number>`.
 
+## 1.0.2 - 2026-11-07
+
+- Settings: "Where the panels go" now reads Left, Right, then Opponent left, you right (Right is still the default).
+
 ## 1.0.1 - 2026-11-07
 
 - The version shows just the number and build date, without the git commit.
