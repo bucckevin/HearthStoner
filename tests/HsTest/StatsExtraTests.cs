@@ -29,6 +29,7 @@ namespace HearthStoner.Tests
             Assert.Equal(1.0, s.Rounds[1].Accuracy);   // round 2 (turns 3-4): only the first game reached it, and it was right
         }
 
+        [Trait("Category", TestData.MyGames)]
         [Fact]
         public void Backfilled_guesses_match_what_the_recorder_saves_live()
         {
@@ -70,9 +71,11 @@ namespace HearthStoner.Tests
     {
         private static string AnyCode() => DecksLog.SavedDecks(TestData.InstallDir).First(d => d.DeckCode != null && (DeckCode.Decode(d.DeckCode, TestData.Cards)?.Count ?? 0) > 0).DeckCode;
 
+        [Trait("Category", TestData.MyGames)]
         [Fact]
         public void Finds_a_bare_code() => Assert.Equal(AnyCode(), DeckCode.FindCode("  " + AnyCode() + "  ", TestData.Cards, out _));
 
+        [Trait("Category", TestData.MyGames)]
         [Fact]
         public void Finds_the_code_and_name_in_hearthstones_copy_text()
         {

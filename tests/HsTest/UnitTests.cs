@@ -70,6 +70,7 @@ namespace HearthStoner.Tests
         [Fact]
         public void Etc_adds_nothing() => Assert.Equal(0, DeckCode.CopiesJoining(TestData.Cards.ById("ETC_080")?.Text));
 
+        [Trait("Category", TestData.MyGames)]
         [Fact]
         public void Saved_decks_round_trip()
         {

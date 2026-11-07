@@ -5,6 +5,7 @@ using Xunit;
 
 namespace HearthStoner.Tests
 {
+    [Trait("Category", TestData.MyGames)]
     public class GameLogStoreTests
     {
         private static string Log(string folder) => Path.Combine(TestData.InstallDir, "Logs", folder, "Power.log");

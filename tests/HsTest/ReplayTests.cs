@@ -5,6 +5,7 @@ using Xunit.Abstractions;
 
 namespace HearthStoner.Tests
 {
+    [Trait("Category", TestData.MyGames)]
     public class ReplayTests
     {
         private readonly ITestOutputHelper _out;

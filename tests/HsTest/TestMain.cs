@@ -11,6 +11,13 @@ namespace HearthStoner.Tests
     /// </summary>
     public static class TestData
     {
+        /// <summary>
+        /// Trait value for tests that replay your own Hearthstone logs and saved games. Their inputs grow as you play;
+        /// every other test uses fixed inputs (plus the card database). Run just one group with
+        /// <c>dotnet test --filter Category=MyGames</c> or <c>--filter Category!=MyGames</c>.
+        /// </summary>
+        public const string MyGames = "MyGames";
+
         public static readonly string Root = FindRoot();
         public static readonly string InstallDir;
         public static readonly CardDb Cards;

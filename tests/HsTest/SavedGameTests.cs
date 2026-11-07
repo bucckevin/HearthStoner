@@ -13,6 +13,7 @@ namespace HearthStoner.Tests
     /// game's rules (hand, board and mana limits). A Hearthstone patch that changes the log shows up here as soon as
     /// you've played a game with it. The test set grows with every game you play.
     /// </summary>
+    [Trait("Category", TestData.MyGames)]
     public class SavedGameTests
     {
         public static IEnumerable<object[]> Games()

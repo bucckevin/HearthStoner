@@ -42,6 +42,7 @@ namespace HearthStoner.Tests
             Assert.Equal(new[] { true, false, false }, s.Recent);
         }
 
+        [Trait("Category", TestData.MyGames)]
         [Fact]
         public void Each_deck_gets_its_own_signature_card()
         {

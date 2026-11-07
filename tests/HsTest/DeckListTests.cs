@@ -7,6 +7,7 @@ namespace HearthStoner.Tests
     /// <summary>The deck list the overlay draws, checked against a real game replayed to turn 10.</summary>
     public class DeckListTests
     {
+        [Trait("Category", TestData.MyGames)]
         [Fact]
         public void Deck_list_matches_the_game_at_turn_10()
         {
@@ -59,6 +60,7 @@ namespace HearthStoner.Tests
         }
 
         /// <summary>At every turn of every saved game, the cards we think are left never outnumber the real deck.</summary>
+        [Trait("Category", TestData.MyGames)]
         [Fact]
         public void Known_remaining_cards_never_exceed_the_deck()
         {
@@ -88,6 +90,7 @@ namespace HearthStoner.Tests
         }
 
         /// <summary>A session with two games on different decks: each game gets the deck queued just before it.</summary>
+        [Trait("Category", TestData.MyGames)]
         [Fact]
         public void Each_game_gets_the_deck_queued_before_it()
         {

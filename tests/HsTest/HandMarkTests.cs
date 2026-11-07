@@ -7,6 +7,7 @@ namespace HearthStoner.Tests
     /// <summary>The opponent hand marks, checked at the start of every turn of every saved game.</summary>
     public class HandMarkTests
     {
+        [Trait("Category", TestData.MyGames)]
         [Fact]
         public void Marks_match_the_opponents_hand_every_turn()
         {
@@ -49,6 +50,7 @@ namespace HearthStoner.Tests
     public class OpponentPlayedTests
     {
         /// <summary>Every card the opponent played is named once the game is over (cards played are public).</summary>
+        [Trait("Category", TestData.MyGames)]
         [Fact]
         public void Opponent_plays_are_named()
         {
@@ -92,6 +94,7 @@ namespace HearthStoner.Tests
     public class PlayerNameTests
     {
         /// <summary>The health strips show both players' names (no BattleTag number) once the game reveals them.</summary>
+        [Trait("Category", TestData.MyGames)]
         [Fact]
         public void Health_strips_use_player_names()
         {

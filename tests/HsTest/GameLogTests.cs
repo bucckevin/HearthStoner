@@ -10,6 +10,7 @@ namespace HearthStoner.Tests
     /// advisor and recorder and checks each game (you found, names matched, advice every turn, deck tracked,
     /// mana sane, game recorded). Fails with the FAIL lines in the message.
     /// </summary>
+    [Trait("Category", TestData.MyGames)]
     public class GameLogTests
     {
         private readonly ITestOutputHelper _out;
