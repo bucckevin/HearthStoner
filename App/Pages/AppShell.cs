@@ -301,6 +301,17 @@ namespace HearthStoner.Pages
             return p;
         }
 
+        /// <summary>A thin rounded bar filled to <paramref name="fraction"/> (0 to 1).</summary>
+        public static Border StatBar(double fraction, Brush fill, double height = 5)
+        {
+            var f = Math.Max(0, Math.Min(1, fraction));
+            var g = new Grid { Height = height };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.0001, f), GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.0001, 1 - f), GridUnitType.Star) });
+            g.Children.Add(new Border { Background = fill, CornerRadius = new CornerRadius(height / 2) });
+            return new Border { CornerRadius = new CornerRadius(height / 2), Background = Theme.Raised, Child = g, ClipToBounds = true };
+        }
+
         /// <summary>Small grey capitals, e.g. a table's column headings.</summary>
         public static TextBlock ColumnLabel(string text, TextAlignment align = TextAlignment.Left) => new TextBlock
         {

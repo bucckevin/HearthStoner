@@ -23,9 +23,19 @@ namespace HearthStoner.Stats
             public Dictionary<string, int> Added = new Dictionary<string, int>(), Removed = new Dictionary<string, int>();
         }
 
+        /// <summary>Wins and losses against one opponent class.</summary>
+        public sealed class Record
+        {
+            public int Wins, Losses;
+            public int Games => Wins + Losses;
+            public double WinRate => Games == 0 ? 0 : (double)Wins / Games;
+        }
+
         public PlayerDeck Deck;
         /// <summary>Oldest first.</summary>
         public List<Version> Versions = new List<Version>();
+        /// <summary>Every version's games together, by opponent class ("?" when unknown).</summary>
+        public Dictionary<string, Record> ByOpponent = new Dictionary<string, Record>();
 
         /// <summary>Lists that share at least this many cards count as the same deck when the names differ.</summary>
         public const int SameDeckOverlap = 24;
@@ -87,6 +97,9 @@ namespace HearthStoner.Stats
                 }
                 ver.Last = g.Start;
                 if (g.Won) ver.Wins++; else ver.Losses++;
+                var cls = string.IsNullOrEmpty(g.OpponentClass) ? "?" : g.OpponentClass;
+                if (!v.ByOpponent.TryGetValue(cls, out var rec)) v.ByOpponent[cls] = rec = new Record();
+                if (g.Won) rec.Wins++; else rec.Losses++;
             }
             var current = Built(deck.Cards, cards);
             var currentKey = Key(current);

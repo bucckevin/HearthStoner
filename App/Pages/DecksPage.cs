@@ -181,7 +181,16 @@ namespace HearthStoner.Pages
             else
             {
                 if (plan.Swaps.Count == 0) right.Children.Add(Theme.Text("Your list lines up with what wins in this archetype.", 13.5, Theme.Win, wrap: true));
-                foreach (var sw in plan.Swaps) right.Children.Add(SwapRow(sw, plan, d));
+                // Full swaps first; cards with no better option you own get their own heading instead of an arrow to nothing.
+                var swaps = plan.Swaps.Where(sw => sw.InId != null).ToList();
+                var weak = plan.Swaps.Where(sw => sw.InId == null && sw.OutId != null).ToList();
+                if (swaps.Count > 0 && weak.Count > 0) right.Children.Add(SmallHeading("Swap"));
+                foreach (var sw in swaps) right.Children.Add(SwapRow(sw, plan, d));
+                if (weak.Count > 0)
+                {
+                    right.Children.Add(SmallHeading("Weakest cards, nothing better you own"));
+                    foreach (var sw in weak) right.Children.Add(WeakRow(sw, plan, d));
+                }
                 var note = Theme.Text($"Win rate in games where the card was drawn, against the archetype's {AppShell.Pct(plan.Baseline, 1)}.", 12, Theme.Dusk, wrap: true);
                 note.Margin = new Thickness(0, 4, 0, 0);
                 right.Children.Add(note);
@@ -227,10 +236,63 @@ namespace HearthStoner.Pages
                 g.Children.Add(rec);
                 p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(0, 0, 0, 8), Child = g });
             }
+            if (v.ByOpponent.Count > 0) p.Children.Add(ByOpponent(v));
             var few = v.Versions.Where(x => x.Games > 0).Sum(x => x.Games) < 20;
             var note = Theme.Text(few ? "From your recorded games. A handful of games per version is mostly luck; the gap means more after 20 or so." : "From your recorded games.", 12, Theme.Dusk, wrap: true);
             p.Children.Add(note);
             return p;
+        }
+
+        /// <summary>Under this many games a matchup is greyed and labelled "few", so 0-2 doesn't look like a verdict.</summary>
+        private const int FewGames = 3;
+
+        /// <summary>Your record with this deck against each class, most played first.</summary>
+        private static UIElement ByOpponent(DeckVersions v)
+        {
+            var p = new StackPanel { Margin = new Thickness(0, 4, 0, 10) };
+            foreach (var kv in v.ByOpponent.OrderByDescending(kv => kv.Value.Games).ThenByDescending(kv => kv.Value.WinRate))
+            {
+                var r = kv.Value;
+                var few = r.Games < FewGames;
+                var row = new Grid { Height = 30 };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
+                var name = Theme.Text("vs " + (kv.Key == "?" ? "unknown" : MetaStats.ClassName(kv.Key)), 13.5, few ? Theme.Mist : Theme.Vellum);
+                var wl = Theme.Text($"{r.Wins}-{r.Losses}", 13, Theme.Mist); wl.TextAlignment = TextAlignment.Right; Grid.SetColumn(wl, 1);
+                var brush = few ? Theme.Dusk : Theme.RateBrush(r.WinRate);
+                var bar = AppShell.StatBar(few ? 0 : r.WinRate, brush); bar.Margin = new Thickness(12, 0, 4, 0); Grid.SetColumn(bar, 2);
+                var pct = few ? Theme.Text("few", 13, Theme.Dusk) : Theme.Text(AppShell.Pct(r.WinRate), 13.5, brush, FontWeights.SemiBold);
+                pct.TextAlignment = TextAlignment.Right; Grid.SetColumn(pct, 3);
+                foreach (var t in new FrameworkElement[] { name, wl, bar, pct }) { t.VerticalAlignment = VerticalAlignment.Center; row.Children.Add(t); }
+                p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = row });
+            }
+            return p;
+        }
+
+        private static TextBlock SmallHeading(string text)
+        {
+            var t = AppShell.ColumnLabel(text);
+            t.Margin = new Thickness(0, 6, 0, 6);
+            return t;
+        }
+
+        /// <summary>A card worth cutting with nothing better in your collection: the card and how it does when drawn.</summary>
+        private static UIElement WeakRow(DeckPlanner.Swap sw, DeckPlanner.TuningPlan plan, AppData d)
+        {
+            var g = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var info = d.Cards.ById(sw.OutId);
+            g.Children.Add(SectionView.CardTile(AdviceLine.Card(info, sw.OutId, info?.Name, Tone.Normal, null, null), true, true));
+            var below = sw.OutWinRate < plan.Baseline;
+            var t = new TextBlock { FontSize = 13, Foreground = Theme.Mist, Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            t.Inlines.Add(new System.Windows.Documents.Run(AppShell.Pct(sw.OutWinRate)) { Foreground = below ? Theme.Amber : Theme.Vellum, FontWeight = FontWeights.SemiBold });
+            t.Inlines.Add(new System.Windows.Documents.Run(" when drawn"));
+            Grid.SetColumn(t, 1);
+            g.Children.Add(t);
+            return g;
         }
 
         private static UIElement SwapRow(DeckPlanner.Swap sw, DeckPlanner.TuningPlan plan, AppData d)

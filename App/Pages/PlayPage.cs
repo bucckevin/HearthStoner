@@ -403,12 +403,9 @@ namespace HearthStoner.Pages
 
         private static UIElement Bar(double fraction, Brush fill, double height, Thickness margin)
         {
-            var f = Math.Max(0, Math.Min(1, fraction));
-            var g = new Grid { Height = height };
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.0001, f), GridUnitType.Star) });
-            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.0001, 1 - f), GridUnitType.Star) });
-            g.Children.Add(new Border { Background = fill, CornerRadius = new CornerRadius(height / 2) });
-            return new Border { CornerRadius = new CornerRadius(height / 2), Background = Theme.Raised, Child = g, Margin = margin };
+            var b = AppShell.StatBar(fraction, fill, height);
+            b.Margin = margin;
+            return b;
         }
 
         // ------------------------------------------------------------------ crafting
