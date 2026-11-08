@@ -40,10 +40,18 @@ namespace HearthStoner.Pages
             else Full(p, r, d, shell.Size);
             var tabs = formats.Count > 1
                 ? formats.OrderBy(x => x.FormatType == "FT_STANDARD" ? 0 : 1).ThenBy(x => x.Name)
-                    .Select(x => (UIElement)AppShell.Tab(Ladder.Short(x), $"{x.Latest.Games.Count} game{(x.Latest.Games.Count == 1 ? "" : "s")}", x == f,
+                    .Select(x => (UIElement)AppShell.Tab(Ladder.Short(x), TabCount(x), x == f,
                         () => { shell.LadderFormat = x.FormatType; shell.Redraw(); })).ToArray()
                 : new UIElement[0];
             return AppShell.Page("Ladder", sub, p, tabs);
+        }
+
+        /// <summary>A tab's note: "17 games" this season, or "last Oct" for a format not played since an earlier season.</summary>
+        private static string TabCount(Ladder.Format f)
+        {
+            if (f.Latest.Month != Ladder.SeasonOf(DateTime.Now)) return "last " + f.Latest.Month.ToString("MMM");
+            var n = f.Latest.Games.Count;
+            return $"{n} game{(n == 1 ? "" : "s")}";
         }
 
         private static void Full(StackPanel p, LadderReport r, AppData d, PageWidth size)
@@ -104,10 +112,11 @@ namespace HearthStoner.Pages
             left.Children.Add(Theme.Text(f.Current.ToString(), 40, Theme.Gold, FontWeights.SemiBold, display: true));
             card.Children.Add(left);
             var n = season.Games.Count;
+            var when = season.Month == Ladder.SeasonOf(DateTime.Now) ? "this season" : $"in {season.Name}";
             var stars = LadderReport.NetStars(season.Games, season.Games) is int s ? $", {(s >= 0 ? "+" : "")}{s} star{(Math.Abs(s) == 1 ? "" : "s")}" : "";
             var bonus = !f.Current.IsLegend && r.StarBonus > 1
                 ? $" Your x{r.StarBonus} star bonus {(r.BonusEndsAt is int e ? $"lasts until {Ladder.Name(e)}" : "lasts to Legend")}." : "";
-            var line = Theme.Text($"{n} game{(n == 1 ? "" : "s")} this season, {season.Wins}-{season.Losses}{stars}.{bonus}", 14, Theme.Vellum, wrap: true);
+            var line = Theme.Text($"{n} game{(n == 1 ? "" : "s")} {when}, {season.Wins}-{season.Losses}{stars}.{bonus}", 14, Theme.Vellum, wrap: true);
             line.VerticalAlignment = VerticalAlignment.Center;
             Grid.SetColumn(line, 1);
             card.Children.Add(line);

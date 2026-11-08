@@ -69,6 +69,16 @@ namespace HearthStoner.Game
         public static bool IsQueueLine(string line) =>
             line != null && line.EndsWith("Game With Deck:", StringComparison.Ordinal);
 
+        /// <summary>
+        /// A time of day from the log as a date and time in that log's session (the session folder gives the day; a
+        /// time before the session started is the next day, past midnight).
+        /// </summary>
+        public static DateTime At(string powerLogPath, TimeSpan timeOfDay)
+        {
+            var start = GameLog.SessionStart(powerLogPath);
+            return start.Date.AddDays(timeOfDay < start.TimeOfDay ? 1 : 0) + timeOfDay;
+        }
+
         /// <summary>A deck name from a "### name" line; null when blank (Arena decks have no name).</summary>
         private static string NameOrNull(string name) => string.IsNullOrWhiteSpace(name) ? null : name.Trim();
 
@@ -86,8 +96,10 @@ namespace HearthStoner.Game
         /// <summary>
         /// Decks.log next to the given Power.log (same session folder): the last deck queued, or with
         /// <paramref name="before"/> the last one queued before that time (a session can have games with different decks).
+        /// With <paramref name="after"/> (the previous game's start) a deck queued before it is that game's, not this
+        /// one's: solo adventures and practice don't log a deck, so the last one in Decks.log is from an earlier game.
         /// </summary>
-        public static QueuedDeck LastQueuedDeck(string powerLogPath, DateTime? before = null)
+        public static QueuedDeck LastQueuedDeck(string powerLogPath, DateTime? before = null, DateTime? after = null)
         {
             if (string.IsNullOrEmpty(powerLogPath)) return null;
             var path = Path.Combine(Path.GetDirectoryName(powerLogPath) ?? "", "Decks.log");
@@ -105,7 +117,7 @@ namespace HearthStoner.Game
 
             // When each line was logged: time of day from its stamp, date from the session folder.
             var when = new DateTime?[raw.Length];
-            if (before.HasValue)
+            if (before.HasValue || after.HasValue)
             {
                 var start = GameLog.SessionStart(powerLogPath);
                 var day = start.Date;
@@ -123,6 +135,7 @@ namespace HearthStoner.Game
             {
                 if (!IsQueueLine(lines[i])) continue;
                 if (before.HasValue && when[i] > before.Value) continue;
+                if (after.HasValue && when[i] <= after.Value) return null;   // queued for the game before
                 var deck = new QueuedDeck { LoggedAt = File.GetLastWriteTime(path) };
                 for (var j = i + 1; j < lines.Length && j <= i + 4; j++)
                 {

@@ -30,6 +30,34 @@ namespace HearthStoner.Tests
             finally { try { Directory.Delete(Path.GetDirectoryName(dir), true); } catch { } }
         }
 
+        /// <summary>
+        /// Nov 8: Casual at 00:28:52 with the deck queued at 00:28:17, then a solo game at 00:32:49 that logs no deck.
+        /// The solo game must not get the Casual game's deck.
+        /// </summary>
+        [Fact]
+        public void A_queued_deck_belongs_to_the_first_game_after_it()
+        {
+            var dir = Path.Combine(Path.GetTempPath(), "hs-modes-" + Guid.NewGuid().ToString("N"), "Hearthstone_2026_11_07_22_26_01");
+            Directory.CreateDirectory(dir);
+            try
+            {
+                File.WriteAllLines(Path.Combine(dir, "Decks.log"), new[]
+                {
+                    "I 00:05:52.0 Finding Game With Deck:", "I 00:05:52.0 ### Aura Paladin", "I 00:05:52.0 # Deck ID: 1", "I 00:05:52.0 AAEaura",
+                    "I 00:28:17.2 Finding Game With Deck:", "I 00:28:17.2 ### Aura Paladin", "I 00:28:17.2 # Deck ID: 1", "I 00:28:17.2 AAEaura2",
+                });
+                var log = Path.Combine(dir, "Power.log");
+                DateTime T(int h, int m, int s) => new DateTime(2026, 11, 8, h, m, s);
+                Assert.Equal("AAEaura2", DecksLog.LastQueuedDeck(log, T(0, 28, 52), after: T(0, 6, 15)).DeckCode);   // the Casual game
+                Assert.Null(DecksLog.LastQueuedDeck(log, T(0, 32, 49), after: T(0, 28, 52)));                    // the solo game after it
+                Assert.Equal("AAEaura2", DecksLog.LastQueuedDeck(log, T(0, 32, 49)).DeckCode);                  // without the rule: the stale one
+                // The live loader's times of day, placed in the session (it started Nov 7, 22:26).
+                Assert.Equal(T(0, 28, 52), DecksLog.At(log, new TimeSpan(0, 28, 52)));
+                Assert.Equal(new DateTime(2026, 11, 7, 23, 23, 15), DecksLog.At(log, new TimeSpan(23, 23, 15)));
+            }
+            finally { try { Directory.Delete(Path.GetDirectoryName(dir), true); } catch { } }
+        }
+
         [Theory]
         [InlineData("Finding Game With Deck:", true)]
         [InlineData("Starting Arena Game With Deck:", true)]
@@ -110,9 +138,12 @@ namespace HearthStoner.Tests
                 .Select(d => Path.Combine(d, "Power.log")).Where(File.Exists);
             foreach (var path in logs)
             {
-                foreach (var slice in GameLog.Split(GameLog.ReadShared(path), GameLog.SessionStart(path), path).Where(s => s.Complete))
+                var slices = GameLog.Split(GameLog.ReadShared(path), GameLog.SessionStart(path), path);
+                foreach (var slice in slices.Where(s => s.Complete))
                 {
-                    var rec = GameLog.Record(slice, DecksLog.LastQueuedDeck(path, slice.Start), TestData.Cards, TestData.Meta);
+                    // The deck the way Import picks it: queued after the previous game started.
+                    var previous = slices.Where(s => s.Start < slice.Start).Select(s => (DateTime?)s.Start).LastOrDefault();
+                    var rec = GameLog.Record(slice, DecksLog.LastQueuedDeck(path, slice.Start, previous), TestData.Cards, TestData.Meta);
                     if (rec == null) continue;
                     var kind = GameModes.Of(rec.GameType);
                     var at = $"{rec.GameType} game at {rec.Start:g}";
@@ -131,6 +162,9 @@ namespace HearthStoner.Tests
                     if (!GameModes.IsCardGame(rec.GameType) || kind == GameModes.Kind.Solo) continue;
                     Assert.True(HeroClasses.IsReal(rec.OpponentClass), $"{at}: opponent class '{rec.OpponentClass}'");
                     Assert.True(HeroClasses.IsReal(rec.MyClass), $"{at}: your class '{rec.MyClass}'");
+                    // Modes you queue for log their deck right before the game, so the rule above still finds it.
+                    if (kind is GameModes.Kind.Ranked or GameModes.Kind.Casual or GameModes.Kind.Brawl or GameModes.Kind.Arena)
+                        Assert.True(rec.DeckCards.Count > 0, $"{at}: no deck");
                     var classes = rec.DeckCards.Select(id => TestData.Cards.ById(id)?.CardClass).Where(HeroClasses.IsReal).ToList();
                     Assert.True(classes.Count(c => c == rec.MyClass) * 2 >= classes.Count, $"{at}: deck '{rec.DeckName}' isn't {rec.MyClass}");
                     if (kind == GameModes.Kind.Arena)

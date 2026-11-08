@@ -108,7 +108,8 @@ namespace HearthStoner.Tests
                 Advisor a = null;
                 t = new GameTracker(TestData.Cards, ev =>
                 {
-                    if (ev.Kind != GameEventKind.Turn || t.Turn != 6 || titles != null) return;
+                    // Card games only: Battlegrounds has no single opponent with a name.
+                    if (ev.Kind != GameEventKind.Turn || t.Turn != 6 || titles != null || !GameModes.IsCardGame(t.GameType)) return;
                     titles = a.Compute().Sections.Select(s => s.Title).Where(x => x.Contains(" HP")).ToArray();
                     me = t.DisplayName(t.FriendlyPlayerId);
                     them = t.DisplayName(t.OpponentPlayerId);

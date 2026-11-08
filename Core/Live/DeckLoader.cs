@@ -97,7 +97,13 @@ namespace HearthStoner.Live
 
         private (List<string>? List, string? Name, string? Source) FromDecksLog()
         {
-            var queued = DecksLog.LastQueuedDeck(_powerLog());
+            var path = _powerLog();
+            // Only a deck queued since the previous game started is this game's (practice and solo games log none).
+            TimeSpan? previous;
+            lock (_tracker.Sync) previous = _tracker.PreviousGameStartedAt;
+            var after = previous is TimeSpan p && !string.IsNullOrEmpty(path) ? DecksLog.At(path, p) : (DateTime?)null;
+            if (after > DateTime.Now) after = null;   // a game from an earlier Hearthstone session, not this log's
+            var queued = DecksLog.LastQueuedDeck(path, null, after);
             if (queued == null) return (null, null, null);
             if (!MatchesHero(queued.DeckCode))
             {

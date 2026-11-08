@@ -6,11 +6,12 @@ namespace HearthStoner.Game
     /// What kind of game a record or log is, from the names the game itself uses (its PegasusShared.GameType and
     /// FormatType enums, which Power.log prints at the start of every game: "GameType=GT_RANKED", "FormatType=FT_WILD").
     /// Card modes are the decks-and-minions game HearthStoner tracks and coaches; Battlegrounds and Mercenaries play
-    /// differently, so only their mode, times and result are kept.
+    /// differently, so only their mode, times and result are kept. Modes Hearthstone has removed (Duels, Friendly
+    /// challenges, the Twist format) aren't named: an old game in one shows under "All" only.
     /// </summary>
     public static class GameModes
     {
-        public enum Kind { Unknown, Ranked, Casual, Friendly, Arena, Brawl, Solo, Duels, Battlegrounds, Mercenaries }
+        public enum Kind { Unknown, Ranked, Casual, Arena, Brawl, Solo, Battlegrounds, Mercenaries }
 
         public static Kind Of(string gameType)
         {
@@ -19,12 +20,10 @@ namespace HearthStoner.Game
             if (t.StartsWith("GT_MERCENARIES") || t.StartsWith("GT_LETTUCE")) return Kind.Mercenaries;
             if (t.Contains("ARENA")) return Kind.Arena;                                     // Arena, Underground Arena, their vs-AI practice
             if (t.StartsWith("GT_TAVERNBRAWL") || t.StartsWith("GT_TB_") || t.StartsWith("GT_FSG_") || t.StartsWith("GT_HEARTHSTONE_DUOS")) return Kind.Brawl;
-            if (t.StartsWith("GT_PVPDR")) return Kind.Duels;
             switch (t)
             {
                 case "GT_RANKED": return Kind.Ranked;
                 case "GT_CASUAL": return Kind.Casual;
-                case "GT_VS_FRIEND": return Kind.Friendly;
                 case "GT_VS_AI": case "GT_TUTORIAL": case "GT_TEST": case "GT_TEST_AI_VS_AI": case "GT_ACHIEVEMENT_TEST": return Kind.Solo;
                 default: return Kind.Unknown;
             }
@@ -49,10 +48,10 @@ namespace HearthStoner.Game
             r.OpponentLegendRank = 0;
         }
 
-        /// <summary>The card modes these games were played in, in a fixed order (Ranked, Casual, Brawl, Arena, Solo, Friendly, Duels): History's filter chips.</summary>
+        /// <summary>The card modes these games were played in, in a fixed order (Ranked, Casual, Brawl, Arena, Solo): History's filter chips.</summary>
         public static System.Collections.Generic.List<Kind> Played(System.Collections.Generic.IEnumerable<GameRecord> games)
         {
-            var order = new[] { Kind.Ranked, Kind.Casual, Kind.Brawl, Kind.Arena, Kind.Solo, Kind.Friendly, Kind.Duels };
+            var order = new[] { Kind.Ranked, Kind.Casual, Kind.Brawl, Kind.Arena, Kind.Solo };
             var seen = new System.Collections.Generic.HashSet<Kind>((games ?? Enumerable.Empty<GameRecord>()).Select(g => Of(g.GameType)));
             return order.Where(seen.Contains).ToList();
         }
@@ -90,16 +89,14 @@ namespace HearthStoner.Game
         /// </summary>
         public static string Name(string gameType, string format, bool brief = false)
         {
-            var f = format == "FT_WILD" ? " Wild" : format == "FT_CLASSIC" ? " Classic" : format == "FT_TWIST" ? " Twist" : brief ? "" : " Standard";
+            var f = format == "FT_WILD" ? " Wild" : format == "FT_CLASSIC" ? " Classic" : brief ? "" : " Standard";
             switch (Of(gameType))
             {
                 case Kind.Ranked: return "Ranked" + f;
                 case Kind.Casual: return "Casual" + f;
-                case Kind.Friendly: return "Friendly";
                 case Kind.Arena: return gameType.Contains("UNDERGROUND") ? "Underground Arena" : "Arena";
                 case Kind.Brawl: return gameType.StartsWith("GT_HEARTHSTONE_DUOS") ? "Duos" : "Tavern Brawl";
                 case Kind.Solo: return "Solo";
-                case Kind.Duels: return "Duels";
                 case Kind.Battlegrounds: return gameType.Contains("DUO") ? "Battlegrounds Duos" : "Battlegrounds";
                 case Kind.Mercenaries: return "Mercenaries";
                 default: return null;

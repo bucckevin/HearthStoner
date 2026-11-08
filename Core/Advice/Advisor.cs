@@ -127,8 +127,8 @@ namespace HearthStoner.Advice
         /// Your deck's archetype and matchup data, but only while the tracker still holds the deck list they were
         /// matched to: a game without a deck (solo, or a deck dropped as another class) mustn't inherit the last one.
         /// </summary>
-        private MetaArchetype _friendlyArchetype => _archetypeDeck != null && ReferenceEquals(_archetypeDeck, _game.FriendlyDeckList) ? _archetype : null;
-        private ArchetypeDetail _friendlyDetail => _friendlyArchetype != null ? _detail : null;
+        private MetaArchetype CurrentArchetype => _archetypeDeck != null && ReferenceEquals(_archetypeDeck, _game.FriendlyDeckList) ? _archetype : null;
+        private ArchetypeDetail CurrentDetail => CurrentArchetype != null ? _detail : null;
 
         public Advisor(GameTracker game, CardDb cards, MetaStats meta, Settings settings = null)
         {
@@ -171,7 +171,7 @@ namespace HearthStoner.Advice
             _archetypeDeck = list;
         }
 
-        public MetaArchetype FriendlyArchetype => _friendlyArchetype;
+        public MetaArchetype FriendlyArchetype => CurrentArchetype;
 
         // ================================================================== snapshot
 

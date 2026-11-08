@@ -196,13 +196,16 @@ namespace HearthStoner.Game
                 catch (Exception ex) { log?.Invoke($"[import] {path}: {ex.Message}"); continue; }
                 foreach (var slice in slices.Where(s => s.Complete))
                 {
+                    // The deck queued for this game: logged after the previous game in this session started.
+                    var previous = slices.Where(s => s.Start < slice.Start).Select(s => (DateTime?)s.Start).LastOrDefault();
+                    QueuedDeck Deck() => DecksLog.LastQueuedDeck(path, slice.Start, previous);
                     var match = records.FirstOrDefault(r => Math.Abs((r.Start - slice.Start).TotalMinutes) <= 3);
                     if (match != null && !string.IsNullOrEmpty(match.LogFile) && File.Exists(Path.Combine(GameRecord.Dir, match.LogFile)))
                     {
                         if (!NeedsRepair(match, cards)) { result.Skipped++; continue; }
                         try
                         {
-                            var fresh = Record(slice, DecksLog.LastQueuedDeck(path, slice.Start), cards, meta);
+                            var fresh = Record(slice, Deck(), cards, meta);
                             if (fresh == null) { result.Skipped++; continue; }
                             Repair(match, fresh);
                             result.Repaired++;
@@ -220,7 +223,7 @@ namespace HearthStoner.Game
                         }
                         else
                         {
-                            var rec = Record(slice, DecksLog.LastQueuedDeck(path, slice.Start), cards, meta);
+                            var rec = Record(slice, Deck(), cards, meta);
                             if (rec == null || !rec.Decided) { result.Skipped++; continue; }
                             Attach(rec, slice);
                             rec.Save();

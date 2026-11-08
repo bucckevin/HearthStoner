@@ -17,8 +17,11 @@ The Ladder, History and Stats pages tell the game modes apart, and two crashes-i
 - **Stats:** ranked and casual games by default, the ones the advice is about, or every card mode with one click.
   Before, 4 wins against the AI and the Arena and Brawl games counted, and adventure bosses showed as "Neutral".
 - **Fixed:** the app crashed as a game ended when two minions had "infinite" attack (Hand of Infinity), and that
-  game wasn't saved (it's recovered from the log). A solo game no longer inherits the last ranked deck, or its
-  archetype, in replays, imports and the stats. "1 times in 1 games" reads "once in 1 game".
+  game wasn't saved (it's recovered from the log). A practice or solo game no longer gets the last deck you queued,
+  or its archetype: Decks.log's deck only counts for the first game after it, live and when importing (before,
+  only a deck of another class was caught). "1 times in 1 games" reads "once in 1 game".
+- **Removed modes:** Duels, Friendly challenges and the Twist format are gone from Hearthstone, so they're no longer
+  named or offered as filters.
 
 ## 1.4.1 - 2026-11-08
 

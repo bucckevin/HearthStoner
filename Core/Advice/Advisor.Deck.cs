@@ -16,7 +16,7 @@ namespace HearthStoner.Advice
             var deckCount = _game.DeckCount(me);
             // Arena decks have no name, and a drafted deck isn't a ranked archetype.
             var arena = GameModes.Of(_game.GameType) == GameModes.Kind.Arena;
-            var title = _game.FriendlyDeckName ?? (arena ? GameModes.Name(_game.GameType, _game.FormatType) + " deck" : _friendlyArchetype?.Name) ?? "Your deck";
+            var title = _game.FriendlyDeckName ?? (arena ? GameModes.Name(_game.GameType, _game.FormatType) + " deck" : CurrentArchetype?.Name) ?? "Your deck";
             var s = new AdviceSection(title) { Bar = true, Lower = true, RightText = $"{deckCount} left" };
             var remaining = _game.FriendlyRemainingDeck();
             if (_game.FriendlyDeckList == null) { s.Add("Looking for your deck list (Decks.log, then memory)...", Tone.Dim); return s; }
@@ -114,9 +114,9 @@ namespace HearthStoner.Advice
         private (Dictionary<string, CardStat> Cards, double Baseline, Matchup Matchup) MatchupData(string oppClass)
         {
             Matchup mu = null;
-            if (_friendlyDetail != null && _friendlyDetail.Matchups.TryGetValue(MetaStats.Key(oppClass), out var m) && m.Games >= 50) mu = m;
-            var cards = mu?.Cards ?? _friendlyDetail?.Archetype?.Cards ?? _friendlyArchetype?.Cards;
-            var baseline = mu?.WinRate ?? _friendlyDetail?.Archetype?.WinRate ?? _friendlyArchetype?.WinRate ?? 0.5;
+            if (CurrentDetail != null && CurrentDetail.Matchups.TryGetValue(MetaStats.Key(oppClass), out var m) && m.Games >= 50) mu = m;
+            var cards = mu?.Cards ?? CurrentDetail?.Archetype?.Cards ?? CurrentArchetype?.Cards;
+            var baseline = mu?.WinRate ?? CurrentDetail?.Archetype?.WinRate ?? CurrentArchetype?.WinRate ?? 0.5;
             return (cards, baseline, mu);
         }
 
@@ -146,8 +146,8 @@ namespace HearthStoner.Advice
             var offered = _game.Hand(me).Where(e => !_cards.IsCoin(e.KnownCardId)).ToList();
             var (_, baseline, mu) = MatchupData(oppClass);
 
-            if (_friendlyArchetype != null)
-                s.Add($"{_friendlyArchetype.Name} vs {MetaStats.ClassName(oppClass)}: {baseline:P1} WR{(mu != null ? $" over {mu.Games:N0} games" : " (all matchups)")}", Tone.Heading);
+            if (CurrentArchetype != null)
+                s.Add($"{CurrentArchetype.Name} vs {MetaStats.ClassName(oppClass)}: {baseline:P1} WR{(mu != null ? $" over {mu.Games:N0} games" : " (all matchups)")}", Tone.Heading);
             else
                 s.Add("Deck not matched to a meta archetype - using simple rules.", Tone.Dim);
 
@@ -172,9 +172,9 @@ namespace HearthStoner.Advice
         /// <summary>Win rate when this card was Discovered in your deck's archetype (matchup first, then overall).</summary>
         public DiscoverStat DiscoverStatFor(string cardId, string oppClass)
         {
-            if (_friendlyDetail == null || cardId == null) return null;
-            if (_friendlyDetail.Matchups.TryGetValue(MetaStats.Key(oppClass), out var mu) && mu.Discover.TryGetValue(cardId, out var ms) && ms.Discovered >= 30) return ms;
-            return _friendlyDetail.Discover.TryGetValue(cardId, out var st) && st.Discovered >= 30 ? st : null;
+            if (CurrentDetail == null || cardId == null) return null;
+            if (CurrentDetail.Matchups.TryGetValue(MetaStats.Key(oppClass), out var mu) && mu.Discover.TryGetValue(cardId, out var ms) && ms.Discovered >= 30) return ms;
+            return CurrentDetail.Discover.TryGetValue(cardId, out var st) && st.Discovered >= 30 ? st : null;
         }
 
 
@@ -248,9 +248,9 @@ namespace HearthStoner.Advice
 
         private AdviceSection MatchupSection(string oppClass, List<ArchetypeGuess> guesses)
         {
-            if (_friendlyArchetype == null) return null;
+            if (CurrentArchetype == null) return null;
             var (cards, baseline, mu) = MatchupData(oppClass);
-            var s = new AdviceSection($"Matchup: {_friendlyArchetype.Name} vs {MetaStats.ClassName(oppClass)}");
+            var s = new AdviceSection($"Matchup: {CurrentArchetype.Name} vs {MetaStats.ClassName(oppClass)}");
             s.Add($"{baseline:P1} win rate{(mu != null ? $" over {mu.Games:N0} games" : " (all matchups)")}", baseline >= 0.53 ? Tone.Good : baseline < 0.47 ? Tone.Bad : Tone.Normal);
 
             if (cards != null && _game.FriendlyDeckList != null)

@@ -211,8 +211,15 @@ namespace HearthStoner.Game
             _emit = emit;
         }
 
+        /// <summary>When this game and the one before it started (time of day from the log); null before the second game.</summary>
+        public TimeSpan GameStartedAt { get; private set; }
+        public TimeSpan? PreviousGameStartedAt { get; private set; }
+        private int _games;
+
         private void StartGame()
         {
+            if (_games++ > 0) PreviousGameStartedAt = GameStartedAt;
+            GameStartedAt = LastLineTime;
             Entities.Clear();
             PlayerNames.Clear();
             _playerEntityToPlayerId.Clear();

@@ -122,7 +122,7 @@ namespace HearthStoner.Pages
             row.Children.Add(AppShell.FilterChip($"Ranked and casual {ladder}", scope == AppShell.StatsLadder,
                 () => { shell.StatsScope = AppShell.StatsLadder; shell.Redraw(); }, "Your ladder games: the ones the advice and the meta data are about."));
             row.Children.Add(AppShell.FilterChip($"All card modes {all}", scope == AppShell.StatsAll,
-                () => { shell.StatsScope = AppShell.StatsAll; shell.Redraw(); }, "Adds Arena, Tavern Brawl, solo and friendly games."));
+                () => { shell.StatsScope = AppShell.StatsAll; shell.Redraw(); }, "Adds Arena, Tavern Brawl and solo games."));
             return row;
         }
 
