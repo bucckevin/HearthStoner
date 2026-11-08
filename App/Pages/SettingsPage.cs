@@ -21,10 +21,16 @@ namespace HearthStoner.Pages
             StackPanel p;
 
             p = Section(sections, "Display", "Changes apply right away.");
-            p.Children.Add(Choice("Text size", "Everything in the window grows or shrinks. Bigger suits a large screen.",
-                Settings.AppScales.Select(v => (v.ToString(System.Globalization.CultureInfo.InvariantCulture), $"{v * 100:0}%")).ToArray(),
-                Closest(st.AppScale, Settings.AppScales.ToArray()),
-                v => { st.AppScale = double.Parse(v, System.Globalization.CultureInfo.InvariantCulture); Save(); shell.SetScale(st.AppScale); }));
+            p.Children.Add(Choice("Text size", "Everything in the window grows or shrinks. Auto is 100% in a window and grows to fill the screen when maximized.",
+                new[] { (AutoScaleValue, "Auto") }.Concat(Settings.AppScales.Select(v => (v.ToString(System.Globalization.CultureInfo.InvariantCulture), $"{v * 100:0}%"))).ToArray(),
+                st.AppScaleAuto ? AutoScaleValue : Closest(st.AppScale, Settings.AppScales.ToArray()),
+                v =>
+                {
+                    st.AppScaleAuto = v == AutoScaleValue;
+                    if (!st.AppScaleAuto) st.AppScale = double.Parse(v, System.Globalization.CultureInfo.InvariantCulture);
+                    Save();
+                    shell.ZoomSettingChanged?.Invoke();
+                }));
             p.Children.Add(Toggle("Remember the window's size and place", "Opens where you left it, maximized if it was. Back to the middle if that screen is gone.", st.RememberWindow, v => { st.RememberWindow = v; Save(); }));
             p.Children.Add(KeyRow("Go to a page (in the order of the menu)", "Ctrl+1 … Ctrl+9"));
 
@@ -238,6 +244,9 @@ namespace HearthStoner.Pages
             Update();
             return row;
         }
+
+        /// <summary>The Text size choice that means <see cref="Settings.AppScaleAuto"/>.</summary>
+        private const string AutoScaleValue = "auto";
 
         private static string Closest(double v, params double[] options) =>
             options.OrderBy(o => Math.Abs(o - v)).First().ToString(System.Globalization.CultureInfo.InvariantCulture);

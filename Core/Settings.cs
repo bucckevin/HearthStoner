@@ -68,6 +68,8 @@ namespace HearthStoner
         // ---- app window
         /// <summary>The whole app window's zoom (text and everything else): 0.9 to 1.5, 1 = normal.</summary>
         public double AppScale { get; set; } = 1.0;
+        /// <summary>Text size Auto: 100% in a normal window, grown to fill the screen when maximized (<see cref="AutoZoom"/>). Overrides <see cref="AppScale"/>.</summary>
+        public bool AppScaleAuto { get; set; } = true;
         /// <summary>Open the window where it was last closed, at the same size (and maximized if it was).</summary>
         public bool RememberWindow { get; set; } = true;
         /// <summary>The window's last place and size when not maximized, in screen units; 0 width = never saved.</summary>

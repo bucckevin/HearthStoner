@@ -184,8 +184,16 @@ namespace HearthStoner.Pages
         public void SetScale(double scale)
         {
             var s = Settings.ClampScale(scale);
+            if (Math.Abs(s - Scale) < 0.001) return;   // the window asks again on every resize
+            Scale = s;
             LayoutTransform = Math.Abs(s - 1) < 0.001 ? Transform.Identity : new ScaleTransform(s, s);
         }
+
+        /// <summary>The zoom set by <see cref="SetScale"/>: 1 = normal.</summary>
+        public double Scale { get; private set; } = 1.0;
+
+        /// <summary>Set by the window: works the zoom out again after Settings' Text size changed (Auto depends on the window).</summary>
+        public Action ZoomSettingChanged;
 
         /// <summary>Ctrl+1 to Ctrl+9 (top row or keypad) opens that page of the menu. Returns whether it was one.</summary>
         public bool TryPageShortcut(Key key, ModifierKeys modifiers)

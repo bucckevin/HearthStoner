@@ -61,7 +61,6 @@ namespace HearthStoner
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             WindowMemory.Restore(this, svc.Settings);   // where you left it, when that's still on a screen
             Closing += (s, e) => WindowMemory.Save(this, svc.Settings);
-            _shell.SetScale(svc.Settings?.AppScale ?? 1.0);
             // Ctrl+1 .. Ctrl+9: the pages in the menu's order.
             PreviewKeyDown += (s, e) => { if (_shell.TryPageShortcut(e.Key == System.Windows.Input.Key.System ? e.SystemKey : e.Key, System.Windows.Input.Keyboard.Modifiers)) e.Handled = true; };
             UseLayoutRounding = true;
@@ -90,6 +89,16 @@ namespace HearthStoner
             }
             StateChanged += (s, e) => PadMaximized();
             Loaded += (s, e) => PadMaximized();   // the window can open maximized (remembered from last time)
+            // Text size: a fixed zoom, or Auto (see AutoZoom), worked out again whenever the window's size or state changes.
+            void ApplyZoom()
+            {
+                var st = _svc.Settings;
+                _shell.SetScale(st == null ? 1.0 : st.AppScaleAuto ? AutoZoom.For(root.ActualWidth, root.ActualHeight, WindowState == WindowState.Maximized) : st.AppScale);
+            }
+            root.SizeChanged += (s, e) => ApplyZoom();
+            StateChanged += (s, e) => ApplyZoom();
+            _shell.ZoomSettingChanged = ApplyZoom;
+            ApplyZoom();
             root.Children.Add(_shell);
             root.Children.Add(_toast);
             Content = root;
@@ -328,6 +337,9 @@ namespace HearthStoner
                     foreach (var (suffix, w, h) in new[] { ("compact", 1100, 800), ("wide-edge", edge, 1000), ("1920", 1920, 1040), ("3440", 3440, 1400) })
                         foreach (var page in AppShell.Pages)
                             Snap(shell, page, folder, page.ToLowerInvariant() + "-" + suffix, w, h);
+                    // Every page maximized on a 3440x1440 ultrawide with Text size Auto (app-play-3440-auto.png, ...).
+                    foreach (var page in AppShell.Pages)
+                        Snap(shell, page, folder, page.ToLowerInvariant() + "-3440-auto", 3440, 1400, scale: AutoZoom.For(3440, 1400, maximized: true));
                     // Settings, Text size 130% on the ultrawide: the layouts follow the zoomed width.
                     foreach (var page in new[] { "Play", "Settings" })
                         Snap(shell, page, folder, page.ToLowerInvariant() + "-3440-130", 3440, 1400, scale: 1.3);

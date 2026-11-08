@@ -3,6 +3,13 @@
 Every installed version, newest first. The number is in `VERSION`: patch (1.0.x) for fixes, minor (1.x.0) for new
 features, major (x.0.0) for big changes, such as a new data format. Each version is tagged in git as `v<number>`.
 
+## 1.6.0 - 2026-11-08
+
+- **Text size Auto** (Settings, Display), on by default: the app is 100% in a normal window and zooms in to fill the
+  screen when maximized, so a big monitor isn't mostly empty. It follows the screen's height (1080 px tall = 100%,
+  1440 px tall = 130%, up to 150%), so pages fill the width without getting so tall that everything needs scrolling.
+  Picking a fixed size (90% to 150%) works as before.
+
 ## 1.5.1 - 2026-11-08
 
 - **Fixed:** the tops of the Stats page's "Ranked and casual" and "All card modes" buttons were cut off flat.

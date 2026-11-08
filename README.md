@@ -55,8 +55,9 @@ HearthStoner sits in the tray near the clock. Its menu has Open, Overlay on/off,
 
 The window fits any screen: in a small window the pages stack into one column, a normal window gets two, and a
 maximized window on a 1920 px or ultrawide screen gets three side by side (centred on very wide screens so nothing
-stretches across the whole monitor). Settings has a **text size** (90% to 150%) for big or far-away screens, and the
-window opens where you left it. Ctrl+1 to Ctrl+9 jump to the pages in menu order. It has nine pages:
+stretches across the whole monitor). Settings has a **text size**: Auto (the default) is 100% in a window and grows
+to fill the screen when maximized (130% on a 1440 px tall screen), or pick 90% to 150% yourself. The window opens
+where you left it. Ctrl+1 to Ctrl+9 jump to the pages in menu order. It has nine pages:
 
 - **Play:** a button to start Hearthstone through the Battle.net app (it turns into "Switch to Hearthstone" while
   the game runs). Then your decks, ranked by expected win rate against today's field at your rank, the best one as
