@@ -179,7 +179,7 @@ namespace HearthStoner.Pages
             bannerActions.Children.Add(PlayPage.CopyButton(deck.Code, d));
             info.Children.Add(bannerActions);
             banner.Children.Add(info);
-            p.Children.Add(new Border { CornerRadius = new CornerRadius(12), Background = Theme.Slate, ClipToBounds = true, Child = banner, Margin = new Thickness(0, 0, 0, 24) });
+            p.Children.Add(new RoundedBorder { CornerRadius = new CornerRadius(12), Background = Theme.Slate, Child = banner, Margin = new Thickness(0, 0, 0, 24) });
 
             var listCol = new StackPanel();
             listCol.Children.Add(Theme.Heading("Card list"));

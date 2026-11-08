@@ -128,9 +128,9 @@ namespace HearthStoner.Pages
             body.Children.Add(bottom);
             g.Children.Add(body);
 
-            return new Border
+            return new RoundedBorder
             {
-                CornerRadius = new CornerRadius(14), Background = Theme.B(into), Child = g, ClipToBounds = true,
+                CornerRadius = new CornerRadius(14), Background = Theme.B(into), Child = g,
                 BorderBrush = Theme.B(Theme.GoldC, 0.35), BorderThickness = new Thickness(1), Margin = new Thickness(0, 0, 0, 18),
                 Effect = new DropShadowEffect { Color = Colors.Black, BlurRadius = 30, ShadowDepth = 10, Opacity = 0.55 },
             };
@@ -189,7 +189,7 @@ namespace HearthStoner.Pages
             row.Children.Add(names);
             g.Children.Add(row);
 
-            var b = new Border { CornerRadius = new CornerRadius(10), Background = Theme.Slate, Child = g, ClipToBounds = true, Margin = new Thickness(0, 0, 0, 8), Cursor = System.Windows.Input.Cursors.Hand };
+            var b = new RoundedBorder { CornerRadius = new CornerRadius(10), Background = Theme.Slate, Child = g, Margin = new Thickness(0, 0, 0, 8), Cursor = System.Windows.Input.Cursors.Hand };
             b.ToolTip = "Open in Decks";
             b.MouseLeftButtonUp += (s, e) => { shell.SelectedDeck = shell.Data.Decks.IndexOf(p.Deck); shell.Show("Decks"); };
             return b;
@@ -241,8 +241,9 @@ namespace HearthStoner.Pages
         {
             var p = new StackPanel { Margin = new Thickness(0, 0, 0, 28) };
             p.Children.Add(Theme.Heading("The field " + MetaStats.PartOfDay(DateTime.Now)));
-            var bar = new Grid { Height = 12, Margin = new Thickness(0, 0, 0, 12) };
-            var clip = new Border { CornerRadius = new CornerRadius(6), Child = bar, ClipToBounds = true, Background = Theme.Raised };
+            var bar = new Grid { Height = 12 };
+            // The gap goes on the outer box: inside it, the box's background showed as a dark band under the bar.
+            var clip = new RoundedBorder { CornerRadius = new CornerRadius(6), Child = bar, Background = Theme.Raised, Margin = new Thickness(0, 0, 0, 12) };
             var shown = best.Matchups.Where(m => m.Share >= 0.02).ToList();
             foreach (var m in shown)
                 bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(m.Share, GridUnitType.Star) });

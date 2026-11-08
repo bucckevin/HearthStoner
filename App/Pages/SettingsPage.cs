@@ -71,7 +71,7 @@ namespace HearthStoner.Pages
                 change.Margin = new Thickness(0, 10, 0, 0); change.HorizontalAlignment = HorizontalAlignment.Left;
                 info.Children.Add(change);
                 var row = new StackPanel { Orientation = Orientation.Horizontal };
-                row.Children.Add(new Border { CornerRadius = new CornerRadius(6), ClipToBounds = true, BorderBrush = Theme.Line, BorderThickness = new Thickness(1), Child = currentPic });
+                row.Children.Add(new RoundedBorder { CornerRadius = new CornerRadius(6), BorderBrush = Theme.Line, BorderThickness = new Thickness(1), Child = currentPic });
                 row.Children.Add(info);
                 p.Children.Add(row);
                 foreach (var root in boards)

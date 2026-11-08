@@ -360,7 +360,7 @@ namespace HearthStoner.Pages
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.0001, f), GridUnitType.Star) });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0.0001, 1 - f), GridUnitType.Star) });
             g.Children.Add(new Border { Background = fill, CornerRadius = new CornerRadius(height / 2) });
-            return new Border { CornerRadius = new CornerRadius(height / 2), Background = Theme.Raised, Child = g, ClipToBounds = true };
+            return new RoundedBorder { CornerRadius = new CornerRadius(height / 2), Background = Theme.Raised, Child = g };
         }
 
         /// <summary>Small grey capitals, e.g. a table's column headings.</summary>
