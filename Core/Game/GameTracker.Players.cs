@@ -26,6 +26,18 @@ namespace HearthStoner.Game
         }
 
 
+        /// <summary>
+        /// Battlegrounds without a name hint (old logs): you're the one player with a BattleTag ("Musume#1455"); the
+        /// other player is Bob's side, named after a hero. Waits until both names are in.
+        /// </summary>
+        private void TryIdentifyBattlegroundsPlayer()
+        {
+            if (FriendlyPlayerId != 0 || GameModes.Of(GameType) != GameModes.Kind.Battlegrounds || PlayerNames.Count < 2) return;
+            var tagged = PlayerNames.Where(kv => kv.Value != null && kv.Value.Contains('#')).Select(kv => kv.Key).ToList();
+            if (tagged.Count == 1) SetFriendly(tagged[0]);
+        }
+
+
         /// <summary>A player's name without the BattleTag number ("Musume#1455" -> "Musume"), or null while it's
         /// still hidden (the opponent shows as "UNKNOWN HUMAN PLAYER" until the game reveals them).</summary>
         public string DisplayName(int playerId) =>

@@ -36,7 +36,7 @@ namespace HearthStoner.Tests
 
                 var sec = advisor.Compute().Sections.Single(s => s.Lower && !s.Opponent);
                 var left = tracker.DeckCount(tracker.FriendlyPlayerId);
-                Assert.Equal(queued.Name, sec.Title);
+                Assert.Equal(queued.Name ?? (GameModes.Of(tracker.GameType) == GameModes.Kind.Arena ? GameModes.Name(tracker.GameType, tracker.FormatType) + " deck" : sec.Title), sec.Title);
                 Assert.Equal($"{left} left", sec.RightText);
 
                 var rows = sec.Lines.Where(l => l.CardId != null).ToList();
@@ -77,7 +77,7 @@ namespace HearthStoner.Tests
                 t = new GameTracker(TestData.Cards, ev =>
                 {
                     if (ev.Kind == GameEventKind.GameStart) t.FriendlyDeckList = deck.ToList();
-                    if (ev.Kind != GameEventKind.Turn || t.FriendlyPlayerId == 0 || t.FriendlyDeckList == null) return;
+                    if (ev.Kind != GameEventKind.Turn || t.FriendlyPlayerId == 0 || t.FriendlyDeckList == null || !GameModes.IsCardGame(t.GameType)) return;
                     turnsChecked++;
                     var known = t.FriendlyRemainingDeck().Values.Sum();
                     var left = t.DeckCount(t.FriendlyPlayerId);

@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace HearthStoner.Game
 {
     /// <summary>
@@ -30,6 +32,46 @@ namespace HearthStoner.Game
 
         /// <summary>True for the card game (and for old records whose mode was never saved).</summary>
         public static bool IsCardGame(string gameType) => Of(gameType) != Kind.Battlegrounds && Of(gameType) != Kind.Mercenaries;
+
+        /// <summary>Ranked and casual: modes where the rank memory reports is the ladder you play on.</summary>
+        public static bool HasLadderRank(string gameType) => Of(gameType) is Kind.Ranked or Kind.Casual;
+
+        /// <summary>Clears your and your opponent's ladder rank, stars and star bonus from a record.</summary>
+        public static void ClearLadderInfo(GameRecord r)
+        {
+            if (r == null) throw new System.ArgumentNullException(nameof(r));
+            r.Rank = null;
+            r.StarLevel = 0;
+            r.LegendRank = 0;
+            r.Stars = 0;
+            r.StarBonus = 0;
+            r.OpponentStarLevel = 0;
+            r.OpponentLegendRank = 0;
+        }
+
+        /// <summary>"1st", "2nd", "3rd", "5th": a Battlegrounds place.</summary>
+        public static string Ordinal(int place) => place + (place % 100 is 11 or 12 or 13 ? "th" : (place % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
+
+        /// <summary>
+        /// One line for a mode's games, newest first in <paramref name="games"/>: "Battlegrounds: 3 games, average place
+        /// 4.3, top 4 in 2, last Nov 7" where places were saved, else "Mercenaries: 2 games, 1 win, last Nov 7".
+        /// </summary>
+        public static string Summary(string mode, System.Collections.Generic.IReadOnlyList<GameRecord> games)
+        {
+            if (games == null) throw new System.ArgumentNullException(nameof(games));
+            if (games.Count == 0) return $"{mode}: no games";
+            var n = games.Count;
+            var placed = games.Where(x => x.Place > 0).ToList();
+            string how;
+            if (placed.Count == 1) how = $"finished {Ordinal(placed[0].Place)}";
+            else if (placed.Count > 1) how = $"average place {placed.Average(x => x.Place):0.0}, top 4 in {placed.Count(x => x.Place <= 4)}";
+            else
+            {
+                var w = games.Count(x => x.Won);
+                how = $"{w} win{(w == 1 ? "" : "s")}";
+            }
+            return $"{mode}: {n} game{(n == 1 ? "" : "s")}, {how}, last {games[0].Start:MMM d}";
+        }
 
         /// <summary>Whether the mode is known (not missing or GT_UNKNOWN).</summary>
         public static bool Known(string gameType) => !string.IsNullOrEmpty(gameType) && gameType != "GT_UNKNOWN";

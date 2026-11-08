@@ -87,7 +87,8 @@ namespace HearthStoner.Live
             bool inGame, haveDeck;
             lock (_tracker.Sync)
             {
-                inGame = _tracker.InGame && _tracker.FriendlyPlayerId != 0;
+                // Battlegrounds and Mercenaries have no deck to load.
+                inGame = _tracker.InGame && _tracker.FriendlyPlayerId != 0 && GameModes.IsCardGame(_tracker.GameType);
                 haveDeck = _tracker.FriendlyDeckList != null;
             }
             if (_reset) { _reset = false; _attempts = 0; }
@@ -98,8 +99,23 @@ namespace HearthStoner.Live
         {
             var queued = DecksLog.LastQueuedDeck(_powerLog());
             if (queued == null) return (null, null, null);
+            if (!MatchesHero(queued.DeckCode))
+            {
+                // A deck from an earlier game (modes that don't log theirs, e.g. solo adventures): memory knows better.
+                if (_attempts == 1) _log($"[deck] Decks.log's last deck ({queued.Name ?? "unnamed"}) isn't your hero's class; trying memory.");
+                return (null, null, null);
+            }
             var list = DeckCode.Decode(queued.DeckCode, _cards);
             return list != null && list.Count > 0 ? (list, queued.Name, "Decks.log") : (null, null, null);
+        }
+
+        /// <summary>False when the deck's class and your hero's class are both known and differ.</summary>
+        private bool MatchesHero(string? code)
+        {
+            string? hero;
+            lock (_tracker.Sync) hero = _tracker.HeroClass(_tracker.FriendlyPlayerId);
+            var deck = code == null ? null : DeckCode.HeroClass(code, _cards);
+            return HeroClasses.Same(deck, hero) != false;
         }
 
         private (List<string>? List, string? Name, string? Source) FromMemory()

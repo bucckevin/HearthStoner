@@ -3,6 +3,23 @@
 Every installed version, newest first. The number is in `VERSION`: patch (1.0.x) for fixes, minor (1.x.0) for new
 features, major (x.0.0) for big changes, such as a new data format. Each version is tagged in git as `v<number>`.
 
+## 1.4.1 - 2026-11-08
+
+Fixes from a night of playing every mode: Arena, Battlegrounds, Ranked Wild and Tavern Brawl.
+
+- **Arena:** games are saved with your Arena deck, named "Arena deck", not the last ranked deck you queued
+  (Decks.log writes "Starting Arena Game With Deck:" there). No ranked-deck archetypes for drafted decks.
+- **Battlegrounds:** your place (1st to 8th) and hero are saved, and History's "Other modes" shows your average
+  place and top-4 finishes instead of wins. No more "Bartender Bob" as the opponent.
+- **Opponent class:** found even when they turn into a classless hero card (Deathwing, Worldbreaker) or use a
+  hero skin the card list doesn't know. Solo adventure bosses show by name instead of "Neutral".
+- **Ranks** are only kept for ranked and casual games; Arena and Battlegrounds games no longer carry your Wild rank.
+- **Your deck** isn't loaded from Decks.log when it's a different class from your hero (a deck from an earlier
+  game), and no deck is loaded in Battlegrounds or Mercenaries.
+- **Old games** saved with these mistakes are repaired once from their logs.
+- **History:** the win-chance graph fits the window (a small window cut off the end of the game), and the numbers
+  above it wrap to a second row instead of running off the edge.
+
 ## 1.4.0 - 2026-11-07
 
 A UI review: the window fits any screen size, and every page got clearer.

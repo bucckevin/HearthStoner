@@ -261,13 +261,24 @@ namespace HearthStoner.Game
             // The mode from the log (memory may not have had it, e.g. for imported games).
             if (!GameModes.Known(_rec.GameType)) _rec.GameType = _game.GameType;
             if (string.IsNullOrEmpty(_rec.Format) || _rec.Format == "FT_UNKNOWN") _rec.Format = _game.FormatType;
+            // Memory reports a ladder rank in every mode (Arena and Battlegrounds games say "Wild"); keep it where it's yours.
+            if (GameModes.Known(_rec.GameType) && !GameModes.HasLadderRank(_rec.GameType)) GameModes.ClearLadderInfo(_rec);
             if (!GameModes.IsCardGame(_rec.GameType))
             {
-                // Battlegrounds and Mercenaries: just the mode, times and result (the card tracking doesn't apply).
+                // Battlegrounds and Mercenaries: just the mode, times and result (the card tracking doesn't apply),
+                // and in Battlegrounds your place and hero. Their "opponent" is Bob or a mercenary team, not a player.
                 _rec.Snapshots.Clear(); _rec.Mulligan.Clear(); _rec.Discovers.Clear();
+                _rec.OpponentName = null;
+                if (GameModes.Of(_rec.GameType) == GameModes.Kind.Battlegrounds)
+                {
+                    var (place, hero) = _game.BattlegroundsFinish();
+                    _rec.Place = place;
+                    _rec.Hero = hero;
+                }
                 return;
             }
-            _rec.DeckName = _game.FriendlyDeckName;
+            var arena = GameModes.Of(_rec.GameType) == GameModes.Kind.Arena;
+            _rec.DeckName = _game.FriendlyDeckName ?? (arena ? GameModes.Name(_rec.GameType, _rec.Format) + " deck" : null);
             _rec.DeckCards = _game.FriendlyDeckList?.ToList() ?? new List<string>();
             _rec.DeckCode = DeckCode.Encode(new HackF5.UnitySpy.HearthstoneLib.Detail.Deck.Deck
             {
@@ -276,12 +287,16 @@ namespace HearthStoner.Game
                 FormatType = 2,
             }, _cards);
             _rec.MyClass = _game.HeroClass(me);
-            _rec.MyArchetype = _advisor.FriendlyArchetype?.Name;
             _rec.WentFirst = _game.PlayerEntity(me)?.Flag("FIRST_PLAYER") ?? false;
             _rec.OpponentClass = _game.HeroClass(opp);
-            var top = _advisor.TopOpponentArchetype();
-            _rec.OpponentArchetype = top.Name;
-            _rec.OpponentArchetypeProbability = top.Probability;
+            if (!arena)
+            {
+                // Archetypes come from ranked decks; drafted Arena decks don't play as one.
+                _rec.MyArchetype = _advisor.FriendlyArchetype?.Name;
+                var top = _advisor.TopOpponentArchetype();
+                _rec.OpponentArchetype = top.Name;
+                _rec.OpponentArchetypeProbability = top.Probability;
+            }
             _rec.OpponentCardsSeen = _game.OpponentOriginalCardsSeen();
             if (string.IsNullOrEmpty(_rec.OpponentName) && _game.PlayerNames.TryGetValue(opp, out var on)) _rec.OpponentName = on;
 

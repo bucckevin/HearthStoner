@@ -50,8 +50,14 @@ namespace HearthStoner.Tests
             Assert.NotNull(again);
             Assert.Equal(saved.Result, again.Result);
             Assert.Equal(saved.Turns, again.Turns);
-            Assert.Equal(saved.MyClass, again.MyClass);
-            Assert.Equal(saved.OpponentClass, again.OpponentClass);
+            // A class saved blank or "NEUTRAL" may be found now (1.4.1 looks behind neutral hero cards and skins); a
+            // class that was found must stay the same.
+            void SameClass(string was, string now, string who)
+            {
+                if (HeroClasses.IsReal(was) || !HeroClasses.IsReal(now)) Assert.True(was == now || (string.IsNullOrEmpty(was) && string.IsNullOrEmpty(now)), $"{who}: saved '{was}', now '{now}'");
+            }
+            SameClass(saved.MyClass, again.MyClass, "your class");
+            SameClass(saved.OpponentClass, again.OpponentClass, "opponent's class");
             Assert.Equal(saved.WentFirst, again.WentFirst);
             Assert.Equal(saved.Snapshots.Select(t => (t.Turn, t.Yours)), again.Snapshots.Select(t => (t.Turn, t.Yours)));
             Assert.Equal(saved.Snapshots.Select(t => (t.MyHp, t.MyArmor, t.TheirHp, t.TheirArmor)), again.Snapshots.Select(t => (t.MyHp, t.MyArmor, t.TheirHp, t.TheirArmor)));

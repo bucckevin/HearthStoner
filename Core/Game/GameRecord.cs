@@ -73,7 +73,11 @@ namespace HearthStoner.Game
     /// <summary>One game, as saved to %LocalAppData%\HearthStoner\games\*.json.</summary>
     public sealed class GameRecord
     {
-        public string Version = "1";
+        /// <summary>Version 2 (1.4.1): Arena decks, Battlegrounds places, classes behind neutral hero cards. Older
+        /// "1" records are repaired from their logs once (<see cref="GameLog.NeedsRepair"/>).</summary>
+        public const string CurrentVersion = "2";
+
+        public string Version = CurrentVersion;
         public DateTime Start;
         public DateTime End;
         public string Result;            // WON / LOST / TIED / null (unknown)
@@ -103,6 +107,11 @@ namespace HearthStoner.Game
         public int OpponentStarLevel;
         public int OpponentLegendRank;
         public List<string> OpponentCardsSeen = new List<string>();
+
+        /// <summary>Battlegrounds: where you finished (1-8, 1 = first); 0 in other modes and older games.</summary>
+        public int Place;
+        /// <summary>Battlegrounds: the hero you played (card id); null in other modes.</summary>
+        public string Hero;
 
         public int Turns;
         /// <summary>Recorded afterwards from a saved Hearthstone log rather than live.</summary>

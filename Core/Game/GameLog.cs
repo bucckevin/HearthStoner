@@ -129,7 +129,54 @@ namespace HearthStoner.Game
 
         // ------------------------------------------------------------------ importing old logs
 
-        public sealed class ImportResult { public int Attached, Created, Skipped, Backfilled; }
+        public sealed class ImportResult { public int Attached, Created, Skipped, Backfilled, Repaired; }
+
+        /// <summary>
+        /// A record saved before version 2 with something 1.4.0 got wrong: an Arena game saved with your last ranked
+        /// deck, an opponent whose class was lost to a neutral hero card or an unlisted skin, a Battlegrounds game
+        /// without its place, or a ladder rank on a mode that has none.
+        /// </summary>
+        public static bool NeedsRepair(GameRecord r, CardDb cards)
+        {
+            if (r == null) throw new ArgumentNullException(nameof(r));
+            if (r.Version != "1" || !GameModes.Known(r.GameType)) return false;
+            var kind = GameModes.Of(r.GameType);
+            if (kind == GameModes.Kind.Battlegrounds && r.Place == 0) return true;
+            if (!GameModes.HasLadderRank(r.GameType) && (!string.IsNullOrEmpty(r.Rank) || r.OpponentStarLevel > 0)) return true;
+            if (!GameModes.IsCardGame(r.GameType) || kind == GameModes.Kind.Solo) return false;
+            if (r.Decided && !HeroClasses.IsReal(r.OpponentClass)) return true;
+            return DeckIsAnotherClass(r, cards);
+        }
+
+        /// <summary>Most of the deck's class cards belong to a class other than the one you played (tourists aside).</summary>
+        private static bool DeckIsAnotherClass(GameRecord r, CardDb cards)
+        {
+            if (cards == null || !HeroClasses.IsReal(r.MyClass) || r.DeckCards.Count == 0) return false;
+            var classes = r.DeckCards.Select(id => cards.ById(id)?.CardClass).Where(HeroClasses.IsReal).ToList();
+            return classes.Count > 0 && classes.Count(c => c != r.MyClass) * 2 > classes.Count;
+        }
+
+        /// <summary>
+        /// Copies what the log decides from a fresh replay of the game onto its record, keeps what came from memory
+        /// (your rank, opponent name, BattleTag) where it applies, and saves it as version 2 under its new file name.
+        /// </summary>
+        public static void Repair(GameRecord r, GameRecord fresh)
+        {
+            if (r == null) throw new ArgumentNullException(nameof(r));
+            if (fresh == null) throw new ArgumentNullException(nameof(fresh));
+            var oldFile = Path.Combine(GameRecord.Dir, r.FileStem + ".json");
+            r.DeckName = fresh.DeckName; r.DeckCode = fresh.DeckCode; r.DeckCards = fresh.DeckCards;
+            r.MyClass = fresh.MyClass; r.MyArchetype = fresh.MyArchetype;
+            r.OpponentClass = fresh.OpponentClass; r.OpponentArchetype = fresh.OpponentArchetype;
+            r.OpponentArchetypeProbability = fresh.OpponentArchetypeProbability; r.OpponentCardsSeen = fresh.OpponentCardsSeen;
+            r.Place = fresh.Place; r.Hero = fresh.Hero;
+            r.Mulligan = fresh.Mulligan; r.Discovers = fresh.Discovers; r.Snapshots = fresh.Snapshots; r.Review = fresh.Review;
+            if (!GameModes.HasLadderRank(r.GameType)) GameModes.ClearLadderInfo(r);
+            if (!GameModes.IsCardGame(r.GameType)) r.OpponentName = null;
+            r.Version = GameRecord.CurrentVersion;
+            var saved = r.Save();
+            if (!string.Equals(saved, oldFile, StringComparison.OrdinalIgnoreCase) && File.Exists(oldFile)) File.Delete(oldFile);
+        }
 
         /// <summary>
         /// Goes through Hearthstone's log folders: attaches each finished game's log to its record (matched by start
@@ -150,7 +197,19 @@ namespace HearthStoner.Game
                 foreach (var slice in slices.Where(s => s.Complete))
                 {
                     var match = records.FirstOrDefault(r => Math.Abs((r.Start - slice.Start).TotalMinutes) <= 3);
-                    if (match != null && !string.IsNullOrEmpty(match.LogFile) && File.Exists(Path.Combine(GameRecord.Dir, match.LogFile))) { result.Skipped++; continue; }
+                    if (match != null && !string.IsNullOrEmpty(match.LogFile) && File.Exists(Path.Combine(GameRecord.Dir, match.LogFile)))
+                    {
+                        if (!NeedsRepair(match, cards)) { result.Skipped++; continue; }
+                        try
+                        {
+                            var fresh = Record(slice, DecksLog.LastQueuedDeck(path, slice.Start), cards, meta);
+                            if (fresh == null) { result.Skipped++; continue; }
+                            Repair(match, fresh);
+                            result.Repaired++;
+                        }
+                        catch (Exception ex) { log?.Invoke($"[import] repairing game at {slice.Start:g}: {ex.Message}"); }
+                        continue;
+                    }
                     try
                     {
                         if (match != null)

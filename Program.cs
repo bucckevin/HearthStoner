@@ -128,7 +128,7 @@ Options:
                         var cdb = CardDb.Load();
                         var m = LoadMeta(rank ?? Ranks.MetaBracket(st), period ?? st.MetaPeriod);
                         var r = GameLog.Import(HearthstoneLocator.FindInstallDir(hsPath), cdb, m, Log);
-                        Console.WriteLine($"Games: {r.Attached} logs attached to existing records, {r.Created} new records from older logs, {r.Skipped} already done or unfinished, {r.Backfilled} games given per-turn deck guesses.");
+                        Console.WriteLine($"Games: {r.Attached} logs attached to existing records, {r.Created} new records from older logs, {r.Skipped} already done or unfinished, {r.Backfilled} games given per-turn deck guesses, {r.Repaired} repaired.");
                         return 0;
                     }
                     case "launch":
@@ -149,7 +149,7 @@ Options:
                         var m = LoadMeta(rank ?? Ranks.MetaBracket(st), period ?? st.MetaPeriod);
                         var install = HearthstoneLocator.FindInstallDir(hsPath);
                         var imp = GameLog.Import(install, cdb, m, Log);
-                        Console.WriteLine($"Game logs: {imp.Attached} attached, {imp.Created} games added, {imp.Skipped} already done.");
+                        Console.WriteLine($"Game logs: {imp.Attached} attached, {imp.Created} games added, {imp.Repaired} repaired, {imp.Skipped} already done.");
                         var svc = new AppServices
                         {
                             InstallDir = install, Cards = cdb, Meta = () => m, Settings = st, Log = Log,

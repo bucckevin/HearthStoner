@@ -79,6 +79,7 @@ namespace HearthStoner.Game
                 PlayerNames[pid] = name;
                 if (!IsPlaceholderName(name)) _nameToPlayerId[name] = pid;
                 TryIdentifyFriendlyByName();
+                TryIdentifyBattlegroundsPlayer();
                 return;
             }
 

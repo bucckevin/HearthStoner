@@ -49,8 +49,7 @@ namespace HearthStoner.Pages
                 other.Children.Add(Theme.Text("Battlegrounds and Mercenaries: when you played and the result.", 12, Theme.Dusk, wrap: true));
                 foreach (var grp in d.OtherGames.GroupBy(x => GameModes.Name(x.GameType, x.Format)))
                 {
-                    int n = grp.Count(), w = grp.Count(x => x.Won);
-                    var line = Theme.Text($"{grp.Key}: {n} game{(n == 1 ? "" : "s")}, {w} win{(w == 1 ? "" : "s")}, last {grp.First().Start:MMM d}", 13, Theme.Vellum, wrap: true);
+                    var line = Theme.Text(GameModes.Summary(grp.Key, grp.ToList()), 13, Theme.Vellum, wrap: true);
                     line.Margin = new Thickness(0, 6, 0, 0);
                     other.Children.Add(line);
                 }
@@ -68,7 +67,10 @@ namespace HearthStoner.Pages
             return g;
         }
 
-        private static string Opponent(GameRecord g) => g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass);
+        /// <summary>Their deck, else their class; adventure bosses have no class ("NEUTRAL"), so their name.</summary>
+        private static string Opponent(GameRecord g) =>
+            g.OpponentArchetype ?? (!HeroClasses.IsReal(g.OpponentClass) && !string.IsNullOrEmpty(g.OpponentName)
+                ? g.OpponentName.Split('#')[0] : MetaStats.ClassName(g.OpponentClass));
 
         private static readonly string[] Modes = { "All", "Ranked", "Casual" };
         private static readonly string[] Results = { "Any", "Wins", "Losses" };
@@ -232,8 +234,9 @@ namespace HearthStoner.Pages
                 p.Children.Add(watch);
             }
 
-            var facts = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 0, 0) };
-            void Fact(string v, string label, Brush color = null) { var f = new StackPanel { Margin = new Thickness(0, 0, 40, 0) }; f.Children.Add(Theme.Text(v, 20, color ?? Theme.Vellum, FontWeights.SemiBold, display: true)); f.Children.Add(Theme.Text(label, 12.5, Theme.Dusk)); facts.Children.Add(f); }
+            // Wraps to a second row when the window is too narrow for all six (it used to run off the edge).
+            var facts = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 0, -10) };
+            void Fact(string v, string label, Brush color = null) { var f = new StackPanel { Margin = new Thickness(0, 0, 40, 10) }; f.Children.Add(Theme.Text(v, 20, color ?? Theme.Vellum, FontWeights.SemiBold, display: true)); f.Children.Add(Theme.Text(label, 12.5, Theme.Dusk)); facts.Children.Add(f); }
             Fact(sum.Rounds.ToString(), "turns");
             Fact($"{sum.RoundsAhead} of {sum.Swing.Count}", "rounds you were ahead");
             var chance = replay != null ? analysis.Chance : null;
@@ -262,8 +265,10 @@ namespace HearthStoner.Pages
                 var sub = Theme.Text($"HearthStoner's estimate at each moment, starting from the matchup's {AppShell.Pct(chance.Prior)}. Click a red dot to see that moment in the replay.", 12.5, Theme.Dusk, wrap: true);
                 sub.Margin = new Thickness(0, -6, 0, 8);
                 p.Children.Add(sub);
-                var c = new Canvas { Width = wide ? WideMainWidth - 40 : 760, Height = wide ? 250 : 210, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.Transparent };
-                WinChanceView.Draw(c, chance, -1, replay, Watch);
+                // As wide as the column allows, up to the usual size, redrawn when it changes: a fixed width cut off
+                // the end of the game in a small window.
+                var c = new Canvas { MaxWidth = wide ? WideMainWidth - 40 : 760, Height = wide ? 250 : 210, HorizontalAlignment = HorizontalAlignment.Stretch, Background = Brushes.Transparent };
+                c.SizeChanged += (s2, e2) => { if (e2.WidthChanged) WinChanceView.Draw(c, chance, -1, replay, Watch); };
                 p.Children.Add(c);
                 foreach (var m in chance.Drops.Concat(chance.Rises).OrderBy(m => m.Frame))
                 {

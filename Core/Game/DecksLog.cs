@@ -21,7 +21,8 @@ namespace HearthStoner.Game
     ///   ### Aura Paladin
     ///   # Deck ID: 3379985521
     ///   AAECAZ8F...
-    /// The last such block in the current session's Decks.log is the deck you're playing.
+    /// The last such block in the current session's Decks.log is the deck you're playing. Arena writes
+    /// "Starting Arena Game With Deck:" and a blank name instead.
     /// </summary>
     public static class DecksLog
     {
@@ -51,7 +52,7 @@ namespace HearthStoner.Game
                 for (var i = start + 1; i < lines.Length; i++)
                 {
                     var l = lines[i].Trim();
-                    if (l.StartsWith("Deck Contents Received:") || l.StartsWith("Finding Game With Deck:")) break;
+                    if (l.StartsWith("Deck Contents Received:") || IsQueueLine(l)) break;
                     if (l.StartsWith("### ")) { cur = new QueuedDeck { Name = l.Substring(4).Trim(), LoggedAt = File.GetLastWriteTime(f) }; }
                     else if (cur != null && l.StartsWith("# Deck ID:") && long.TryParse(l.Substring(10).Trim(), out var id)) cur.DeckId = id;
                     else if (cur != null && l.StartsWith("AAE")) { cur.DeckCode = l; result.Add(cur); cur = null; }
@@ -60,6 +61,16 @@ namespace HearthStoner.Game
             }
             return new List<QueuedDeck>();
         }
+
+        /// <summary>
+        /// A line that starts the block of the deck you're about to play: "Finding Game With Deck:" when you queue
+        /// (ranked, casual, Tavern Brawl), "Starting Arena Game With Deck:" in Arena.
+        /// </summary>
+        public static bool IsQueueLine(string line) =>
+            line != null && line.EndsWith("Game With Deck:", StringComparison.Ordinal);
+
+        /// <summary>A deck name from a "### name" line; null when blank (Arena decks have no name).</summary>
+        private static string NameOrNull(string name) => string.IsNullOrWhiteSpace(name) ? null : name.Trim();
 
         private static string[] ReadLines(string path)
         {
@@ -110,13 +121,13 @@ namespace HearthStoner.Game
 
             for (var i = lines.Length - 1; i >= 0; i--)
             {
-                if (!lines[i].StartsWith("Finding Game With Deck:")) continue;
+                if (!IsQueueLine(lines[i])) continue;
                 if (before.HasValue && when[i] > before.Value) continue;
                 var deck = new QueuedDeck { LoggedAt = File.GetLastWriteTime(path) };
                 for (var j = i + 1; j < lines.Length && j <= i + 4; j++)
                 {
                     var l = lines[j].Trim();
-                    if (l.StartsWith("### ")) deck.Name = l.Substring(4).Trim();
+                    if (l.StartsWith("###")) deck.Name = NameOrNull(l.Substring(3));
                     else if (l.StartsWith("# Deck ID:") && long.TryParse(l.Substring(10).Trim(), out var id)) deck.DeckId = id;
                     else if (l.StartsWith("AAE")) { deck.DeckCode = l; break; }
                 }

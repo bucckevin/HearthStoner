@@ -23,11 +23,44 @@ namespace HearthStoner.Game
         }
 
 
+        /// <summary>
+        /// The player's class. When their hero now is classless (Deathwing, Worldbreaker and other neutral hero cards),
+        /// the class of the hero they started with. Hero skins the card list doesn't know fall back to the game's own
+        /// CLASS tag. Adventure bosses really are "NEUTRAL".
+        /// </summary>
         public string HeroClass(int playerId)
         {
-            var hero = Hero(playerId);
-            var info = _cards.ById(hero?.CardId);
-            return info?.CardClass;
+            var now = ClassOf(Hero(playerId));
+            if (HeroClasses.IsReal(now)) return now;
+            // The starting hero: created in play at setup, not a hero card from the deck.
+            var start = Entities.Values
+                .Where(e => e.CardType == "HERO" && !e.StartedInDeck && (e.StartController == playerId || e.Controller == playerId))
+                .OrderBy(e => e.Id)
+                .Select(ClassOf)
+                .FirstOrDefault(HeroClasses.IsReal);
+            return start ?? now;
+        }
+
+        /// <summary>
+        /// Battlegrounds: your place (PLAYER_LEADERBOARD_PLACE on your hero, 1-8; 0 when not shown yet) and your hero's
+        /// card id; (0, null) while it isn't known which player you are.
+        /// </summary>
+        public (int Place, string HeroCardId) BattlegroundsFinish()
+        {
+            var me = FriendlyPlayerId;
+            var hero = me == 0 ? null : Hero(me);
+            if (hero == null) return (0, null);
+            var place = hero.Int("PLAYER_LEADERBOARD_PLACE");
+            return (place is >= 1 and <= 8 ? place : 0, string.IsNullOrEmpty(hero.KnownCardId) ? null : hero.KnownCardId);
+        }
+
+        private string ClassOf(Entity hero)
+        {
+            if (hero == null) return null;
+            var known = _cards.ById(hero.KnownCardId)?.CardClass;
+            if (HeroClasses.IsReal(known)) return known;
+            var tag = hero.Tag("CLASS");   // a name like DEATHKNIGHT; ignore anything else
+            return tag != null && tag.Length > 0 && tag.All(char.IsLetter) ? tag : known;
         }
 
 

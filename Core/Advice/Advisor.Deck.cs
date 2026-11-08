@@ -14,7 +14,9 @@ namespace HearthStoner.Advice
             nextDraw = null;
             var me = _game.FriendlyPlayerId;
             var deckCount = _game.DeckCount(me);
-            var title = _game.FriendlyDeckName ?? _friendlyArchetype?.Name ?? "Your deck";
+            // Arena decks have no name, and a drafted deck isn't a ranked archetype.
+            var arena = GameModes.Of(_game.GameType) == GameModes.Kind.Arena;
+            var title = _game.FriendlyDeckName ?? (arena ? GameModes.Name(_game.GameType, _game.FormatType) + " deck" : _friendlyArchetype?.Name) ?? "Your deck";
             var s = new AdviceSection(title) { Bar = true, Lower = true, RightText = $"{deckCount} left" };
             var remaining = _game.FriendlyRemainingDeck();
             if (_game.FriendlyDeckList == null) { s.Add("Looking for your deck list (Decks.log, then memory)...", Tone.Dim); return s; }
