@@ -98,9 +98,25 @@ namespace HearthStoner.Live
         public string? Start()
         {
             new Thread(_deckLoader.Loop) { IsBackground = true, Name = "deck loader" }.Start();
+            var tag = ReadBattleTag();
+            // Started before Hearthstone (or before logging in): keep looking, or your name would never show.
+            if (tag == null) new Thread(WaitForBattleTag) { IsBackground = true, Name = "battletag" }.Start();
+            return tag;
+        }
+
+        /// <summary>Your BattleTag, read from memory after <see cref="Start"/> because Hearthstone wasn't ready then. Raised on a worker thread.</summary>
+        public event Action<string>? BattleTagFound;
+
+        /// <summary>How often to look for your BattleTag again while Hearthstone is closed or still logging in.</summary>
+        private static readonly TimeSpan BattleTagRetry = TimeSpan.FromSeconds(15);
+        private volatile bool _disposed;
+
+        /// <summary>Reads your BattleTag from memory, tells the tracker and saves it. Null when Hearthstone isn't running or logged in yet.</summary>
+        private string? ReadBattleTag()
+        {
             var tag = Live.Use(m => m.GetAccountInfo()?.BattleTag);
             if (string.IsNullOrEmpty(tag)) return null;
-            Tracker.FriendlyNameHint = tag;
+            lock (Tracker.Sync) Tracker.FriendlyNameHint = tag;
             if (Settings.LastBattleTag != tag)
             {
                 Settings.LastBattleTag = tag;
@@ -109,13 +125,34 @@ namespace HearthStoner.Live
             return tag;
         }
 
+        /// <summary>Retries <see cref="ReadBattleTag"/> every <see cref="BattleTagRetry"/> until it works or the session ends.</summary>
+        private void WaitForBattleTag()
+        {
+            while (!_disposed)
+            {
+                Thread.Sleep(BattleTagRetry);
+                if (_disposed || !HsMemory.IsHearthstoneRunning) continue;
+                string? tag;
+                try { tag = ReadBattleTag(); }
+                catch (Exception ex) { _log("[battletag] " + ex.Message); continue; }
+                if (tag == null) continue;
+                _log("[battletag] read after Hearthstone started");
+                BattleTagFound?.Invoke(tag);
+                return;
+            }
+        }
+
         /// <summary>Follows Power.log until <paramref name="cancel"/> fires. Blocks.</summary>
         /// <param name="cancel">Stops following.</param>
         /// <param name="status">Status lines from the log follower (waiting for Hearthstone, switched log ...).</param>
         public void Run(CancellationToken cancel, Action<string> status) => Tailer.Run(cancel, status);
 
         /// <summary>Drops the memory attachment.</summary>
-        public void Dispose() => Live.Dispose();
+        public void Dispose()
+        {
+            _disposed = true;
+            Live.Dispose();
+        }
 
         // Runs on the log thread while the tracker lock is held, so reading tracker state here is safe.
         private void OnEvent(GameEvent ev)

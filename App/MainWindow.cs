@@ -31,6 +31,8 @@ namespace HearthStoner
         public Func<GameLog.ImportResult> ImportLogs;
         /// <summary>Your BattleTag, when Hearthstone is running.</summary>
         public string PlayerName;
+        /// <summary>Set by the window: called when your BattleTag was read after startup, so the name shows.</summary>
+        public Action PlayerNameFound;
     }
 
     /// <summary>
@@ -97,6 +99,7 @@ namespace HearthStoner
             SourceInitialized += (s, e) => Theme.DarkCaption(this);
             Loaded += (s, e) => Reload();
             _svc.CollectionSaved = () => _gamesChangedAt = DateTime.UtcNow;   // reload like after a game
+            _svc.PlayerNameFound = () => _gamesChangedAt = DateTime.UtcNow;   // reload so your name shows
             ArtCache.Arrived += () => _artArrived = true;
             var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             // Refresh by itself when a game is saved (a game just ended, or older ones were imported): watch the games

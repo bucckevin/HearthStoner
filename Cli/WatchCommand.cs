@@ -46,6 +46,7 @@ namespace HearthStoner
                     Console.WriteLine($"  Saved to {path}\n");
                 };
 
+                session.BattleTagFound += t => Console.WriteLine($"Logged in as {t}");
                 var tag = session.Start();
                 if (tag != null) Console.WriteLine($"Logged in as {tag}");
                 else if (!HsMemory.IsHearthstoneRunning) Console.WriteLine("Hearthstone isn't running yet - start it whenever you like.");
@@ -127,6 +128,8 @@ namespace HearthStoner
             };
             // Keep every game in Hearthstone's log folders replayable: attach logs to records, record older games.
             services.ImportLogs = () => GameLog.Import(session.InstallDir, session.Cards, advisor.Meta, Log);
+            // HearthStoner started before Hearthstone: your name shows as soon as your BattleTag can be read.
+            session.BattleTagFound += t => { services.PlayerName = t; services.PlayerNameFound?.Invoke(); };
             AppHost.Start(() => advisor.Compute(), advisor, settings, Log, services, showWindow: !minimized);
             GameArt.StartJob(session.InstallDir, () => session.Tracker.InGame);
 
