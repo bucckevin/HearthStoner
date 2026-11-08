@@ -273,7 +273,9 @@ namespace HearthStoner.Stats
                 Check($"      advice computed every turn{(g.FirstError != null ? $" - {g.AdviceErrors} errors, first: {g.FirstError}" : "")}", g.AdviceErrors == 0);
                 if (g.DeckListCount > 0)
                     Check($"      your starting deck: {g.StartedInDeck} cards tracked vs {g.DeckListCount} in your list{(g.DeckDiff != null ? " (" + g.DeckDiff + ")" : "")}", Math.Abs(g.StartedInDeck - g.DeckListCount) <= 1);
-                Check($"      opponent mana crystals tracked (max {g.MaxOppMana}, never drops)", g.MaxOppMana >= 1 && g.MaxOppMana <= g.OppManaCap && g.OppManaMonotonic);
+                // A game conceded in its first turns may end before the opponent gets a crystal.
+                if (g.Turns >= 3)
+                    Check($"      opponent mana crystals tracked (max {g.MaxOppMana}, never drops)", g.MaxOppMana >= 1 && g.MaxOppMana <= g.OppManaCap && g.OppManaMonotonic);
                 Check($"      game recorded ({g.Snapshots} turn snapshots, {g.Review} review notes)", g.Snapshots >= Math.Max(1, g.Turns - 2));
                 Info($"      {g.Choices} choices, {g.Secrets} secrets revealed{(g.Stolen > 0 ? $", {g.Stolen} of your cards stolen" : "")}");
             }

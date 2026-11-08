@@ -33,6 +33,7 @@ namespace HearthStoner.Tests
                     if (tracker.InGame && tracker.Turn >= 10) break;
                 }
                 if (!tracker.InGame || !GameModes.IsCardGame(tracker.GameType)) continue;
+                if (tracker.FriendlyDeckList == null) continue;   // dropped: Decks.log's deck was from an earlier game
 
                 var sec = advisor.Compute().Sections.Single(s => s.Lower && !s.Opponent);
                 var left = tracker.DeckCount(tracker.FriendlyPlayerId);

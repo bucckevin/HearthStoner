@@ -42,9 +42,12 @@ namespace HearthStoner.Game
         public int Int(string t) => Tags.TryGetValue(t, out var v) && int.TryParse(v, out var n) ? n : 0;
         public bool Flag(string t) => Int(t) != 0;
 
-        public int Attack => Int("ATK");
-        public int Health => Int("HEALTH") - Int("DAMAGE");
-        public int Armor => Int("ARMOR");
+        /// <summary>Stats at least this big are "infinite" (Hand of Infinity logs int.MaxValue attack); capping them
+        /// here keeps every sum of attack or health from overflowing.</summary>
+        public const int Infinite = 1_000_000;
+        public int Attack => Math.Min(Int("ATK"), Infinite);
+        public int Health => Math.Min(Int("HEALTH"), Infinite) - Math.Min(Int("DAMAGE"), Infinite);
+        public int Armor => Math.Min(Int("ARMOR"), Infinite);
         public bool IsMinion => CardType == "MINION";
         public string KnownCardId => !string.IsNullOrEmpty(CardId) ? CardId : LastKnownCardId;
     }
@@ -123,6 +126,7 @@ namespace HearthStoner.Game
 
         /// <summary>Your deck list for this game (card ids, from memory), if known.</summary>
         public List<string> FriendlyDeckList { get; set; }
+        private bool _deckChecked;
         public string FriendlyDeckName { get; set; }
 
         public List<string> FriendlyPlayed => FriendlyPlayLog.Select(p => p.CardId).ToList();
@@ -242,6 +246,7 @@ namespace HearthStoner.Game
             InSetup = true;
             FriendlyDeckList = null;
             FriendlyDeckName = null;
+            _deckChecked = false;
             _current = null;
             _pendingShow = null;
             _newEntity = null;
@@ -476,8 +481,28 @@ namespace HearthStoner.Game
 
         private string NameOf(int playerId) => PlayerNames.TryGetValue(playerId, out var n) ? n : $"player {playerId}";
 
+        /// <summary>
+        /// Drops a deck list that is mostly another class than your hero, checked once a game when the first turn
+        /// starts: Decks.log's last deck can be from an earlier game (solo adventures and practice don't log theirs).
+        /// The live deck loader then finds the right one in memory; a replayed game goes without.
+        /// </summary>
+        private void DropDeckOfAnotherClass()
+        {
+            if (_deckChecked || FriendlyDeckList == null || FriendlyPlayerId == 0) return;
+            var hero = HeroClass(FriendlyPlayerId);
+            if (!HeroClasses.IsReal(hero)) return;
+            _deckChecked = true;
+            var classes = FriendlyDeckList.Select(id => _cards.ById(id)?.CardClass).Where(HeroClasses.IsReal).ToList();
+            if (classes.Count == 0 || classes.Count(c => c != hero) * 2 <= classes.Count) return;
+            var name = FriendlyDeckName;
+            FriendlyDeckList = null;
+            FriendlyDeckName = null;
+            if (!Quiet) _emit?.Invoke(new GameEvent { Kind = GameEventKind.Info, Friendly = true, Text = $"The deck from Decks.log ({name ?? "unnamed"}) isn't your hero's class; looking again." });
+        }
+
         private void Emit(GameEventKind kind, bool friendly, string cardId, string text)
         {
+            if (kind == GameEventKind.Turn) DropDeckOfAnotherClass();
             if (Quiet) return;
             _emit?.Invoke(new GameEvent { Kind = kind, Friendly = friendly, CardId = cardId, Text = text });
         }
