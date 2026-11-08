@@ -46,12 +46,14 @@ namespace HearthStoner.Pages
                 // Modes HearthStoner doesn't track card by card: how often you played them and how it went.
                 var other = new StackPanel { Margin = new Thickness(22, 20, 22, 16) };
                 other.Children.Add(Theme.Text("Other modes", 15, Theme.Vellum, FontWeights.SemiBold));
-                other.Children.Add(Theme.Text("Battlegrounds and Mercenaries: when you played and the result.", 12, Theme.Dusk, wrap: true));
+                other.Children.Add(Theme.Text("Battlegrounds: your place and hero. Mercenaries: when you played and the result.", 12, Theme.Dusk, wrap: true));
                 foreach (var grp in d.OtherGames.GroupBy(x => GameModes.Name(x.GameType, x.Format)))
                 {
-                    var line = Theme.Text(GameModes.Summary(grp.Key, grp.ToList()), 13, Theme.Vellum, wrap: true);
-                    line.Margin = new Thickness(0, 6, 0, 0);
+                    var line = Theme.Text(GameModes.Summary(grp.Key, grp.ToList()), 13, Theme.Vellum, FontWeights.SemiBold, wrap: true);
+                    line.Margin = new Thickness(0, 10, 0, 2);
                     other.Children.Add(line);
+                    // Battlegrounds: the latest games with place and hero.
+                    foreach (var bg in grp.Where(x => x.Place > 0).Take(8)) other.Children.Add(PlaceRow(bg, shell.Data.Cards));
                 }
                 list.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 1, 0, 0), Child = other });
             }
@@ -67,23 +69,44 @@ namespace HearthStoner.Pages
             return g;
         }
 
+        /// <summary>A Battlegrounds game: its place in a badge (top 4 in green), the hero and when.</summary>
+        private static UIElement PlaceRow(GameRecord g, CardDb cards)
+        {
+            var row = new Grid { Margin = new Thickness(0, 6, 0, 0) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var c = g.Place <= 4 ? Theme.WinC : Theme.DuskC;
+            row.Children.Add(new Border
+            {
+                Width = 30, Height = 30, CornerRadius = new CornerRadius(8), Background = Theme.B(c, 0.14), HorizontalAlignment = HorizontalAlignment.Left,
+                Child = new TextBlock { Text = GameModes.Ordinal(g.Place), Foreground = Theme.B(c), FontFamily = Theme.Display, FontWeight = FontWeights.Bold, FontSize = 13, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            });
+            var hero = Theme.Text(g.Hero != null ? cards.NameOf(g.Hero) : "Battlegrounds", 13, Theme.Vellum);
+            hero.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetColumn(hero, 1);
+            row.Children.Add(hero);
+            var when = Theme.Text(g.Start.ToString("MMM d, h:mm tt"), 12, Theme.Dusk);
+            when.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetColumn(when, 2);
+            row.Children.Add(when);
+            return row;
+        }
+
         /// <summary>Their deck, else their class; adventure bosses have no class ("NEUTRAL"), so their name.</summary>
         private static string Opponent(GameRecord g) =>
             g.OpponentArchetype ?? (!HeroClasses.IsReal(g.OpponentClass) && !string.IsNullOrEmpty(g.OpponentName)
                 ? g.OpponentName.Split('#')[0] : MetaStats.ClassName(g.OpponentClass));
 
-        private static readonly string[] Modes = { "All", "Ranked", "Casual" };
         private static readonly string[] Results = { "Any", "Wins", "Losses" };
 
-        /// <summary>Whether a game shows under the mode chip (All, Ranked, Casual) and the result chip (Any, Wins, Losses).</summary>
+        /// <summary>
+        /// Whether a game shows under the mode chip ("All" or a <see cref="GameModes.Kind"/> name such as "Arena") and
+        /// the result chip (Any, Wins, Losses).
+        /// </summary>
         public static bool Matches(GameRecord g, string mode, string result)
         {
-            var modeOk = mode switch
-            {
-                "Ranked" => g.GameType == "GT_RANKED",
-                "Casual" => g.GameType == "GT_CASUAL",
-                _ => true,
-            };
+            var modeOk = mode == "All" || string.IsNullOrEmpty(mode) || GameModes.Of(g.GameType).ToString() == mode;
             var resultOk = result switch
             {
                 "Wins" => g.Won,
@@ -95,11 +118,18 @@ namespace HearthStoner.Pages
 
         private static bool Matches(GameRecord g, AppShell shell) => Matches(g, shell.HistoryFilter, shell.HistoryResult);
 
-        /// <summary>Two rows of chips above the game list, mode then result; they combine ("Ranked" + "Losses").</summary>
+        /// <summary>
+        /// Two rows of chips above the game list, mode then result; they combine ("Arena" + "Losses"). Only modes you've
+        /// played get a chip, each with its count.
+        /// </summary>
         private static UIElement FilterChips(AppShell shell)
         {
+            var games = shell.Data.Games;
+            var modes = new List<string> { "All" };
+            modes.AddRange(GameModes.Played(games).Select(k => k.ToString()));
+            if (!modes.Contains(shell.HistoryFilter)) shell.HistoryFilter = "All";   // a mode with no games left
             var p = new StackPanel { Margin = new Thickness(22, 0, 22, 12) };
-            p.Children.Add(ChipRow(shell, Modes, shell.HistoryFilter, m => m == "All" ? $"All {shell.Data.Games.Count}" : m,
+            p.Children.Add(ChipRow(shell, modes, shell.HistoryFilter, m => $"{m} {games.Count(g => Matches(g, m, "Any"))}",
                 m => Filter(m, shell.HistoryResult), m => shell.HistoryFilter = m));
             p.Children.Add(ChipRow(shell, Results, shell.HistoryResult, r => r == "Any" ? "Any result" : r,
                 r => Filter(shell.HistoryFilter, r), r => shell.HistoryResult = r));
@@ -108,32 +138,22 @@ namespace HearthStoner.Pages
             static Func<GameRecord, bool> Filter(string mode, string result) => g => Matches(g, mode, result);
         }
 
-        /// <summary>One row of chips; the chosen one is outlined in mana blue, and each shows its game count on hover.</summary>
-        private static UIElement ChipRow(AppShell shell, string[] options, string current, Func<string, string> label, Func<string, Func<GameRecord, bool>> filterFor, Action<string> choose)
+        /// <summary>One row of chips; each shows its game count (with the other row's filter) on hover.</summary>
+        private static UIElement ChipRow(AppShell shell, IEnumerable<string> options, string current, Func<string, string> label, Func<string, Func<GameRecord, bool>> filterFor, Action<string> choose)
         {
             var row = new WrapPanel();
             foreach (var o in options)
             {
-                var on = o == current;
-                var test = filterFor(o);
-                var n = shell.Data.Games.Count(test);
-                var chip = new Border
-                {
-                    CornerRadius = new CornerRadius(13), Padding = new Thickness(11, 4, 11, 5), Margin = new Thickness(0, 0, 6, 6), Cursor = System.Windows.Input.Cursors.Hand,
-                    Background = on ? Theme.B(Theme.Rgb(0x2E, 0x35, 0x66)) : Theme.Raised, BorderBrush = on ? Theme.Mana : Theme.Line, BorderThickness = new Thickness(1),
-                    Child = new TextBlock { Text = label(o), FontSize = 13, Foreground = on ? Theme.Vellum : Theme.Mist },
-                    ToolTip = $"{n} game{(n == 1 ? "" : "s")}",
-                };
+                var n = shell.Data.Games.Count(filterFor(o));
                 var pick = o;
-                chip.MouseLeftButtonUp += (s, e) =>
+                row.Children.Add(AppShell.FilterChip(label(o), o == current, () =>
                 {
                     choose(pick);
                     // Keep the detail on a game the list shows.
                     var first = shell.Data.Games.FindIndex(g => Matches(g, shell));
                     if (first >= 0 && !Matches(shell.Data.Games[shell.SelectedGame], shell)) shell.SelectedGame = first;
                     shell.Redraw();
-                };
-                row.Children.Add(chip);
+                }, $"{n} game{(n == 1 ? "" : "s")}"));
             }
             return row;
         }

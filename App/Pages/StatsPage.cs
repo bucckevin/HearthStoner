@@ -8,17 +8,28 @@ using System.Windows.Shapes;
 
 namespace HearthStoner.Pages
 {
-    /// <summary>Stats: your record, recent form, results by matchup and by deck, then habits and tilt notes.</summary>
+    /// <summary>
+    /// Stats: your record, recent form, results by matchup and by deck, the best time to play, then habits and tilt
+    /// notes. Ranked and casual games by default (the ladder the advice is about), or every card mode.
+    /// </summary>
     public static class StatsPage
     {
         public static UIElement Build(AppShell shell)
         {
             var d = shell.Data;
-            var s = d.Stats;
             var p = new StackPanel();
-            if (s == null || s.Games == 0)
+            if (d.AllStats.Stats == null || d.AllStats.Stats.Games == 0)
             {
                 p.Children.Add(PlayPage.Empty("No finished games yet", "Play with HearthStoner running and your record, matchups and habits build up here."));
+                return AppShell.Page("Stats", "How you've been doing.", p);
+            }
+            var scope = Scope(shell);
+            var view = scope == AppShell.StatsLadder ? d.LadderStats : d.AllStats;
+            var s = view.Stats;
+            p.Children.Add(ScopeChips(shell, scope));
+            if (s == null || s.Games == 0)
+            {
+                p.Children.Add(Theme.Text("No finished ranked or casual games yet. \"All card modes\" shows your Arena, Tavern Brawl and solo games.", 13.5, Theme.Dusk, wrap: true));
                 return AppShell.Page("Stats", "How you've been doing.", p);
             }
 
@@ -45,13 +56,13 @@ namespace HearthStoner.Pages
             p.Children.Add(Theme.Heading($"Last {s.Recent.Count} game{(s.Recent.Count == 1 ? "" : "s")}"));
             p.Children.Add(RecentForm(s, shell));
 
-            if (d.Mana != null && d.Mana.Turns > 0) p.Children.Add(Mana(d.Mana));
+            if (view.Mana != null && view.Mana.Turns > 0) p.Children.Add(Mana(view.Mana));
 
             // Matchups, decks, and how early HearthStoner names the opponent's deck: three columns on a wide screen,
             // two (decks and the scorecard sharing one) on a normal one, one under the other in a small window.
             var byClass = Table("By opponent's class", s.ByClass, r => Theme.ClassColor(r.Class));
             var byDeck = Table("By deck", s.ByDeck, r => Theme.ClassColor(r.Class));
-            var score = Scorecard(PredictionScore.Compute(d.Games));
+            var score = Scorecard(PredictionScore.Compute(view.Games));
             switch (shell.Size)
             {
                 case PageWidth.Wide:
@@ -65,9 +76,17 @@ namespace HearthStoner.Pages
                     break;
             }
 
+            // When you win most: ranked and casual games by the hour they started (moved here from the Ladder page,
+            // where it repeated under each format).
+            var (times, best) = LadderReport.ByTimeOfDay(d.Games);
+            var timesBox = new StackPanel { Margin = new Thickness(0, 26, 0, 0), MaxWidth = 620, HorizontalAlignment = HorizontalAlignment.Left };
+            timesBox.Children.Add(Theme.Heading("Best time to play"));
+            Times(timesBox, times, best);
+            p.Children.Add(timesBox);
+
             // Habits, tilt and recurring review notes, from the stats report (its ladder notes are on the Ladder page).
             var notes = new WrapPanel { Margin = new Thickness(0, 26, 0, 0) };
-            foreach (var sec in d.StatsNotes.Where(x => x.Lines.Count > 0 && x.Title != "Ladder"))
+            foreach (var sec in view.Notes.Where(x => x.Lines.Count > 0 && x.Title != "Ladder"))
             {
                 var box = new StackPanel { Width = 440, Margin = new Thickness(0, 0, 30, 22) };
                 box.Children.Add(Theme.Heading(sec.Title));
@@ -84,7 +103,65 @@ namespace HearthStoner.Pages
             }
             p.Children.Add(notes);
 
-            return AppShell.Page("Stats", $"{s.Games} finished game{(s.Games == 1 ? "" : "s")} recorded with HearthStoner.", p);
+            var which = scope == AppShell.StatsLadder ? "ranked and casual" : "every card mode";
+            return AppShell.Page("Stats", $"{s.Games} finished game{(s.Games == 1 ? "" : "s")} recorded with HearthStoner: {which}.", p);
+        }
+
+        /// <summary>The games shown: your pick, else ranked and casual when there are any, else every card mode.</summary>
+        private static string Scope(AppShell shell)
+        {
+            if (shell.StatsScope == AppShell.StatsLadder || shell.StatsScope == AppShell.StatsAll) return shell.StatsScope;
+            return shell.Data.LadderStats.Stats?.Games > 0 ? AppShell.StatsLadder : AppShell.StatsAll;
+        }
+
+        /// <summary>"Ranked and casual 18" / "All card modes 29": which games the page counts.</summary>
+        private static UIElement ScopeChips(AppShell shell, string scope)
+        {
+            var row = new WrapPanel { Margin = new Thickness(0, -4, 0, 18) };
+            int ladder = shell.Data.LadderStats.Stats?.Games ?? 0, all = shell.Data.AllStats.Stats?.Games ?? 0;
+            row.Children.Add(AppShell.FilterChip($"Ranked and casual {ladder}", scope == AppShell.StatsLadder,
+                () => { shell.StatsScope = AppShell.StatsLadder; shell.Redraw(); }, "Your ladder games: the ones the advice and the meta data are about."));
+            row.Children.Add(AppShell.FilterChip($"All card modes {all}", scope == AppShell.StatsAll,
+                () => { shell.StatsScope = AppShell.StatsAll; shell.Redraw(); }, "Adds Arena, Tavern Brawl, solo and friendly games."));
+            return row;
+        }
+
+        /// <summary>Win rate by time of day: one row per block, the bar's length is the win rate; too few games get a dashed track.</summary>
+        private static void Times(Panel p, List<LadderReport.TimeBlock> times, LadderReport.TimeBlock best)
+        {
+            foreach (var t in times)
+            {
+                var enough = t.Games >= LadderReport.MinGames;
+                var g = new Grid { Height = 28 };
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(92) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
+                var n = Theme.Text(t.Name, 13.5, t == best ? Theme.Vellum : enough ? Theme.Mist : Theme.Dusk, t == best ? FontWeights.SemiBold : FontWeights.Normal);
+                n.VerticalAlignment = VerticalAlignment.Center;
+                g.Children.Add(n);
+                UIElement track = enough
+                    ? AppShell.StatBar(t.WinRate, Theme.RateBrush(t.WinRate), 8)
+                    : new Border { Height = 8, CornerRadius = new CornerRadius(4), BorderBrush = Theme.Line, BorderThickness = new Thickness(1), Background = Brushes.Transparent };
+                ((FrameworkElement)track).VerticalAlignment = VerticalAlignment.Center;
+                Grid.SetColumn(track, 1);
+                g.Children.Add(track);
+                var v = new TextBlock { FontSize = 13, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Foreground = Theme.Mist };
+                if (t.Games == 0) v.Text = "no games";
+                else if (!enough) v.Text = $"{t.Games} game{(t.Games == 1 ? "" : "s")} · too few";
+                else
+                {
+                    v.Inlines.Add(new System.Windows.Documents.Run(AppShell.Pct(t.WinRate)) { Foreground = Theme.RateBrush(t.WinRate), FontWeight = FontWeights.SemiBold });
+                    v.Inlines.Add(new System.Windows.Documents.Run($" of {t.Games}"));
+                }
+                Grid.SetColumn(v, 2);
+                g.Children.Add(v);
+                p.Children.Add(g);
+            }
+            var note = Theme.Text(best != null
+                ? $"You win most in the {best.Name.ToLowerInvariant()}. Ranked and casual games, by the hour they started; bar length is the win rate."
+                : $"Needs {LadderReport.MinGames}+ ranked or casual games in at least two of these to compare. Bar length is the win rate.", 12, Theme.Dusk, wrap: true);
+            note.Margin = new Thickness(0, 6, 0, 0);
+            p.Children.Add(note);
         }
 
         /// <summary>

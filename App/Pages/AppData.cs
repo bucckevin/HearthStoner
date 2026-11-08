@@ -20,9 +20,22 @@ namespace HearthStoner.Pages
         public List<GameRecord> Games = new List<GameRecord>();
         /// <summary>Battlegrounds and Mercenaries games (mode, times and result only), newest first.</summary>
         public List<GameRecord> OtherGames = new List<GameRecord>();
+        /// <summary>Stats over every card mode (the same as <see cref="AllStats"/>).</summary>
         public StatsSummary Stats;
-        /// <summary>The text parts of the stats report (habits, tilt, ladder, recurring notes).</summary>
+        /// <summary>The text parts of the stats report (habits, tilt, ladder, recurring notes), every card mode.</summary>
         public List<AdviceSection> StatsNotes = new List<AdviceSection>();
+        /// <summary>The Stats page's two views: ranked and casual games (the ladder), and every card mode.</summary>
+        public StatsView LadderStats = new StatsView(), AllStats = new StatsView();
+
+        /// <summary>Everything the Stats page shows for one set of games.</summary>
+        public sealed class StatsView
+        {
+            /// <summary>Newest first.</summary>
+            public List<GameRecord> Games = new List<GameRecord>();
+            public StatsSummary Stats;
+            public ManaStats Mana;
+            public List<AdviceSection> Notes = new List<AdviceSection>();
+        }
         public DeckPlanner Planner;
         public ManaStats Mana;
         /// <summary>What changed in the meta since <see cref="MetaSince"/> (empty on the first day).</summary>
@@ -60,8 +73,11 @@ namespace HearthStoner.Pages
                 d.Quests = QuestLog.Load();
                 d.QuestPlan = QuestPlan.Make(d.Quests, d.Decks, games, svc.Cards,
                     dk => d.PickFor(dk) is DeckPlanner.DeckPick p && p.Archetype != null ? p.Expected : (double?)null, DateTime.Now);
-                d.Stats = StatsSummary.From(games);
-                d.Mana = ManaStats.From(games);
+                d.AllStats = View(d, svc, games);
+                d.LadderStats = View(d, svc, games.Where(g => GameModes.HasLadderRank(g.GameType)).ToList());
+                d.Stats = d.AllStats.Stats;
+                d.Mana = d.AllStats.Mana;
+                d.StatsNotes = d.AllStats.Notes;
                 try
                 {
                     var history = MetaHistory.Load();
@@ -72,13 +88,24 @@ namespace HearthStoner.Pages
                     if (d.Meta.Archetypes.Count > 0) { history.Add(snap); history.Save(); }
                 }
                 catch (Exception ex) { svc.Log?.Invoke("[meta history] " + ex.Message); }
-                var notes = StatsReport.Build(games, d.Meta, svc.Cards, (key, id) => d.Meta.Detail(id, svc.Log ?? (_ => { })));
-                d.StatsNotes = notes.Where(s => s.Title != "Overall" && s.Title != "By deck" && s.Title != "By matchup").ToList();
                 d.PlayerName = (svc.PlayerName ?? svc.Settings?.LastBattleTag)?.Split('#')[0];
                 d.Rank = d.Stats.Rank;
             }
             catch (Exception ex) { d.Error = ex.Message; }
             return d;
+        }
+
+        /// <summary>Stats, mana use and the stats report's notes for these games (the report's tables are drawn by the page).</summary>
+        private static StatsView View(AppData d, AppServices svc, List<GameRecord> games)
+        {
+            var notes = StatsReport.Build(games, d.Meta, svc.Cards, (key, id) => d.Meta.Detail(id, svc.Log ?? (_ => { })));
+            return new StatsView
+            {
+                Games = games.OrderByDescending(g => g.Start).ToList(),
+                Stats = StatsSummary.From(games),
+                Mana = ManaStats.From(games),
+                Notes = notes.Where(s => s.Title != "Overall" && s.Title != "By deck" && s.Title != "By matchup").ToList(),
+            };
         }
 
         public DeckPlanner.DeckPick PickFor(PlayerDeck deck) => Picks.FirstOrDefault(p => p.Deck == deck);

@@ -166,6 +166,13 @@ namespace HearthStoner.Game
                     var r = JsonConvert.DeserializeObject<GameRecord>(File.ReadAllText(f));
                     if (r == null) continue;
                     if (string.IsNullOrEmpty(r.GameType)) Relabel(r, f);
+                    // A game without a deck list can't have a deck archetype: one saved by 1.4.1 or older was the
+                    // previous game's (a solo game after a ranked one). Cleared once.
+                    if (r.MyArchetype != null && r.DeckCards.Count == 0)
+                    {
+                        r.MyArchetype = null;
+                        File.WriteAllText(f, JsonConvert.SerializeObject(r, Formatting.Indented));
+                    }
                     list.Add(r);
                 }
                 catch (Exception swallowed) { Diag.Ignored(swallowed, "GameRecord"); }

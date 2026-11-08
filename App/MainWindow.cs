@@ -330,6 +330,25 @@ namespace HearthStoner
                     // Settings, Text size 130% on the ultrawide: the layouts follow the zoomed width.
                     foreach (var page in new[] { "Play", "Settings" })
                         Snap(shell, page, folder, page.ToLowerInvariant() + "-3440-130", 3440, 1400, scale: 1.3);
+                    // The views behind tabs and chips: each Ladder format (ladder-wild.png, ...), History filtered to
+                    // each mode you've played (history-arena.png, ...) and Stats over every card mode.
+                    foreach (var fmt in Ladder.From(data.Games).Select(x => x.FormatType))
+                    {
+                        shell.LadderFormat = fmt;
+                        Snap(shell, "Ladder", folder, "ladder-" + fmt.Replace("FT_", "").ToLowerInvariant(), 1280, 1300);
+                    }
+                    shell.LadderFormat = null;
+                    foreach (var kind in GameModes.Played(data.Games))
+                    {
+                        shell.HistoryFilter = kind.ToString();
+                        shell.SelectedGame = Math.Max(0, data.Games.FindIndex(g => GameModes.Of(g.GameType) == kind));
+                        Snap(shell, "History", folder, "history-" + kind.ToString().ToLowerInvariant(), 1280, 1000);
+                    }
+                    shell.HistoryFilter = "All";
+                    shell.SelectedGame = 0;
+                    shell.StatsScope = AppShell.StatsAll;
+                    Snap(shell, "Stats", folder, "stats-all", 1280, 1800);
+                    shell.StatsScope = null;
                     PracticeShots(shell, data, folder);
                 }
                 catch (Exception ex) { error = ex; }

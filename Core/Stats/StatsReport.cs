@@ -141,8 +141,11 @@ namespace HearthStoner.Stats
             var all = games.SelectMany(g => g.Review).ToList();
             if (all.Count == 0) notes.Add("Nothing flagged yet.", Tone.Good);
             foreach (var k in all.GroupBy(n => n.Kind).OrderByDescending(g => g.Count()))
-                notes.Add($"{Describe(k.Key)}: {k.Count()} times in {games.Count(g => g.Review.Any(n => n.Kind == k.Key))} games",
+            {
+                int times = k.Count(), inGames = games.Count(g => g.Review.Any(n => n.Kind == k.Key));
+                notes.Add($"{Describe(k.Key)}: {(times == 1 ? "once" : $"{times} times")} in {inGames} game{(inGames == 1 ? "" : "s")}",
                     k.Key == "MissedLethal" || k.Key == "UnspentMana" ? Tone.Warn : Tone.Normal);
+            }
             return result;
         }
 

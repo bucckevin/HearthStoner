@@ -49,6 +49,14 @@ namespace HearthStoner.Game
             r.OpponentLegendRank = 0;
         }
 
+        /// <summary>The card modes these games were played in, in a fixed order (Ranked, Casual, Brawl, Arena, Solo, Friendly, Duels): History's filter chips.</summary>
+        public static System.Collections.Generic.List<Kind> Played(System.Collections.Generic.IEnumerable<GameRecord> games)
+        {
+            var order = new[] { Kind.Ranked, Kind.Casual, Kind.Brawl, Kind.Arena, Kind.Solo, Kind.Friendly, Kind.Duels };
+            var seen = new System.Collections.Generic.HashSet<Kind>((games ?? Enumerable.Empty<GameRecord>()).Select(g => Of(g.GameType)));
+            return order.Where(seen.Contains).ToList();
+        }
+
         /// <summary>"1st", "2nd", "3rd", "5th": a Battlegrounds place.</summary>
         public static string Ordinal(int place) => place + (place % 100 is 11 or 12 or 13 ? "th" : (place % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
 

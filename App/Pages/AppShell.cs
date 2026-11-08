@@ -35,8 +35,13 @@ namespace HearthStoner.Pages
         /// <summary>Replays page: which game (index into the replayable games, newest first), which frame, hidden cards shown.</summary>
         public int ReplayGame, ReplayFrame;
         public bool ReplayShowHidden;
-        /// <summary>The History list's filter chips: a mode (All, Ranked, Casual) and a result (Any, Wins, Losses).</summary>
+        /// <summary>The History list's filter chips: a mode ("All" or a <see cref="GameModes.Kind"/> name) and a result (Any, Wins, Losses).</summary>
         public string HistoryFilter = "All", HistoryResult = "Any";
+        /// <summary>The Ladder page's format tab (FT_STANDARD, FT_WILD, ...); null until you pick one.</summary>
+        public string LadderFormat;
+        /// <summary>The Stats page's games: <see cref="StatsLadder"/> or <see cref="StatsAll"/>; null until you pick.</summary>
+        public string StatsScope;
+        public const string StatsLadder = "Ladder", StatsAll = "All";
         /// <summary>The Meta page's search text, view chip and sort column.</summary>
         public string MetaSearch = "", MetaView = "By class", MetaSort = "Games";
         /// <summary>Practice page state that lasts between redraws.</summary>
@@ -339,6 +344,40 @@ namespace HearthStoner.Pages
                 Child = t, CornerRadius = new CornerRadius(12), Padding = new Thickness(9, 3, 9, 4), Margin = new Thickness(0, 0, 8, 0),
                 Background = Theme.B(Theme.NightC, 0.75), BorderBrush = Theme.Line, BorderThickness = new Thickness(1),
             };
+        }
+
+        /// <summary>
+        /// A filter chip (History modes, Stats games): the chosen one is outlined in mana blue. Clicking calls
+        /// <paramref name="pick"/>; the page redraws itself.
+        /// </summary>
+        public static Border FilterChip(string text, bool on, Action pick, string tip = null)
+        {
+            var chip = new Border
+            {
+                CornerRadius = new CornerRadius(13), Padding = new Thickness(11, 4, 11, 5), Margin = new Thickness(0, 0, 6, 6), Cursor = System.Windows.Input.Cursors.Hand,
+                Background = on ? Theme.B(Theme.Rgb(0x2E, 0x35, 0x66)) : Theme.Raised, BorderBrush = on ? Theme.Mana : Theme.Line, BorderThickness = new Thickness(1),
+                Child = new TextBlock { Text = text, FontSize = 13, Foreground = on ? Theme.Vellum : Theme.Mist },
+                ToolTip = tip,
+            };
+            chip.MouseLeftButtonUp += (s, e) => pick?.Invoke();
+            return chip;
+        }
+
+        /// <summary>
+        /// A tab like "Standard  20 games" (the Ladder page's formats): larger than a chip, the count in grey.
+        /// </summary>
+        public static Border Tab(string text, string count, bool on, Action pick)
+        {
+            var t = new TextBlock { FontSize = 15, FontWeight = FontWeights.SemiBold, Foreground = on ? Theme.Vellum : Theme.Mist };
+            t.Inlines.Add(new System.Windows.Documents.Run(text));
+            if (count != null) t.Inlines.Add(new System.Windows.Documents.Run("  " + count) { FontSize = 12, FontWeight = FontWeights.Normal, Foreground = Theme.Dusk });
+            var tab = new Border
+            {
+                Child = t, CornerRadius = new CornerRadius(8), Padding = new Thickness(16, 7, 16, 8), Margin = new Thickness(8, 0, 0, 0), Cursor = System.Windows.Input.Cursors.Hand,
+                Background = on ? Theme.B(Theme.Rgb(0x2E, 0x35, 0x66)) : Brushes.Transparent, BorderBrush = on ? Theme.Mana : Theme.Line, BorderThickness = new Thickness(1),
+            };
+            tab.MouseLeftButtonUp += (s, e) => pick?.Invoke();
+            return tab;
         }
 
         /// <summary>

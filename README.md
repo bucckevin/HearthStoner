@@ -67,10 +67,11 @@ window opens where you left it. Ctrl+1 to Ctrl+9 jump to the pages in menu order
   that wins 41% of games when drawn for one that wins 55%), and how your list differs from the best list of its
   archetype, with the dust to build it. Paste any deck code to analyze it the same way. **Versions:** every list
   you've played a deck with, its record, and what changed from the version before.
-- **Ladder:** where you stand, the season's climb chart with the rank floors, your pace before the reset, the deck
-  that climbs fastest per hour, star bonus and streaks, your opponents' ranks, this session, and your best time to
-  play.
-- **History:** every recorded game, filtered by ranked, casual, wins or losses, with its result, key numbers, your
+- **Ladder:** one format at a time (Standard and Wild tabs): your rank and how far it is to the next floor, star
+  bonus and streak, the season's climb chart, your pace before the reset, the deck that climbs fastest per hour,
+  your sessions and your opponents' ranks. A format with only a game or two gets a short version.
+- **History:** every recorded game, filtered by mode (Ranked, Casual, Tavern Brawl, Arena, Solo: whichever you've
+  played) and by wins or losses. Battlegrounds games show your place and hero. Each game has its result, key numbers, your
   mulligan, the review, and the **win-chance graph**: an estimate at every moment from health, boards, hands,
   unspent mana and lethal threats, starting from the matchup's win rate. The biggest drops are marked and open the
   replay at that moment.
@@ -82,8 +83,9 @@ window opens where you left it. Ctrl+1 to Ctrl+9 jump to the pages in menu order
   in a row retire one) and six drills from your own games: What would you play?, Guess their hand, Secret guessing,
   Mulligan by matchup, Discover picks and Lethal puzzles. **Your progress** shows the questions you answered on each
   of the last two weeks' days and how often you're right in each drill.
-- **Stats:** your record, going first and on the coin, the last 30 games, **mana use** (how much you spend, the
-  turns you leave mana unspent, by deck), results by opponent class and by deck, mulligan habits and tilt notes.
+- **Stats:** your ranked and casual games by default, or every card mode: your record, going first and on the coin,
+  the last 30 games, **mana use** (how much you spend, the turns you leave mana unspent, by deck), results by
+  opponent class and by deck, your best time of day to play, mulligan habits and tilt notes.
 - **Meta:** every archetype at your rank with its play rate and win rate, by class or in one list, with search and
   sorting. Your archetypes are marked.
 - **Settings:** text size and whether the window remembers its size and place, overlay layout and panels, the

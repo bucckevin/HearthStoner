@@ -3,6 +3,23 @@
 Every installed version, newest first. The number is in `VERSION`: patch (1.0.x) for fixes, minor (1.x.0) for new
 features, major (x.0.0) for big changes, such as a new data format. Each version is tagged in git as `v<number>`.
 
+## 1.5.0 - 2026-11-08
+
+The Ladder, History and Stats pages tell the game modes apart, and two crashes-in-waiting are fixed.
+
+- **Ladder:** Standard and Wild tabs instead of both stacked (it opens on the format you play most this season). A
+  rank card shows your stars and how far it is to the next floor, with the star bonus and win streak beside it.
+  The climb chart is shorter and says how many games aren't on it (games added from logs have no rank). Goals drop
+  the "a day" column (it's on hover). Decks are per format, and Wild no longer gets Standard meta estimates. A format
+  with fewer than 3 games this season gets a short version. "Best time to play" moved to Stats.
+- **History:** a filter chip for each mode you've played (Ranked, Casual, Brawl, Arena, Solo), with counts.
+  Battlegrounds games are listed with your place and hero.
+- **Stats:** ranked and casual games by default, the ones the advice is about, or every card mode with one click.
+  Before, 4 wins against the AI and the Arena and Brawl games counted, and adventure bosses showed as "Neutral".
+- **Fixed:** the app crashed as a game ended when two minions had "infinite" attack (Hand of Infinity), and that
+  game wasn't saved (it's recovered from the log). A solo game no longer inherits the last ranked deck, or its
+  archetype, in replays, imports and the stats. "1 times in 1 games" reads "once in 1 game".
+
 ## 1.4.1 - 2026-11-08
 
 Fixes from a night of playing every mode: Arena, Battlegrounds, Ranked Wild and Tavern Brawl.

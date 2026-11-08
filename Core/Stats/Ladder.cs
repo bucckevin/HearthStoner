@@ -134,6 +134,23 @@ namespace HearthStoner.Stats
             return result.OrderByDescending(f => f.Latest.Games.Last().Start).ToList();
         }
 
+        /// <summary>
+        /// The format the Ladder page shows: the one you picked if it's there, else the one with the most ranked games
+        /// this season (ties: the one played last). Null when there are none.
+        /// </summary>
+        public static Format Pick(IReadOnlyList<Format> formats, string chosen, DateTime now)
+        {
+            if (formats == null || formats.Count == 0) return null;
+            var picked = formats.FirstOrDefault(f => f.FormatType == chosen);
+            if (picked != null) return picked;
+            var season = SeasonOf(now);
+            return formats.OrderByDescending(f => f.Latest.Month == season ? f.Latest.Games.Count : 0)
+                .ThenByDescending(f => f.Latest.Games.Last().Start).First();
+        }
+
+        /// <summary>"Standard", "Wild": a format's name without "Ranked".</summary>
+        public static string Short(Format f) => f?.Name?.Replace("Ranked ", "") ?? "";
+
         /// <summary>Games split wherever there's a break of <see cref="SessionGap"/> or more, oldest first.</summary>
         public static List<Session> Sessions(List<GameRecord> games)
         {
@@ -246,6 +263,20 @@ namespace HearthStoner.Stats
         /// <summary>The star bonus after climbing from one star count to another (one less per new floor, never below 1).</summary>
         public static int BonusAfter(int bonus, int fromIndex, int toIndex) =>
             Math.Max(1, Math.Max(1, bonus) - Math.Max(0, FloorAt(Math.Min(toIndex, 150)) - FloorAt(fromIndex)) / StarsPerFloor);
+        /// <summary>
+        /// Where a rank sits between the floor below it (or the one it's on) and the next one: their star levels and how
+        /// far along it is (0 to 1). The next floor of Diamond 5 and up is Legend (51).
+        /// </summary>
+        public static (int FromLevel, int ToLevel, double Fraction) FloorProgress(int level, int stars)
+        {
+            var idx = StarIndex(level, stars);
+            var floor = FloorAt(idx);
+            var fromLevel = LevelAt(floor);
+            var toLevel = Math.Min(LegendLevel, fromLevel + 5);
+            var span = StarIndex(toLevel) - floor;
+            return (fromLevel, toLevel, span <= 0 ? 1 : Math.Clamp((idx - floor) / (double)span, 0, 1));
+        }
+
         /// <summary>The floor your star bonus runs out at (where it reaches x1), or null with no bonus.</summary>
         public static int? BonusEndsAtLevel(int level, int bonus)
         {

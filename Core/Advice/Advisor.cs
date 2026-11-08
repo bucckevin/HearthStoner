@@ -118,8 +118,17 @@ namespace HearthStoner.Advice
         private readonly GameTracker _game;
         private readonly CardDb _cards;
         private MetaStats _meta;
-        private ArchetypeDetail _friendlyDetail;
-        private MetaArchetype _friendlyArchetype;
+        private ArchetypeDetail _detail;
+        private MetaArchetype _archetype;
+        /// <summary>The deck list (the tracker's own list) the archetype was matched to.</summary>
+        private List<string> _archetypeDeck;
+
+        /// <summary>
+        /// Your deck's archetype and matchup data, but only while the tracker still holds the deck list they were
+        /// matched to: a game without a deck (solo, or a deck dropped as another class) mustn't inherit the last one.
+        /// </summary>
+        private MetaArchetype _friendlyArchetype => _archetypeDeck != null && ReferenceEquals(_archetypeDeck, _game.FriendlyDeckList) ? _archetype : null;
+        private ArchetypeDetail _friendlyDetail => _friendlyArchetype != null ? _detail : null;
 
         public Advisor(GameTracker game, CardDb cards, MetaStats meta, Settings settings = null)
         {
@@ -142,21 +151,24 @@ namespace HearthStoner.Advice
         /// <summary>Your deck's archetype and its matchup data, looked up once per game (does a download).</summary>
         public void PrepareFriendlyDeck(Action<string> log)
         {
-            _friendlyArchetype = null;
-            _friendlyDetail = null;
-            List<string> deck;
+            _archetype = null;
+            _detail = null;
+            _archetypeDeck = null;
+            List<string> deck, list;
             string cls;
             lock (_game.Sync)
             {
-                deck = _game.FriendlyDeckList?.ToList();
+                list = _game.FriendlyDeckList;
+                deck = list?.ToList();
                 cls = _game.HeroClass(_game.FriendlyPlayerId);
             }
             if (_meta == null || deck == null || deck.Count == 0) return;
             cls = cls ?? _cards.ById(deck.FirstOrDefault(id => _cards.ById(id)?.CardClass != "NEUTRAL"))?.CardClass;
             var arch = _meta.MatchDeck(cls, deck);
             if (arch == null) return;
-            _friendlyArchetype = arch;
-            _friendlyDetail = _meta.Detail(arch.Id, log);
+            _archetype = arch;
+            _detail = _meta.Detail(arch.Id, log);
+            _archetypeDeck = list;
         }
 
         public MetaArchetype FriendlyArchetype => _friendlyArchetype;

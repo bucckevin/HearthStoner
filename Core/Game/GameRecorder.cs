@@ -291,8 +291,8 @@ namespace HearthStoner.Game
             _rec.OpponentClass = _game.HeroClass(opp);
             if (!arena)
             {
-                // Archetypes come from ranked decks; drafted Arena decks don't play as one.
-                _rec.MyArchetype = _advisor.FriendlyArchetype?.Name;
+                // Archetypes come from ranked decks; drafted Arena decks don't play as one. No deck list, no archetype.
+                _rec.MyArchetype = _rec.DeckCards.Count > 0 ? _advisor.FriendlyArchetype?.Name : null;
                 var top = _advisor.TopOpponentArchetype();
                 _rec.OpponentArchetype = top.Name;
                 _rec.OpponentArchetypeProbability = top.Probability;
