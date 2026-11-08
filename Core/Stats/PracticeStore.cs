@@ -18,6 +18,26 @@ namespace HearthStoner.Stats
         public bool Retired;
     }
 
+    /// <summary>One day's answers, for the Practice page's progress strip.</summary>
+    public sealed class PracticeDay
+    {
+        public DateTime Day;
+        public int Right, Wrong;
+        [JsonIgnore] public int Answered => Right + Wrong;
+    }
+
+    /// <summary>How you've done in one drill: answers right and wrong, and questions retired (learned).</summary>
+    public readonly struct DrillAccuracy
+    {
+        public DrillAccuracy(int right, int wrong, int retired) { Right = right; Wrong = wrong; Retired = retired; }
+        public int Right { get; }
+        public int Wrong { get; }
+        public int Retired { get; }
+        public int Answered => Right + Wrong;
+        /// <summary>Share of answers that were right; 0 when there are none.</summary>
+        public double Rate => Answered == 0 ? 0 : (double)Right / Answered;
+    }
+
     /// <summary>
     /// Spaced repetition for the Practice drills, saved to %LocalAppData%\HearthStoner\practice.json. A question you
     /// miss comes back the next day; right answers push it back 3, then 7 days, and the third right answer in a row
@@ -32,6 +52,8 @@ namespace HearthStoner.Stats
         public Dictionary<string, PracticeCard> Cards = new Dictionary<string, PracticeCard>();
         /// <summary>Days you answered at least one question (for the streak).</summary>
         public List<DateTime> Days = new List<DateTime>();
+        /// <summary>Answers per day (only days with answers; files from before this was kept start empty).</summary>
+        public List<PracticeDay> History = new List<PracticeDay>();
 
         /// <summary>HEARTHSTONER_PRACTICE points somewhere else (tests and screenshots).</summary>
         public static string Path => Environment.GetEnvironmentVariable("HEARTHSTONER_PRACTICE") is string p && p != ""
@@ -50,6 +72,24 @@ namespace HearthStoner.Stats
             c.Retired = c.Streak >= RetireAfter;
             c.Due = today.AddDays(right ? (c.Streak == 1 ? 3 : 7) : 1);
             if (!Days.Contains(today)) Days.Add(today);
+            var day = History.FirstOrDefault(h => h.Day == today);
+            if (day == null) History.Add(day = new PracticeDay { Day = today });
+            if (right) day.Right++; else day.Wrong++;
+        }
+
+        /// <summary>Your answers and retired questions in one drill (see <see cref="PracticeIds"/>).</summary>
+        public DrillAccuracy Accuracy(string drill)
+        {
+            var cards = Cards.Where(kv => PracticeIds.DrillOf(kv.Key) == drill).Select(kv => kv.Value).ToList();
+            return new DrillAccuracy(cards.Sum(c => c.Right), cards.Sum(c => c.Wrong), cards.Count(c => c.Retired));
+        }
+
+        /// <summary>The last <paramref name="days"/> days up to today, oldest first; days without answers are empty.</summary>
+        public List<PracticeDay> LastDays(DateTime today, int days)
+        {
+            if (days <= 0) throw new ArgumentOutOfRangeException(nameof(days), "Ask for at least one day.");
+            return Enumerable.Range(0, days).Select(i => today.Date.AddDays(i - days + 1))
+                .Select(d => History.FirstOrDefault(h => h.Day == d) ?? new PracticeDay { Day = d }).ToList();
         }
 
         /// <summary>Questions due today or earlier, oldest first; retired ones never are.</summary>

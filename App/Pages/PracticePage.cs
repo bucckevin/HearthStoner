@@ -51,9 +51,96 @@ namespace HearthStoner.Pages
             var tiles = new System.Windows.Controls.Primitives.UniformGrid { Columns = columns, Margin = new Thickness(0, 22, 0, 0) };
             foreach (var drill in PracticeIds.Drills) tiles.Children.Add(Tile(shell, drill, due.Count(id => PracticeIds.DrillOf(id) == drill)));
             p.Children.Add(tiles);
+            p.Children.Add(Progress(shell.Size, today));
             var note = Theme.Text("A question you miss comes back the next day; right answers push it back 3, then 7 days, and three right in a row retire it. New games add new questions by themselves.", 12.5, Theme.Dusk, wrap: true);
             note.Margin = new Thickness(0, 16, 0, 0);
             p.Children.Add(note);
+            return p;
+        }
+
+        /// <summary>Days shown in the progress strip.</summary>
+        private const int ProgressDays = 14;
+
+        /// <summary>
+        /// Your progress: questions answered on each of the last two weeks' days, and how often you're right in each
+        /// drill. Side by side, or one under the other in a small window; a short line until your first answer.
+        /// </summary>
+        private static UIElement Progress(PageWidth size, DateTime today)
+        {
+            var p = new StackPanel { Margin = new Thickness(0, 10, 0, 0) };
+            p.Children.Add(Theme.Heading("Your progress"));
+            if (Store.Cards.Count == 0)
+            {
+                p.Children.Add(Theme.Text("Answer a few questions and your accuracy and daily progress show up here.", 13.5, Theme.Mist, wrap: true));
+                return p;
+            }
+            var strip = DayStrip(Store.LastDays(today, ProgressDays));
+            var accuracy = AccuracyTable();
+            p.Children.Add(size == PageWidth.Compact
+                ? PageLayout.Stack(18, strip, accuracy)
+                : PageLayout.Columns((strip, 0), (accuracy, 0)));
+            return p;
+        }
+
+        /// <summary>One bar per day (height = questions answered), today outlined, with each day's tally on hover.</summary>
+        private static UIElement DayStrip(List<PracticeDay> days)
+        {
+            const double barArea = 80;
+            var p = new StackPanel();
+            p.Children.Add(AppShell.ColumnLabel($"Last {days.Count} days · questions answered"));
+            var bars = new Grid { Height = barArea, Margin = new Thickness(0, 8, 0, 0) };
+            var most = Math.Max(1, days.Max(x => x.Answered));
+            for (var i = 0; i < days.Count; i++)
+            {
+                var day = days[i];
+                bars.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                var isToday = i == days.Count - 1;
+                var bar = new Border
+                {
+                    Height = day.Answered == 0 ? 2 : Math.Max(4, barArea * day.Answered / most), VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(2, 0, 2, 0),
+                    CornerRadius = new CornerRadius(3, 3, 0, 0), Background = day.Answered == 0 ? Theme.Raised : Theme.Mana,
+                    BorderBrush = isToday ? Theme.Vellum : null, BorderThickness = new Thickness(isToday ? 1.5 : 0),
+                    ToolTip = day.Answered == 0 ? $"{day.Day:ddd MMM d}: none" : $"{day.Day:ddd MMM d}: {day.Answered} answered, {day.Right} right",
+                };
+                Grid.SetColumn(bar, i);
+                bars.Children.Add(bar);
+            }
+            p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = bars });
+            var dates = new DockPanel { Margin = new Thickness(0, 4, 0, 0) };
+            var end = Theme.Text("today", 12.5, Theme.Mist);
+            DockPanel.SetDock(end, Dock.Right);
+            dates.Children.Add(end);
+            dates.Children.Add(Theme.Text(days[0].Day.ToString("MMM d"), 12.5, Theme.Mist));
+            p.Children.Add(dates);
+            return p;
+        }
+
+        /// <summary>Each drill's share of right answers, with how many answers that's from, and the questions you've retired.</summary>
+        private static UIElement AccuracyTable()
+        {
+            var p = new StackPanel();
+            p.Children.Add(AppShell.ColumnLabel("Accuracy by drill"));
+            var retired = 0;
+            foreach (var drill in PracticeIds.Drills)
+            {
+                var a = Store.Accuracy(drill);
+                retired += a.Retired;
+                var row = new Grid { Height = 30 };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(52) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(72) });
+                var name = Theme.Text(DrillInfo[drill].Title, 13.5);
+                var brush = a.Answered == 0 ? Theme.Dusk : Theme.RateBrush(a.Rate);
+                var bar = AppShell.StatBar(a.Rate, brush); bar.Margin = new Thickness(0, 0, 10, 0); Grid.SetColumn(bar, 1);
+                var pct = Theme.Text(a.Answered == 0 ? "–" : AppShell.Pct(a.Rate), 13.5, brush, FontWeights.SemiBold); pct.TextAlignment = TextAlignment.Right; Grid.SetColumn(pct, 2);
+                var n = Theme.Text(a.Answered == 0 ? "none yet" : $"of {a.Answered}", 12.5, Theme.Mist); n.TextAlignment = TextAlignment.Right; Grid.SetColumn(n, 3);
+                foreach (var t in new FrameworkElement[] { name, bar, pct, n }) { t.VerticalAlignment = VerticalAlignment.Center; row.Children.Add(t); }
+                p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = row });
+            }
+            var learned = Theme.Text(retired == 0 ? "No questions retired yet: three right in a row retires one." : $"{retired} question{(retired == 1 ? "" : "s")} retired (learned).", 12.5, Theme.Mist, wrap: true);
+            learned.Margin = new Thickness(0, 6, 0, 0);
+            p.Children.Add(learned);
             return p;
         }
 

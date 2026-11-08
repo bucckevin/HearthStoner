@@ -44,13 +44,18 @@ namespace HearthStoner.Pages
             var footer = Theme.Text($"Your health: {f.You.Health}{(f.You.Armor > 0 ? $" + {f.You.Armor} armor" : "")}", 13, Theme.Vellum);
             footer.HorizontalAlignment = HorizontalAlignment.Center;
             footer.Margin = new Thickness(0, 16, 0, 0);
-            p.Children.Add(Felt(f.Them.Health + f.Them.Armor, "Opponent health", f.Them.Board.Select(m => ReplayMinion(d, m, false)), f.You.Board.Select(m => ReplayMinion(d, m, true)), footer));
+            // Normal and wide windows: the board and hand on the left, your plan (and Lock in) beside them, always in
+            // view. A small window keeps everything in one column with the mana crystals by the hand.
+            var side = shell.Size != PageWidth.Compact;
+            var play = new StackPanel();
+            play.Children.Add(Felt(f.Them.Health + f.Them.Armor, "Opponent health", f.Them.Board.Select(m => ReplayMinion(d, m, false)), f.You.Board.Select(m => ReplayMinion(d, m, true)), footer));
 
-            var label = AppShell.ColumnLabel($"Your hand · {used} of {limit} mana picked" + (coins > 0 ? " (The Coin adds 1)" : ""));
+            var label = AppShell.ColumnLabel(side ? "Your hand" + (coins > 0 ? " · The Coin adds 1 mana" : "")
+                : $"Your hand · {used} of {limit} mana picked" + (coins > 0 ? " (The Coin adds 1)" : ""));
             var head = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 0, 8) };
             head.Children.Add(label);
-            head.Children.Add(ManaCrystals(limit, used));
-            p.Children.Add(head);
+            if (!side) head.Children.Add(ManaCrystals(limit, used));
+            play.Children.Add(head);
             var row = new WrapPanel();
             foreach (var (card, slot) in hand)
             {
@@ -73,18 +78,30 @@ namespace HearthStoner.Pages
                     };
                 row.Children.Add(b);
             }
-            p.Children.Add(row);
+            play.Children.Add(row);
 
+            // Lock in and, when it's greyed out, why (a greyed-out button always says why).
+            var lockArea = new StackPanel();
             if (!st.Answered)
             {
                 var lockIn = Theme.Button("Lock in", () => Answer(shell, id, used <= limit && used == best));
                 lockIn.IsEnabled = st.PickOrder.Count > 0 && used <= limit;
-                p.Children.Add(lockIn);
-                // A greyed-out button always says why.
-                if (used > limit) p.Children.Add(Note($"That's {used} mana: more than the {limit} you have."));
-                else if (st.PickOrder.Count == 0) p.Children.Add(Note("Click at least one card to lock in your plan."));
-                return p;
+                if (side) lockIn.HorizontalAlignment = HorizontalAlignment.Stretch;
+                lockArea.Children.Add(lockIn);
+                if (used > limit) lockArea.Children.Add(Note($"That's {used} mana: more than the {limit} you have."));
+                else if (st.PickOrder.Count == 0) lockArea.Children.Add(Note("Click at least one card to lock in your plan."));
             }
+            if (side)
+            {
+                var plan = PlanPanel(shell, picked.Select(h => (d.Cards.NameOf(h.CardId), IsCoin(h) ? 0 : h.Cost)).ToList(), used, limit, lockArea);
+                p.Children.Add(PageLayout.Columns((play, 0), (plan, PlanWidth)));
+            }
+            else
+            {
+                p.Children.Add(play);
+                p.Children.Add(lockArea);
+            }
+            if (!st.Answered) return p;
             var chance = ReplayPage.Analyze(g, r, d).Chance;
             var after = r.TurnStarts.TryGetValue(turn + 1, out var next) ? next : r.Frames.Count - 1;
             var played = PracticeDrills.PlayedInTurn(r, turn).Select(d.Cards.NameOf).ToList();
@@ -96,6 +113,70 @@ namespace HearthStoner.Pages
             p.Children.Add(Note("This scores mana use, not card strength: sometimes holding a card is the better play."));
             p.Children.Add(NextButton(shell));
             return p;
+        }
+
+        /// <summary>Width of the "Your plan" panel beside the board.</summary>
+        private const double PlanWidth = 260;
+
+        /// <summary>
+        /// Your plan beside the board: the mana crystals, your picks numbered in order (click one to take it back) and
+        /// Lock in under them. <paramref name="picks"/> are (name, mana it costs) in the order you clicked them.
+        /// </summary>
+        private static UIElement PlanPanel(AppShell shell, List<(string Name, int Cost)> picks, int used, int limit, UIElement lockArea)
+        {
+            var st = shell.Practice;
+            var p = new StackPanel();
+            p.Children.Add(AppShell.ColumnLabel("Your plan"));
+            var mana = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 10) };
+            var crystals = ManaCrystals(limit, used);
+            ((FrameworkElement)crystals).Margin = new Thickness(0);
+            mana.Children.Add(crystals);
+            var left = Theme.Text($"{used} of {limit} mana used", 12.5, used > limit ? Theme.Amber : Theme.Mist);
+            left.Margin = new Thickness(8, 0, 0, 0);
+            left.VerticalAlignment = VerticalAlignment.Center;
+            mana.Children.Add(left);
+            p.Children.Add(mana);
+            if (picks.Count == 0)
+                p.Children.Add(new Border
+                {
+                    BorderBrush = Theme.Line, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 18, 12, 18),
+                    Child = Theme.Text("Click cards in your hand in the order you'd play them.", 13, Theme.Mist, wrap: true),
+                });
+            for (var i = 0; i < picks.Count; i++)
+                p.Children.Add(PlanRow(shell, i, picks[i].Name, picks[i].Cost, st.Answered ? null : st.PickOrder[i]));
+            if (picks.Count > 0 && !st.Answered) p.Children.Add(Note("Click a pick to take it back."));
+            lockArea.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 12, 0, 0));
+            p.Children.Add(lockArea);
+            return new Border
+            {
+                Child = p, Background = Theme.Slate, BorderBrush = Theme.Line, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(14), VerticalAlignment = VerticalAlignment.Top,
+            };
+        }
+
+        /// <summary>One pick: its order, name and cost. With a hand slot, clicking it takes the pick back.</summary>
+        private static UIElement PlanRow(AppShell shell, int order, string name, int cost, int? slot)
+        {
+            var row = new DockPanel { LastChildFill = true };
+            var num = new Border
+            {
+                Width = 22, Height = 22, CornerRadius = new CornerRadius(11), Background = Theme.Mana, Margin = new Thickness(0, 0, 10, 0),
+                Child = new TextBlock { Text = (order + 1).ToString(), FontWeight = FontWeights.Bold, FontSize = 12, Foreground = Theme.B(Theme.Rgb(0x0B, 0x14, 0x30)), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            };
+            DockPanel.SetDock(num, Dock.Left);
+            row.Children.Add(num);
+            var c = Theme.Text(cost.ToString(), 13.5, Theme.Mist);
+            DockPanel.SetDock(c, Dock.Right);
+            row.Children.Add(c);
+            row.Children.Add(Theme.Text(name, 13.5));
+            var b = new Border { Child = row, Background = Theme.Raised, CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 7, 10, 7), Margin = new Thickness(0, 0, 0, 6) };
+            if (slot is int s)
+            {
+                b.Cursor = System.Windows.Input.Cursors.Hand;
+                b.ToolTip = "Take this pick back";
+                b.MouseLeftButtonUp += (o, e) => { shell.Practice.PickOrder.Remove(s); shell.Redraw(); };
+            }
+            return b;
         }
 
         /// <summary>One crystal per mana you have: filled while unspent, hollow once your picks use it.</summary>

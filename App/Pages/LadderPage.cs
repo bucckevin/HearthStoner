@@ -73,7 +73,7 @@ namespace HearthStoner.Pages
             p.Children.Add(chart);
             var extra = r.BonusStars + r.StreakStars > 0
                 ? $" Extra stars this season: {r.BonusStars:N0} from your star bonus and {r.StreakStars:N0} from win streaks, on top of the 1 star each win gives." : "";
-            Note(p, "Each dot is a game, at the rank you started it from (green: won, red: lost). Gold lines are floors (rank 10 and 5 of each league): once you reach one you can't drop below it." + extra, 6, 24);
+            Note(p, "Each dot is a game, at the rank you started it from (filled green: won, hollow red: lost). Gold lines are floors (rank 10 and 5 of each league): once you reach one you can't drop below it." + extra, 6, 24);
 
             // Pace, this session, decks and opponents: four blocks laid out to fit the window.
             var pace = new StackPanel();
@@ -396,8 +396,14 @@ namespace HearthStoner.Pages
             {
                 var g = pts[i].Game;
                 var opp = g.OpponentLegendRank > 0 || g.OpponentStarLevel > 0 ? $", vs {Ladder.Name(g.OpponentStarLevel, g.OpponentLegendRank)}" : "";
-                var dot = new Ellipse { Width = 8, Height = 8, Fill = g.Won ? Theme.Win : g.Result == "LOST" ? Theme.Loss : Theme.Dusk, Stroke = Theme.Night, StrokeThickness = 1.5,
-                    ToolTip = $"{pts[i].When:MMM d, h:mm tt}: {pts[i].Rank}, {(g.Won ? "won" : g.Result == "LOST" ? "lost" : "no result")}{opp}" };
+                // Won: a filled dot. Lost: a hollow ring. The shape carries the result, not just green against red.
+                var lost = g.Result == "LOST";
+                var dot = new Ellipse
+                {
+                    Width = 8, Height = 8, ToolTip = $"{pts[i].When:MMM d, h:mm tt}: {pts[i].Rank}, {(g.Won ? "won" : lost ? "lost" : "no result")}{opp}",
+                    Fill = lost ? Theme.Night : g.Won ? Theme.Win : Theme.Dusk,
+                    Stroke = lost ? Theme.Loss : Theme.Night, StrokeThickness = lost ? 2 : 1.5,
+                };
                 Canvas.SetLeft(dot, X(i) - 4); Canvas.SetTop(dot, Y(hs[i]) - 4);
                 c.Children.Add(dot);
             }

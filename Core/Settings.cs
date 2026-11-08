@@ -64,6 +64,25 @@ namespace HearthStoner
         public string LastBattleTag { get; set; }
         public bool CheckForUpdates { get; set; } = true;
 
+        // ---- app window
+        /// <summary>The whole app window's zoom (text and everything else): 0.9 to 1.5, 1 = normal.</summary>
+        public double AppScale { get; set; } = 1.0;
+        /// <summary>Open the window where it was last closed, at the same size (and maximized if it was).</summary>
+        public bool RememberWindow { get; set; } = true;
+        /// <summary>The window's last place and size when not maximized, in screen units; 0 width = never saved.</summary>
+        public double WindowLeft { get; set; }
+        public double WindowTop { get; set; }
+        public double WindowWidth { get; set; }
+        public double WindowHeight { get; set; }
+        public bool WindowMaximized { get; set; }
+
+        /// <summary>The zoom steps offered in Settings.</summary>
+        public static readonly double[] AppScales = { 0.9, 1.0, 1.15, 1.3, 1.5 };
+
+        /// <summary><paramref name="scale"/> kept to the offered range (a hand-edited settings file can hold anything).</summary>
+        public static double ClampScale(double scale) =>
+            double.IsNaN(scale) || scale <= 0 ? 1.0 : Math.Max(AppScales[0], Math.Min(AppScales[AppScales.Length - 1], scale));
+
         public static string Path =>
             AppPaths.Data("settings.json");
 

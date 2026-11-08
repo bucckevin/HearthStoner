@@ -43,6 +43,26 @@ namespace HearthStoner.Tests
         }
 
         [Fact]
+        public void Accuracy_counts_answers_per_drill_and_days_tally_answers()
+        {
+            var s = new PracticeStore();
+            s.Record("play:a:3", true, Day);
+            s.Record("play:b:5", false, Day);
+            s.Record("play:a:3", true, Day.AddDays(3));
+            s.Record("mull:c", true, Day.AddDays(3));
+            var play = s.Accuracy(PracticeIds.Play);
+            Assert.Equal(2, play.Right); Assert.Equal(1, play.Wrong); Assert.Equal(2.0 / 3, play.Rate, 3);
+            Assert.Equal(0, s.Accuracy(PracticeIds.Lethal).Answered);
+            Assert.Equal(0, s.Accuracy(PracticeIds.Lethal).Rate);
+
+            var days = s.LastDays(Day.AddDays(3), 5);
+            Assert.Equal(5, days.Count);
+            Assert.Equal(Day.AddDays(-1), days[0].Day);
+            Assert.Equal(new[] { 0, 2, 0, 0, 2 }, days.Select(x => x.Answered));
+            Assert.Equal(1, days[1].Wrong);
+        }
+
+        [Fact]
         public void The_store_round_trips_through_its_file()
         {
             var path = Path.Combine(Path.GetTempPath(), $"hs-practice-{Guid.NewGuid():N}.json");
@@ -56,6 +76,7 @@ namespace HearthStoner.Tests
                 var back = PracticeStore.Load();
                 Assert.Equal(1, back.Cards["hand:g:9"].Wrong);
                 Assert.Equal(Day.AddDays(1), back.Cards["hand:g:9"].Due);
+                Assert.Equal(1, back.History.Single().Wrong);   // the daily tally is saved too
             }
             finally
             {

@@ -20,7 +20,15 @@ namespace HearthStoner.Pages
             var sections = new List<StackPanel>();
             StackPanel p;
 
-            p = Section(sections, "Overlay", "Panel and layout changes apply the next time the overlay starts; the rest apply right away.");
+            p = Section(sections, "Display", "Changes apply right away.");
+            p.Children.Add(Choice("Text size", "Everything in the window grows or shrinks. Bigger suits a large screen.",
+                Settings.AppScales.Select(v => (v.ToString(System.Globalization.CultureInfo.InvariantCulture), $"{v * 100:0}%")).ToArray(),
+                Closest(st.AppScale, Settings.AppScales),
+                v => { st.AppScale = double.Parse(v, System.Globalization.CultureInfo.InvariantCulture); Save(); shell.SetScale(st.AppScale); }));
+            p.Children.Add(Toggle("Remember the window's size and place", "Opens where you left it, maximized if it was. Back to the middle if that screen is gone.", st.RememberWindow, v => { st.RememberWindow = v; Save(); }));
+            p.Children.Add(KeyRow("Go to a page (in the order of the menu)", "Ctrl+1 … Ctrl+9"));
+
+            p = Section(sections, "Overlay", "Panel and layout changes apply the next time the overlay starts; the rest apply right away.", left: true);
             p.Children.Add(Choice("Where the panels go", "Both at the right edge suits wide screens.",
                 new[] { ("left", "Left"), ("right", "Right"), ("split", "Opponent left, you right") }, st.Layout ?? "right", v => { st.Layout = v; Save(); }));
             p.Children.Add(Choice("Panel background", null,
@@ -29,7 +37,7 @@ namespace HearthStoner.Pages
             p.Children.Add(Toggle("Draw odds in your deck list", "Each card's chance to be your next draw.", st.DeckShowOdds, v => { st.DeckShowOdds = v; Save(); }));
             p.Children.Add(Toggle("Marks over the opponent's hand", "The turn each card arrived, mulligan keeps, created and returned cards.", st.ShowOpponentHandMarks, v => { st.ShowOpponentHandMarks = v; Save(); }));
 
-            p = Section(sections, "Panels", "What the overlay shows. Hotkeys hide whole sides while you play.");
+            p = Section(sections, "Panels", "What the overlay shows. Hotkeys hide whole sides while you play.", left: true);
             p.Children.Add(Toggle("Health and damage", null, st.ShowHealth, v => { st.ShowHealth = v; Save(); }));
             p.Children.Add(Toggle("Your deck", null, st.ShowDeck, v => { st.ShowDeck = v; Save(); }));
             p.Children.Add(Toggle("Opponent: likely deck and hand", null, st.ShowOpponent, v => { st.ShowOpponent = v; Save(); }));
@@ -43,7 +51,7 @@ namespace HearthStoner.Pages
 
             // The boards rendered from your Hearthstone install (GameArtBuilder): click one to use it in replays.
             var boards = GameArt.Boards();
-            p = Section(sections, "Replay board", "The board drawn behind replays, rendered from your Hearthstone install.");
+            p = Section(sections, "Replay board", "The board drawn behind replays, rendered from your Hearthstone install.", left: true);
             if (boards.Count > 0)
             {
                 // The board in use and a button; the grid of every board only opens when you want to change it.
@@ -146,14 +154,7 @@ namespace HearthStoner.Pages
 
             p = Section(sections, "Hotkeys", "While Hearthstone is in front. Change them in the settings file.");
             foreach (var (label, key) in new[] { ("Show or hide the overlay", st.HotkeyToggleOverlay), ("Your deck list", st.HotkeyToggleDeck), ("Opponent panels and hand marks", st.HotkeyToggleOpponent), ("Advice panels", st.HotkeyToggleAdvice), ("Hover mode: point at cards for details", st.HotkeyHoverMode) })
-            {
-                var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
-                var k = new Border { CornerRadius = new CornerRadius(5), Background = Theme.Raised, BorderBrush = Theme.Line, BorderThickness = new Thickness(1), Padding = new Thickness(8, 2, 8, 3), Child = Theme.Text(key, 12.5, Theme.Vellum, FontWeights.Medium) };
-                DockPanel.SetDock(k, Dock.Right);
-                row.Children.Add(k);
-                row.Children.Add(Theme.Text(label, 14));
-                p.Children.Add(row);
-            }
+                p.Children.Add(KeyRow(label, key));
 
             p = Section(sections, "Files", null);
             var files = new StackPanel { Orientation = Orientation.Horizontal };
@@ -241,10 +242,25 @@ namespace HearthStoner.Pages
         private static string Closest(double v, params double[] options) =>
             options.OrderBy(o => Math.Abs(o - v)).First().ToString(System.Globalization.CultureInfo.InvariantCulture);
 
-        /// <summary>Starts a new section (a heading and an optional line under it), adds it to <paramref name="sections"/> and returns it to fill.</summary>
-        private static StackPanel Section(List<StackPanel> sections, string title, string sub)
+        /// <summary>A label with a keyboard shortcut in a key chip at the right.</summary>
+        private static UIElement KeyRow(string label, string key)
         {
-            var p = new StackPanel { Margin = new Thickness(0, 0, 0, 30) };
+            var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
+            var k = new Border { CornerRadius = new CornerRadius(5), Background = Theme.Raised, BorderBrush = Theme.Line, BorderThickness = new Thickness(1), Padding = new Thickness(8, 2, 8, 3), Child = Theme.Text(key, 12.5, Theme.Vellum, FontWeights.Medium) };
+            DockPanel.SetDock(k, Dock.Right);
+            row.Children.Add(k);
+            row.Children.Add(Theme.Text(label, 14));
+            return row;
+        }
+
+        /// <summary>Marks the sections that make the left column on wide screens (everything about the overlay and replays).</summary>
+        private const string LeftColumn = "left";
+
+        /// <summary>Starts a new section (a heading and an optional line under it), adds it to <paramref name="sections"/> and returns it to fill.</summary>
+        /// <param name="left">On wide screens, put it in the left column (the rest go right).</param>
+        private static StackPanel Section(List<StackPanel> sections, string title, string sub, bool left = false)
+        {
+            var p = new StackPanel { Margin = new Thickness(0, 0, 0, 30), Tag = left ? LeftColumn : null };
             var h = Theme.Text(title, 22, Theme.Vellum, FontWeights.SemiBold, display: true);
             h.Margin = new Thickness(0, 0, 0, sub == null ? 10 : 2);
             p.Children.Add(h);
@@ -252,9 +268,6 @@ namespace HearthStoner.Pages
             sections.Add(p);
             return p;
         }
-
-        /// <summary>The sections that make the left column on wide screens: everything about the overlay and replays.</summary>
-        private const int LeftColumnSections = 3;
 
         /// <summary>
         /// One column (760 px at most, so toggles stay near their labels) or, on wide screens, two: the overlay and
@@ -272,7 +285,7 @@ namespace HearthStoner.Pages
             }
             var left = new StackPanel();
             var right = new StackPanel();
-            for (var i = 0; i < sections.Count; i++) (i < LeftColumnSections ? left : right).Children.Add(sections[i]);
+            foreach (var s in sections) (Equals(s.Tag, LeftColumn) ? left : right).Children.Add(s);
             right.Children.Add(credits);
             var cols = PageLayout.Columns((left, column), (right, column));
             cols.ColumnDefinitions[1].Width = new GridLength(64);   // a wider gutter between two forms

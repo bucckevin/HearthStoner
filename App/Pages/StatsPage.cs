@@ -106,6 +106,8 @@ namespace HearthStoner.Pages
                     Width = 18, Height = 18, CornerRadius = new CornerRadius(4), Margin = new Thickness(0, 0, 5, 0), Cursor = System.Windows.Input.Cursors.Hand,
                     Background = g.Won ? Theme.Win : Theme.B(Theme.LossC, 0.8),
                     BorderBrush = Theme.Vellum, BorderThickness = new Thickness(i == s.RecentGames.Count - 1 ? 2 : 0),
+                    // A letter too, so wins and losses don't rely on telling green from red.
+                    Child = new TextBlock { Text = g.Won ? "W" : "L", FontSize = 10.5, FontWeight = FontWeights.Bold, Foreground = g.Won ? Theme.B(Theme.Rgb(0x0B, 0x14, 0x30)) : Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
                     ToolTip = $"{(g.Won ? "Win" : "Loss")} vs {g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass)}\n{g.DeckName ?? MetaStats.ClassName(g.MyClass)} · {g.Start:MMM d, h:mm tt} · {(g.Turns + 1) / 2} turns\nClick to open in History",
                 };
                 var index = shell.Data.Games.IndexOf(g);

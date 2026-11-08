@@ -27,7 +27,8 @@ namespace HearthStoner.Pages
             list.Children.Add(ImportBox(shell));
             if (shell.SelectedDeck == int.MaxValue) shell.SelectedDeck = d.Decks.Count - 1;   // a deck just pasted in
             if (shell.SelectedDeck < 0 || shell.SelectedDeck >= d.Decks.Count) shell.SelectedDeck = 0;
-            for (var i = 0; i < d.Decks.Count; i++) list.Children.Add(DeckRow(d.Decks[i], i, shell));
+            var records = Records(d);
+            for (var i = 0; i < d.Decks.Count; i++) list.Children.Add(DeckRow(d.Decks[i], i, shell, records));
             g.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 1, 0), Child = new ScrollViewer { Content = list, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false } });
 
             UIElement detail = d.Decks.Count == 0
@@ -39,15 +40,42 @@ namespace HearthStoner.Pages
             return g;
         }
 
-        private static UIElement DeckRow(PlayerDeck deck, int index, AppShell shell)
+        /// <summary>Your wins and losses with each saved deck, from your recorded games.</summary>
+        private static Dictionary<PlayerDeck, (int Wins, int Losses)> Records(AppData d)
+        {
+            var r = new Dictionary<PlayerDeck, (int Wins, int Losses)>();
+            foreach (var g in d.Games.Where(g => g.Decided))
+            {
+                var deck = DeckVersions.DeckOf(g, d.Decks, d.Cards);
+                if (deck == null) continue;
+                var (w, l) = r.TryGetValue(deck, out var x) ? x : (0, 0);
+                r[deck] = g.Won ? (w + 1, l) : (w, l + 1);
+            }
+            return r;
+        }
+
+        /// <param name="records">Your record with each deck: decks with the same list share the archetype's %, the record tells them apart.</param>
+        private static UIElement DeckRow(PlayerDeck deck, int index, AppShell shell, Dictionary<PlayerDeck, (int Wins, int Losses)> records)
         {
             var pick = shell.Data.PickFor(deck);
             var selected = index == shell.SelectedDeck;
             var row = new DockPanel { Margin = new Thickness(22, 10, 22, 10) };
-            var wr = pick?.Archetype != null ? Theme.Text(AppShell.Pct(pick.Expected, 1), 18, Theme.Vellum, FontWeights.SemiBold, display: true) : Theme.Text("No data", 13, Theme.Dusk);   // same words as the Play page
-            wr.VerticalAlignment = VerticalAlignment.Center;
-            DockPanel.SetDock(wr, Dock.Right);
-            row.Children.Add(wr);
+            var pct = pick?.Archetype != null ? Theme.Text(AppShell.Pct(pick.Expected, 1), 18, Theme.Vellum, FontWeights.SemiBold, display: true) : Theme.Text("No data", 13, Theme.Dusk);   // same words as the Play page
+            pct.HorizontalAlignment = HorizontalAlignment.Right;
+            // Under the archetype's % (shared by decks with the same list): your own record with this deck.
+            var right = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            right.Children.Add(pct);
+            if (!deck.Imported)
+            {
+                var rec = records.TryGetValue(deck, out var r)
+                    ? Theme.Text($"{r.Wins}-{r.Losses}", 12.5, Theme.Mist)
+                    : Theme.Text("no games", 12.5, Theme.Mist);
+                rec.HorizontalAlignment = HorizontalAlignment.Right;
+                rec.ToolTip = "Your wins and losses with this deck";
+                right.Children.Add(rec);
+            }
+            DockPanel.SetDock(right, Dock.Right);
+            row.Children.Add(right);
             row.Children.Add(new Border { Width = 4, Height = 30, CornerRadius = new CornerRadius(2), Background = Theme.B(Theme.ClassColor(deck.Class)), Margin = new Thickness(0, 0, 12, 0) });
             var names = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             names.Children.Add(Theme.Text(deck.Name, 14.5, Theme.Vellum, FontWeights.SemiBold));
@@ -165,7 +193,7 @@ namespace HearthStoner.Pages
             if (!deck.Imported)
             {
                 var versions = DeckVersions.For(deck, d.Decks, d.Games, d.Cards);
-                if (versions.Versions.Any(v => v.Games > 0)) results = Versions(versions, d);
+                if (versions.Versions.Any(v => v.Games > 0)) results = Versions(versions, d, shell.Size == PageWidth.Compact);
             }
             var right = new StackPanel();
             right.Children.Add(Theme.Heading("Swaps the data favours"));
@@ -206,7 +234,8 @@ namespace HearthStoner.Pages
         }
 
         /// <summary>Each list you've played this deck with, newest first: its record and what changed from the one before.</summary>
-        private static UIElement Versions(DeckVersions v, AppData d)
+        /// <param name="compact">A small window: the by-class rows drop their "vs" and use a shorter bar.</param>
+        private static UIElement Versions(DeckVersions v, AppData d, bool compact)
         {
             var p = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
             p.Children.Add(Theme.Heading(v.Versions.Count == 1 ? "Your results with this list" : $"Versions ({v.Versions.Count})"));
@@ -240,7 +269,7 @@ namespace HearthStoner.Pages
                 g.Children.Add(rec);
                 p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(0, 0, 0, 8), Child = g });
             }
-            if (v.ByOpponent.Count > 0) p.Children.Add(ByOpponent(v));
+            if (v.ByOpponent.Count > 0) p.Children.Add(ByOpponent(v, compact));
             var few = v.Versions.Where(x => x.Games > 0).Sum(x => x.Games) < 20;
             var note = Theme.Text(few ? "From your recorded games. A handful of games per version is mostly luck; the gap means more after 20 or so." : "From your recorded games.", 12, Theme.Dusk, wrap: true);
             p.Children.Add(note);
@@ -250,20 +279,30 @@ namespace HearthStoner.Pages
         /// <summary>Under this many games a matchup is greyed and labelled "few", so 0-2 doesn't look like a verdict.</summary>
         private const int FewGames = 3;
 
-        /// <summary>Your record with this deck against each class, most played first.</summary>
-        private static UIElement ByOpponent(DeckVersions v)
+        /// <summary>
+        /// Your record with this deck against each class, most played first. In a small window the "vs" goes (an
+        /// "Against" label heads the rows instead) and the bar is shorter, so full class names fit.
+        /// </summary>
+        private static UIElement ByOpponent(DeckVersions v, bool compact)
         {
             var p = new StackPanel { Margin = new Thickness(0, 4, 0, 10) };
+            if (compact)
+            {
+                var head = AppShell.ColumnLabel("Against");
+                head.Margin = new Thickness(0, 0, 0, 4);
+                p.Children.Add(head);
+            }
             foreach (var kv in v.ByOpponent.OrderByDescending(kv => kv.Value.Games).ThenByDescending(kv => kv.Value.WinRate))
             {
                 var r = kv.Value;
                 var few = r.Games < FewGames;
                 var row = new Grid { Height = 30 };
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(compact ? 40 : 50) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(compact ? 60 : 100) });
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
-                var name = Theme.Text("vs " + (kv.Key == "?" ? "unknown" : MetaStats.ClassName(kv.Key)), 13.5, few ? Theme.Mist : Theme.Vellum);
+                var cls = kv.Key == "?" ? "unknown" : MetaStats.ClassName(kv.Key);
+                var name = Theme.Text(compact ? char.ToUpper(cls[0]) + cls.Substring(1) : "vs " + cls, 13.5, few ? Theme.Mist : Theme.Vellum);
                 var wl = Theme.Text($"{r.Wins}-{r.Losses}", 13, Theme.Mist); wl.TextAlignment = TextAlignment.Right; Grid.SetColumn(wl, 1);
                 var brush = few ? Theme.Dusk : Theme.RateBrush(r.WinRate);
                 var bar = AppShell.StatBar(few ? 0 : r.WinRate, brush); bar.Margin = new Thickness(12, 0, 4, 0); Grid.SetColumn(bar, 2);

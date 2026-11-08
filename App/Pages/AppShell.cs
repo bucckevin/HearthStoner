@@ -64,9 +64,10 @@ namespace HearthStoner.Pages
             mark.Inlines.Add(new System.Windows.Documents.Run("Stoner") { Foreground = Theme.Mana });
             DockPanel.SetDock(mark, Dock.Top);
             rail.Children.Add(mark);
-            foreach (var p in Pages)
+            for (var i = 0; i < Pages.Length; i++)
             {
-                var rb = new RadioButton { Content = p, Tag = Theme.NavIcon(p), GroupName = "nav", Style = (Style)Theme.Styles["Nav"], IsChecked = p == Current };
+                var p = Pages[i];
+                var rb = new RadioButton { Content = p, Tag = Theme.NavIcon(p), GroupName = "nav", Style = (Style)Theme.Styles["Nav"], IsChecked = p == Current, ToolTip = $"{p} (Ctrl+{i + 1})" };
                 var page = p;
                 rb.Checked += (s, e) => Show(page);
                 DockPanel.SetDock(rb, Dock.Top);
@@ -169,6 +170,26 @@ namespace HearthStoner.Pages
             _season.Visibility = _season.Text == "" ? Visibility.Collapsed : Visibility.Visible;
             _metaLine.Text = data.Meta != null ? $"Meta: {AppData.RankBracketName(data.Meta.Rank)}, {AppData.PeriodName(data.Meta.Period)}" : "";
             Show(Current);
+        }
+
+        /// <summary>
+        /// Zooms the whole app (Settings, Text size). The page layouts see the zoomed width, so a big zoom on a wide
+        /// screen picks the layout that fits; the breakpoint check runs again by itself when the size changes.
+        /// </summary>
+        public void SetScale(double scale)
+        {
+            var s = Settings.ClampScale(scale);
+            LayoutTransform = Math.Abs(s - 1) < 0.001 ? Transform.Identity : new ScaleTransform(s, s);
+        }
+
+        /// <summary>Ctrl+1 to Ctrl+9 (top row or keypad) opens that page of the menu. Returns whether it was one.</summary>
+        public bool TryPageShortcut(Key key, ModifierKeys modifiers)
+        {
+            if (modifiers != ModifierKeys.Control) return false;
+            var n = key >= Key.D1 && key <= Key.D9 ? key - Key.D1 : key >= Key.NumPad1 && key <= Key.NumPad9 ? key - Key.NumPad1 : -1;
+            if (n < 0 || n >= Pages.Length) return false;
+            Show(Pages[n]);
+            return true;
         }
 
         /// <summary>Rebuilds the page when the window crosses a breakpoint (compact, standard, wide).</summary>

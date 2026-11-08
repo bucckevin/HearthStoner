@@ -57,6 +57,11 @@ namespace HearthStoner
             MinWidth = 1080; MinHeight = 640;
             Background = Theme.Night;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            WindowMemory.Restore(this, svc.Settings);   // where you left it, when that's still on a screen
+            Closing += (s, e) => WindowMemory.Save(this, svc.Settings);
+            _shell.SetScale(svc.Settings?.AppScale ?? 1.0);
+            // Ctrl+1 .. Ctrl+9: the pages in the menu's order.
+            PreviewKeyDown += (s, e) => { if (_shell.TryPageShortcut(e.Key == System.Windows.Input.Key.System ? e.SystemKey : e.Key, System.Windows.Input.Keyboard.Modifiers)) e.Handled = true; };
             UseLayoutRounding = true;
             TextOptions.SetTextFormattingMode(this, TextFormattingMode.Ideal);
 
@@ -76,11 +81,13 @@ namespace HearthStoner
             });
             var root = new Grid();
             // Maximized, Windows pushes the window's edges just off screen: pad them back in.
-            StateChanged += (s, e) =>
+            void PadMaximized()
             {
                 var b = SystemParameters.WindowResizeBorderThickness;
                 root.Margin = WindowState == WindowState.Maximized ? new Thickness(b.Left + 4, b.Top + 4, b.Right + 4, b.Bottom + 4) : new Thickness(0);
-            };
+            }
+            StateChanged += (s, e) => PadMaximized();
+            Loaded += (s, e) => PadMaximized();   // the window can open maximized (remembered from last time)
             root.Children.Add(_shell);
             root.Children.Add(_toast);
             Content = root;
@@ -313,6 +320,9 @@ namespace HearthStoner
                     foreach (var (suffix, w, h) in new[] { ("compact", 1100, 800), ("1920", 1920, 1040), ("3440", 3440, 1400) })
                         foreach (var page in AppShell.Pages)
                             Snap(shell, page, folder, page.ToLowerInvariant() + "-" + suffix, w, h);
+                    // Settings, Text size 130% on the ultrawide: the layouts follow the zoomed width.
+                    foreach (var page in new[] { "Play", "Settings" })
+                        Snap(shell, page, folder, page.ToLowerInvariant() + "-3440-130", 3440, 1400, scale: 1.3);
                     PracticeShots(shell, data, folder);
                 }
                 catch (Exception ex) { error = ex; }
@@ -345,18 +355,25 @@ namespace HearthStoner
             PracticePage.ShowForScreenshot(shell, null, false);
         }
 
-        /// <summary>Draws <paramref name="page"/> at the given window size to app-&lt;name&gt;.png.</summary>
-        private static void Snap(AppShell shell, string page, string folder, string name, int wid, int hgt, bool quiet = false)
+        /// <summary>
+        /// Draws <paramref name="page"/> at the given window size to app-&lt;name&gt;.png, zoomed by
+        /// <paramref name="scale"/> like Settings' Text size (drawn through a host so the zoom is in the picture).
+        /// </summary>
+        private static void Snap(AppShell shell, string page, string folder, string name, int wid, int hgt, bool quiet = false, double scale = 1)
         {
             // Width first: it decides the page's size class (compact, standard, wide) when the page is built.
-            shell.Width = wid;
-            shell.Height = hgt;
+            shell.SetScale(scale);
+            shell.Width = wid / scale;
+            shell.Height = hgt / scale;
             shell.Show(page);
-            shell.Measure(new Size(wid, hgt));
-            shell.Arrange(new Rect(0, 0, wid, hgt));
-            shell.UpdateLayout();
+            var host = new Border { Child = shell };
+            host.Measure(new Size(wid, hgt));
+            host.Arrange(new Rect(0, 0, wid, hgt));
+            host.UpdateLayout();
             var bmp = new RenderTargetBitmap(wid, hgt, 96, 96, PixelFormats.Pbgra32);
-            bmp.Render(shell);
+            bmp.Render(host);
+            host.Child = null;
+            shell.SetScale(1);
             var enc = new PngBitmapEncoder();
             enc.Frames.Add(BitmapFrame.Create(bmp));
             var file = Path.Combine(folder, "app-" + name + ".png");
