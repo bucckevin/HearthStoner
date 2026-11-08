@@ -66,38 +66,41 @@ namespace HearthStoner.Pages
 
             // Matchups, decks, and how early HearthStoner names the opponent's deck: three columns on a wide screen,
             // two (decks and the scorecard sharing one) on a normal one, one under the other in a small window.
-            var byClass = Table("By opponent's class", s.ByClass, r => Theme.ClassColor(r.Class));
+            var byClass = Table("By opponent's class", "Against", s.ByClass, r => Theme.ClassColor(r.Class));
             // One deck: its table would repeat "By opponent's class", so that space shows first against coin instead.
-            var byDeck = s.ByDeck.Count >= 2 ? Table("By deck", s.ByDeck, r => Theme.ClassColor(r.Class)) : FirstOrCoin(view.Games);
-            var score = Scorecard(PredictionScore.Compute(view.Games));
+            var byDeck = s.ByDeck.Count >= 2 ? Table("By deck", "Deck", s.ByDeck, r => Theme.ClassColor(r.Class)) : FirstOrCoin(view.Games);
+            // Side by side (wide), the scorecard's rows match the tables' height so their lines run level.
+            var score = Scorecard(PredictionScore.Compute(view.Games), shell.Size == PageWidth.Wide ? 38 : 26);
+
+            // When you win most: ranked and casual games by the hour they started (moved here from the Ladder page,
+            // where it repeated under each format).
+            var (times, best) = LadderReport.ByTimeOfDay(d.Games);
+            var timesBox = new StackPanel();
+            timesBox.Children.Add(Theme.Heading("Best time to play"));
+            Times(timesBox, times, best);
+            var bottom = new List<UIElement>();
             switch (shell.Size)
             {
                 case PageWidth.Wide:
                     p.Children.Add(PageLayout.Columns((byClass, 0), (byDeck, 0), (score, 0)));
+                    bottom.Add(timesBox);
                     break;
                 case PageWidth.Compact:
                     p.Children.Add(PageLayout.Stack(26, byClass, byDeck, score));
+                    bottom.Add(timesBox);
                     break;
                 default:
-                    p.Children.Add(PageLayout.Columns((byClass, 0), (PageLayout.Stack(26, byDeck, score), 0)));
+                    // The right column (decks and the scorecard) is the taller one, so the time of day fills the left.
+                    p.Children.Add(PageLayout.Columns((PageLayout.Stack(26, byClass, timesBox), 0), (PageLayout.Stack(26, byDeck, score), 0)));
                     break;
             }
 
             if (s.ByDeck.Count >= 2) p.Children.Add(DeckGrid(view.Games));
 
-            // When you win most: ranked and casual games by the hour they started (moved here from the Ladder page,
-            // where it repeated under each format).
-            var (times, best) = LadderReport.ByTimeOfDay(d.Games);
-            var timesBox = new StackPanel { Margin = new Thickness(0, 26, 0, 0), MaxWidth = 620, HorizontalAlignment = HorizontalAlignment.Left };
-            timesBox.Children.Add(Theme.Heading("Best time to play"));
-            Times(timesBox, times, best);
-            p.Children.Add(timesBox);
-
             // Habits, tilt and recurring review notes, from the stats report (its ladder notes are on the Ladder page).
-            var notes = new WrapPanel { Margin = new Thickness(0, 26, 0, 0) };
             foreach (var sec in view.Notes.Where(x => x.Lines.Count > 0 && x.Title != "Ladder"))
             {
-                var box = new StackPanel { Width = 440, Margin = new Thickness(0, 0, 30, 22) };
+                var box = new StackPanel();
                 box.Children.Add(Theme.Heading(sec.Title));
                 var table = sec.Lines.Where(l => l.Cells != null).ToList();
                 if (table.Count > 0) box.Children.Add(CellsTable(sec.Title, table));
@@ -108,12 +111,30 @@ namespace HearthStoner.Pages
                     t.Margin = new Thickness(0, table.Count > 0 ? 8 : -4, 0, 8);
                     box.Children.Add(t);
                 }
-                notes.Children.Add(box);
+                bottom.Add(box);
             }
-            p.Children.Add(notes);
+            // On the same columns as the matchup tables above, so their edges line up.
+            p.Children.Add(OnColumns(bottom, shell.Size == PageWidth.Wide ? 3 : shell.Size == PageWidth.Compact ? 1 : 2));
 
             var which = scope == AppShell.StatsLadder ? "ranked and casual" : "every card mode";
             return AppShell.Page("Stats", $"{s.Games} finished game{(s.Games == 1 ? "" : "s")} recorded with HearthStoner: {which}.", p);
+        }
+
+        /// <summary>
+        /// The sections in rows of <paramref name="perRow"/> equal columns (the page's column grid), a row's empty
+        /// columns left blank so every row keeps the same column edges.
+        /// </summary>
+        private static UIElement OnColumns(List<UIElement> items, int perRow)
+        {
+            var rows = new StackPanel();
+            for (var i = 0; i < items.Count; i += perRow)
+            {
+                var cols = Enumerable.Range(i, perRow).Select(k => (k < items.Count ? items[k] : null, 0.0)).ToArray();
+                var row = PageLayout.Columns(cols);
+                row.Margin = new Thickness(0, 26, 0, 0);
+                rows.Children.Add(row);
+            }
+            return rows;
         }
 
         /// <summary>Games in the rolling win rate.</summary>
@@ -485,8 +506,11 @@ namespace HearthStoner.Pages
             return row;
         }
 
-        /// <summary>How often HearthStoner's deck guess at the start of each round matched its final answer.</summary>
-        private static UIElement Scorecard(PredictionScore score)
+        /// <summary>
+        /// How often HearthStoner's deck guess at the start of each round matched its final answer, one
+        /// <paramref name="rowHeight"/> px row per turn.
+        /// </summary>
+        private static UIElement Scorecard(PredictionScore score, double rowHeight)
         {
             var p = new StackPanel();
             p.Children.Add(Theme.Heading("How early it reads their deck"));
@@ -495,12 +519,27 @@ namespace HearthStoner.Pages
                 p.Children.Add(Theme.Text("Shows up once a few games are recorded: how often the overlay's guess at the opponent's deck was already right on each turn.", 13.5, Theme.Dusk, wrap: true));
                 return p;
             }
-            foreach (var r in score.Rounds)
+            Grid Row(double height)
             {
-                var g = new Grid { Height = 26 };
+                var g = new Grid { Height = height };
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(52) });
+                return g;
+            }
+            // Column labels like the tables beside it, so the first rows start level with theirs.
+            var head = Row(24);
+            var turnLabel = AppShell.ColumnLabel("Turn");
+            turnLabel.VerticalAlignment = VerticalAlignment.Center;
+            head.Children.Add(turnLabel);
+            var rightLabel = AppShell.ColumnLabel("Right", TextAlignment.Right);
+            rightLabel.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetColumn(rightLabel, 2);
+            head.Children.Add(rightLabel);
+            p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = head });
+            foreach (var r in score.Rounds)
+            {
+                var g = Row(rowHeight);
                 var n = Theme.Text($"Turn {r.Number}", 13.5, Theme.Dusk); n.VerticalAlignment = VerticalAlignment.Center; g.Children.Add(n);
                 var track = new Border { Height = 8, CornerRadius = new CornerRadius(4), Background = Theme.Raised, VerticalAlignment = VerticalAlignment.Center };
                 var fill = new Grid();
@@ -512,7 +551,7 @@ namespace HearthStoner.Pages
                 Grid.SetColumn(track, 1); g.Children.Add(track);
                 var v = Theme.Text(AppShell.Pct(r.Accuracy), 13.5, Theme.Vellum, FontWeights.SemiBold); v.TextAlignment = TextAlignment.Right; v.VerticalAlignment = VerticalAlignment.Center;
                 Grid.SetColumn(v, 2); g.Children.Add(v);
-                p.Children.Add(g);
+                p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = g });
             }
             var note = Theme.Text($"Share of {score.Games} game{(score.Games == 1 ? "" : "s")} where the overlay already named the deck it settled on by the end. Only games it ended up at least 80% sure about count.", 12, Theme.Dusk, wrap: true);
             note.Margin = new Thickness(0, 8, 0, 0);
@@ -520,18 +559,39 @@ namespace HearthStoner.Pages
             return p;
         }
 
-        /// <summary>Rows with a swatch, name, record and a win-rate bar.</summary>
-        private static UIElement Table(string title, System.Collections.Generic.List<StatsSummary.Row> rows, Func<StatsSummary.Row, Color> color)
+        /// <summary>
+        /// Rows with a swatch, name, record and a win-rate bar, under column labels (<paramref name="first"/> names the
+        /// rows) so its rows line up with "First or on the coin" beside it.
+        /// </summary>
+        private static UIElement Table(string title, string first, List<StatsSummary.Row> rows, Func<StatsSummary.Row, Color> color)
         {
             var p = new StackPanel();
             p.Children.Add(Theme.Heading(title));
-            foreach (var r in rows.Take(12))
+            Grid Row(double height)
             {
-                var g = new Grid { Height = 38 };
+                var g = new Grid { Height = height };
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(54) });
                 g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+                return g;
+            }
+            var head = Row(24);
+            void Label(string text, int col, TextAlignment align, double right = 0)
+            {
+                var t = AppShell.ColumnLabel(text, align);
+                t.VerticalAlignment = VerticalAlignment.Center;
+                t.Margin = new Thickness(0, 0, right, 0);
+                Grid.SetColumn(t, col);
+                head.Children.Add(t);
+            }
+            Label(first, 1, TextAlignment.Left);
+            Label("Record", 2, TextAlignment.Right, 12);
+            Label("Win", 3, TextAlignment.Right);
+            p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = head });
+            foreach (var r in rows.Take(12))
+            {
+                var g = Row(38);
                 g.Children.Add(new Border { Width = 10, Height = 10, CornerRadius = new CornerRadius(3), Background = Theme.B(color(r)), HorizontalAlignment = HorizontalAlignment.Left });
                 var n = Theme.Text(r.Name, 14); n.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(n, 1); g.Children.Add(n);
                 var rec = Theme.Text($"{r.Wins}-{r.Losses}", 13.5, Theme.Dusk); rec.VerticalAlignment = VerticalAlignment.Center; rec.TextAlignment = TextAlignment.Right; rec.Margin = new Thickness(0, 0, 12, 0); Grid.SetColumn(rec, 2); g.Children.Add(rec);

@@ -22,18 +22,18 @@ features, major (x.0.0) for big changes, such as a new data format. Each version
 - **Practice:** what comes due over the next days. Ultrawide: the six drills in one row and a progress column with a
   five-week practice calendar.
 - **Stats:** win rate over time. With one deck, By deck becomes going first against on the coin by class; with
-  several, a grid of decks against classes is added.
+  several, a grid of decks against classes is added. The bottom of the page lines up: the matchup tables and the
+  deck-reading scorecard have column labels and rows that run level, and Best time to play and the notes below sit
+  on the same columns (before, fixed-width boxes drifted out of line, bunched up on the left of a wide screen).
 - **Meta:** on a wide screen, click an archetype for a panel with its share over two weeks, how it does against your
   decks' classes and its core cards (its matchups download in the background).
 - **Settings:** ultrawide gets three columns with a live overlay preview of your latest game in the middle,
   redrawn as you change the settings. The `preview` command now stops a turn before the game ends.
-
-## 1.5.1 - 2026-11-08
-
 - **Fixed:** the tops of the Stats page's "Ranked and casual" and "All card modes" buttons were cut off flat.
   The row was nudged 4 pixels up, past the top of the scrolling area, which hides anything outside it.
 - **Checks:** `HearthStoner screenshot` now fails and names anything a page's scroll area cuts off, on every page and
-  window size it draws, so this kind of mistake can't hide in a full-size screenshot again.
+  window size it draws, so this kind of mistake can't hide in a full-size screenshot again. It also draws the whole
+  Stats page on wide screens (`app-stats-1920-full.png`, `app-stats-3440-auto-full.png`).
 
 ## 1.5.0 - 2026-11-08
 

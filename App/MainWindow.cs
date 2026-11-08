@@ -342,6 +342,9 @@ namespace HearthStoner
                     // Every page maximized on a 3440x1440 ultrawide with Text size Auto (app-play-3440-auto.png, ...).
                     foreach (var page in AppShell.Pages)
                         Snap(shell, page, folder, page.ToLowerInvariant() + "-3440-auto", 3440, 1400, scale: AutoZoom.For(3440, 1400, maximized: true));
+                    // Stats below the fold on wide screens, where its columns sit side by side.
+                    Snap(shell, "Stats", folder, "stats-1920-full", 1920, 1900);
+                    Snap(shell, "Stats", folder, "stats-3440-auto-full", 3440, 2000, scale: AutoZoom.For(3440, 1400, maximized: true));
                     // Settings, Text size 130% on the ultrawide: the layouts follow the zoomed width.
                     foreach (var page in new[] { "Play", "Settings" })
                         Snap(shell, page, folder, page.ToLowerInvariant() + "-3440-130", 3440, 1400, scale: 1.3);
