@@ -185,7 +185,7 @@ namespace HearthStoner.Pages
                     BorderBrush = Theme.Vellum, BorderThickness = new Thickness(i == s.RecentGames.Count - 1 ? 2 : 0),
                     // A letter too, so wins and losses don't rely on telling green from red.
                     Child = new TextBlock { Text = g.Won ? "W" : "L", FontSize = 10.5, FontWeight = FontWeights.Bold, Foreground = g.Won ? Theme.B(Theme.Rgb(0x0B, 0x14, 0x30)) : Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
-                    ToolTip = $"{(g.Won ? "Win" : "Loss")} vs {g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass)}\n{g.DeckLabel} · {g.Start:MMM d, h:mm tt} · {(g.Turns + 1) / 2} turns\nClick to open in History",
+                    ToolTip = $"{(g.Won ? "Win" : "Loss")} vs {g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass)}\n{g.DeckLabel} · {g.Start:MMM d, h:mm tt} · {g.TurnsText}\nClick to open in History",
                 };
                 var index = shell.Data.Games.IndexOf(g);
                 sq.MouseLeftButtonUp += (o, e) => { if (index < 0) return; shell.SelectedGame = index; shell.HistoryFilter = "All"; shell.HistoryResult = "Any"; shell.Show("History"); };

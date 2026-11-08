@@ -289,9 +289,10 @@ namespace HearthStoner.Game
             _rec.MyClass = _game.HeroClass(me);
             _rec.WentFirst = _game.PlayerEntity(me)?.Flag("FIRST_PLAYER") ?? false;
             _rec.OpponentClass = _game.HeroClass(opp);
-            if (!arena)
+            if (!arena && GameModes.Of(_rec.GameType) != GameModes.Kind.Solo)
             {
-                // Archetypes come from ranked decks; drafted Arena decks don't play as one. No deck list, no archetype.
+                // Archetypes come from ranked decks; drafted Arena decks and the AI's decks don't play as one. No deck
+                // list, no archetype.
                 _rec.MyArchetype = _rec.DeckCards.Count > 0 ? _advisor.FriendlyArchetype?.Name : null;
                 var top = _advisor.TopOpponentArchetype();
                 _rec.OpponentArchetype = top.Name;

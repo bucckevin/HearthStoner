@@ -265,7 +265,7 @@ namespace HearthStoner.Stats
             foreach (var g in games)
             {
                 if (!GameModes.IsCardGame(g.GameType)) { Info($"    game {g.Index}: {GameModes.Name(g.GameType, null)} (only its mode and result are kept)"); continue; }
-                var label = $"    game {g.Index} vs {MetaStats.ClassName(g.OppClass)}: {(g.Turns + 1) / 2} turns, {g.Result ?? "unfinished"}";
+                var label = $"    game {g.Index} vs {MetaStats.ClassName(g.OppClass)}: {(g.Turns + 1) / 2} turn{((g.Turns + 1) / 2 == 1 ? "" : "s")}, {g.Result ?? "unfinished"}";
                 if (g.Turns == 0) { Info(label + " (not finished in this log)"); continue; }
                 _out(label);
                 Check("      found which player is you", g.FriendlyId != 0);

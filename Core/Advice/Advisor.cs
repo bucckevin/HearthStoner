@@ -252,7 +252,7 @@ namespace HearthStoner.Advice
         public static AdviceSection ReviewSection(GameRecord g)
         {
             var s = new AdviceSection($"Last game: {(g.Result == "WON" ? "Win" : g.Result == "LOST" ? "Loss" : "Ended")} vs {g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass)}");
-            s.Add($"{g.DeckName ?? MetaStats.ClassName(g.MyClass)}, {(g.Turns + 1) / 2} turns, {(int)g.Duration.TotalMinutes} min, {(g.WentFirst ? "first" : "coin")}", Tone.Dim);
+            s.Add($"{g.DeckName ?? MetaStats.ClassName(g.MyClass)}, {g.TurnsText}, {(int)g.Duration.TotalMinutes} min, {(g.WentFirst ? "first" : "coin")}", Tone.Dim);
             if (g.Review.Count == 0) s.Add("No mistakes spotted.", Tone.Good);
             foreach (var n in g.Review.OrderByDescending(n => n.Severity).ThenBy(n => n.Turn).Take(8))
                 s.Add($"{(n.Turn > 0 ? $"T{(n.Turn + 1) / 2}: " : "")}{n.Text}", n.Severity >= 3 ? Tone.Bad : n.Severity == 2 ? Tone.Warn : Tone.Normal);

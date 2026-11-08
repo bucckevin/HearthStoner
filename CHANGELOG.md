@@ -20,7 +20,8 @@ The Ladder, History and Stats pages tell the game modes apart, and two crashes-i
 - **Fixed:** the app crashed as a game ended when two minions had "infinite" attack (Hand of Infinity), and that
   game wasn't saved (it's recovered from the log). A practice or solo game no longer gets the last deck you queued,
   or its archetype: Decks.log's deck only counts for the first game after it, live and when importing (before,
-  only a deck of another class was caught). "1 times in 1 games" reads "once in 1 game".
+  only a deck of another class was caught). Games against the AI no longer get a ranked-deck name for the AI's
+  deck ("vs Pure Paladin"). "1 times in 1 games" reads "once in 1 game", and "1 turns" reads "1 turn".
 - **Removed modes:** Duels, Friendly challenges and the Twist format are gone from Hearthstone, so they're no longer
   named or offered as filters.
 

@@ -131,6 +131,8 @@ namespace HearthStoner.Game
         /// </summary>
         [JsonIgnore] public string DeckLabel => DeckName ?? MyArchetype ?? MetaStats.ClassName(MyClass) + ", deck not saved";
         [JsonIgnore] public TimeSpan Duration => End - Start;
+        /// <summary>"1 turn", "8 turns": your turns (the log counts both players').</summary>
+        [JsonIgnore] public string TurnsText => $"{(Turns + 1) / 2} turn{((Turns + 1) / 2 == 1 ? "" : "s")}";
 
         public static string Dir
         {
@@ -166,11 +168,13 @@ namespace HearthStoner.Game
                     var r = JsonConvert.DeserializeObject<GameRecord>(File.ReadAllText(f));
                     if (r == null) continue;
                     if (string.IsNullOrEmpty(r.GameType)) Relabel(r, f);
-                    // A game without a deck list can't have a deck archetype: one saved by 1.4.1 or older was the
-                    // previous game's (a solo game after a ranked one). Cleared once.
-                    if (r.MyArchetype != null && r.DeckCards.Count == 0)
+                    // Archetypes saved by 1.4.1 or older that can't be right, cleared once: yours on a game without a deck
+                    // list (the previous game's), and the opponent's against the AI (its decks aren't ranked archetypes).
+                    var solo = GameModes.Of(r.GameType) == GameModes.Kind.Solo;
+                    if ((r.MyArchetype != null && r.DeckCards.Count == 0) || (solo && r.OpponentArchetype != null))
                     {
-                        r.MyArchetype = null;
+                        if (r.DeckCards.Count == 0 || solo) r.MyArchetype = null;
+                        if (solo) { r.OpponentArchetype = null; r.OpponentArchetypeProbability = 0; }
                         File.WriteAllText(f, JsonConvert.SerializeObject(r, Formatting.Indented));
                     }
                     list.Add(r);

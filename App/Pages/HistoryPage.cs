@@ -199,7 +199,7 @@ namespace HearthStoner.Pages
             Grid.SetColumn(names, 1);
             row.Children.Add(names);
             var when = new TextBlock { FontSize = 12, Foreground = Theme.Dusk, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
-            when.Text = g.Start.ToString("h:mm tt") + "\n" + $"{(g.Turns + 1) / 2} turns";   // the date is in the day header
+            when.Text = g.Start.ToString("h:mm tt") + "\n" + g.TurnsText;   // the date is in the day header
             Grid.SetColumn(when, 2);
             row.Children.Add(when);
 

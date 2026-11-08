@@ -133,7 +133,7 @@ namespace HearthStoner.Pages
             $"{(g.Won ? "Win" : g.Result == "LOST" ? "Loss" : "Game")} vs {g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass)}";
 
         private static string Subtitle(GameRecord g) =>
-            $"{g.DeckName ?? MetaStats.ClassName(g.MyClass)}, {g.Start:MMM d, h:mm tt}, {(g.Turns + 1) / 2} turns";
+            $"{g.DeckName ?? MetaStats.ClassName(g.MyClass)}, {g.Start:MMM d, h:mm tt}, {g.TurnsText}";
 
         private static UIElement GameSwitcher(AppShell shell, List<GameRecord> games)
         {
