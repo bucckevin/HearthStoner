@@ -263,7 +263,8 @@ The exe lands in `bin\Release\net10.0-windows\HearthStoner.exe`. `install.bat` b
   `/opt/dotnet` if it's missing. Test data goes in `tests/data`: copies of `%LocalAppData%\HearthStoner` under
   `tests/data/appdata/HearthStoner`, and Hearthstone's `Logs\Hearthstone_*` folders under `tests/data/install/Logs`.
 - `HearthStoner screenshot [folder]` draws every page of the app to PNGs (at 1280x800, and again in a small window,
-  the narrowest wide window, 1920 and 3440 px wide), and `HearthStoner preview [out.png] [--log Power.log]
+  the narrowest wide window, 1920 and 3440 px wide, plus whole-page shots of the longer pages, including Stats at
+  1920 and 3440 px), and `HearthStoner preview [out.png] [--log Power.log]
   [--turn N]` draws the overlay at a turn of a saved game. `build.bat` makes `screenshots\preview.png` after every
   build. With `HEARTHSTONER_SCREENSHOT_ANON=1` the screenshots leave your name off the menu (the README's pictures
   are made that way). The screenshot command fails (exit code 1) and lists anything a page's scroll area cuts off,
