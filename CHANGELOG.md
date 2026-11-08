@@ -3,6 +3,13 @@
 Every installed version, newest first. The number is in `VERSION`: patch (1.0.x) for fixes, minor (1.x.0) for new
 features, major (x.0.0) for big changes, such as a new data format. Each version is tagged in git as `v<number>`.
 
+## 1.5.1 - 2026-11-08
+
+- **Fixed:** the tops of the Stats page's "Ranked and casual" and "All card modes" buttons were cut off flat.
+  The row was nudged 4 pixels up, past the top of the scrolling area, which hides anything outside it.
+- **Checks:** `HearthStoner screenshot` now fails and names anything a page's scroll area cuts off, on every page and
+  window size it draws, so this kind of mistake can't hide in a full-size screenshot again.
+
 ## 1.5.0 - 2026-11-08
 
 The Ladder, History and Stats pages tell the game modes apart, and two crashes-in-waiting are fixed.

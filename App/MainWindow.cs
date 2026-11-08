@@ -207,6 +207,7 @@ namespace HearthStoner
         /// </summary>
         public static int Screenshots(AppServices svc, string folder)
         {
+            Clipped.Clear();
             Exception error = null;
             var t = new Thread(() =>
             {
@@ -357,8 +358,14 @@ namespace HearthStoner
             t.Start();
             t.Join();
             if (error != null) throw error;
-            return 0;
+            if (Clipped.Count == 0) return 0;
+            Console.WriteLine($"Cut off by a scroll area ({Clipped.Count}):");
+            foreach (var c in Clipped) Console.WriteLine("  " + c);
+            return 1;
         }
+
+        /// <summary>Page content the screenshots found cut off by a scroll area (see <see cref="Pages.ClipCheck"/>).</summary>
+        private static readonly List<string> Clipped = new List<string>();
 
         /// <summary>
         /// Each Practice drill's first question, and the same question answered (app-practice-play.png,
@@ -396,6 +403,7 @@ namespace HearthStoner
             host.Measure(new Size(wid, hgt));
             host.Arrange(new Rect(0, 0, wid, hgt));
             host.UpdateLayout();
+            foreach (var c in Pages.ClipCheck.Find(host)) Clipped.Add($"app-{name}.png: {c}");
             var bmp = new RenderTargetBitmap(wid, hgt, 96, 96, PixelFormats.Pbgra32);
             bmp.Render(host);
             host.Child = null;

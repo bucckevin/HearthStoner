@@ -117,7 +117,7 @@ namespace HearthStoner.Pages
         /// <summary>"Ranked and casual 18" / "All card modes 29": which games the page counts.</summary>
         private static UIElement ScopeChips(AppShell shell, string scope)
         {
-            var row = new WrapPanel { Margin = new Thickness(0, -4, 0, 18) };
+            var row = new WrapPanel { Margin = new Thickness(0, 0, 0, 18) };
             int ladder = shell.Data.LadderStats.Stats?.Games ?? 0, all = shell.Data.AllStats.Stats?.Games ?? 0;
             row.Children.Add(AppShell.FilterChip($"Ranked and casual {ladder}", scope == AppShell.StatsLadder,
                 () => { shell.StatsScope = AppShell.StatsLadder; shell.Redraw(); }, "Your ladder games: the ones the advice and the meta data are about."));

@@ -253,7 +253,8 @@ The exe lands in `bin\Release\net10.0-windows\HearthStoner.exe`. `install.bat` b
   the narrowest wide window, 1920 and 3440 px wide), and `HearthStoner preview [out.png] [--log Power.log]
   [--turn N]` draws the overlay at a turn of a saved game. `build.bat` makes `screenshots\preview.png` after every
   build. With `HEARTHSTONER_SCREENSHOT_ANON=1` the screenshots leave your name off the menu (the README's pictures
-  are made that way).
+  are made that way). The screenshot command fails (exit code 1) and lists anything a page's scroll area cuts off,
+  such as a row nudged up past its top edge.
 
 ### Releases
 
