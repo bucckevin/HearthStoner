@@ -3,6 +3,13 @@
 Every installed version, newest first. The number is in `VERSION`: patch (1.0.x) for fixes, minor (1.x.0) for new
 features, major (x.0.0) for big changes, such as a new data format. Each version is tagged in git as `v<number>`.
 
+## 1.6.1 - 2026-11-08
+
+- **Fixed:** on a very wide screen, where a page stops at its widest and is centred, the page sat a few pixels off
+  centre under its title: 4 px right on a page short enough not to scroll, 1 px left on one that scrolls. The page
+  area had 34 px on the left but 26 px plus the scrollbar on the right. Now both sides get 34 px, and the scrollbar
+  lies in the right-hand margin instead of taking its own strip, so a page is centred the same with or without it.
+
 ## 1.6.0 - 2026-11-08
 
 - **Text size Auto** (Settings, Display), on by default: the app is 100% in a normal window and zooms in to fill the

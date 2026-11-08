@@ -171,6 +171,25 @@ namespace HearthStoner
     </Style.Triggers>
   </Style>
 
+  <!-- A page's scroll area: the scrollbar lies over the right padding instead of taking its own column, so the
+       content keeps the same width with or without it and centres like the header above it -->
+  <Style x:Key='PageScroll' TargetType='ScrollViewer'>
+    <Setter Property='Template'>
+      <Setter.Value>
+        <ControlTemplate TargetType='ScrollViewer'>
+          <Grid Background='{TemplateBinding Background}'>
+            <ScrollContentPresenter x:Name='PART_ScrollContentPresenter' Margin='{TemplateBinding Padding}'
+                                    CanContentScroll='{TemplateBinding CanContentScroll}'/>
+            <ScrollBar x:Name='PART_VerticalScrollBar' HorizontalAlignment='Right' Orientation='Vertical' Cursor='Arrow'
+                       Maximum='{TemplateBinding ScrollableHeight}' ViewportSize='{TemplateBinding ViewportHeight}'
+                       Value='{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}'
+                       Visibility='{TemplateBinding ComputedVerticalScrollBarVisibility}'/>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <Style x:Key='Primary' TargetType='Button'>
     <Setter Property='Foreground' Value='#0B1430'/>
     <Setter Property='Background' Value='#5AA0FF'/>

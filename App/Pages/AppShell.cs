@@ -300,7 +300,9 @@ namespace HearthStoner.Pages
             head.Children.Add(titles);
             g.Children.Add(head);
             var inner = new Border { Child = body, MaxWidth = PageLayout.MaxContent };
-            var scroll = new ScrollViewer { Content = inner, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(34, 0, 26, 26), Focusable = false };
+            // The same 34 px each side as the header, so a page capped at MaxContent centres exactly under its title;
+            // the PageScroll style puts the scrollbar inside the right padding.
+            var scroll = new ScrollViewer { Content = inner, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(34, 0, 34, 26), Focusable = false, Style = (Style)Theme.Styles["PageScroll"] };
             SetRow(scroll, 1);
             g.Children.Add(scroll);
             return g;
@@ -312,7 +314,7 @@ namespace HearthStoner.Pages
             var g = Page(title, sub, new Grid(), actions);
             var scroll = g.Children.OfType<ScrollViewer>().First();
             g.Children.Remove(scroll);
-            var holder = new Border { Child = new Border { Child = body, MaxWidth = PageLayout.MaxContent }, Padding = new Thickness(34, 0, 26, 18) };
+            var holder = new Border { Child = new Border { Child = body, MaxWidth = PageLayout.MaxContent }, Padding = new Thickness(34, 0, 34, 18) };
             SetRow(holder, 1);
             g.Children.Add(holder);
             return g;
