@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 
@@ -77,11 +78,11 @@ namespace HearthStoner
         public bool WindowMaximized { get; set; }
 
         /// <summary>The zoom steps offered in Settings.</summary>
-        public static readonly double[] AppScales = { 0.9, 1.0, 1.15, 1.3, 1.5 };
+        public static readonly IReadOnlyList<double> AppScales = Array.AsReadOnly(new[] { 0.9, 1.0, 1.15, 1.3, 1.5 });
 
         /// <summary><paramref name="scale"/> kept to the offered range (a hand-edited settings file can hold anything).</summary>
         public static double ClampScale(double scale) =>
-            double.IsNaN(scale) || scale <= 0 ? 1.0 : Math.Max(AppScales[0], Math.Min(AppScales[AppScales.Length - 1], scale));
+            double.IsNaN(scale) || scale <= 0 ? 1.0 : Math.Max(AppScales[0], Math.Min(AppScales[AppScales.Count - 1], scale));
 
         public static string Path =>
             AppPaths.Data("settings.json");
@@ -107,12 +108,25 @@ namespace HearthStoner
             return d;
         }
 
+        /// <summary>One save at a time: the window and background threads (your BattleTag being read) both save.</summary>
+        private static readonly object SaveLock = new object();
+
+        /// <summary>
+        /// Writes the settings file. It's written next to the old one and then swapped in, so a crash or a second
+        /// save mid-write never leaves a half-written file (which would reset every setting on the next start).
+        /// </summary>
         public void Save()
         {
             try
             {
-                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path));
-                File.WriteAllText(Path, JsonConvert.SerializeObject(this, Formatting.Indented));
+                lock (SaveLock)
+                {
+                    var path = Path;
+                    Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
+                    var temp = path + ".tmp";
+                    File.WriteAllText(temp, JsonConvert.SerializeObject(this, Formatting.Indented));
+                    File.Move(temp, path, overwrite: true);
+                }
             }
             catch (Exception swallowed) { Diag.Ignored(swallowed, "Settings"); /* settings are best-effort */ }
         }

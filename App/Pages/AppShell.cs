@@ -201,8 +201,17 @@ namespace HearthStoner.Pages
             if (size == Size && extraWide == _extraWide) return;
             Size = size;
             _extraWide = extraWide;
-            if (Data != null) Show(Current);
+            if (Data == null) return;
+            // Keep your place: the rebuilt page scrolls to the same share of its height as the old one was at.
+            var old = PageScroll();
+            var at = old != null && old.ScrollableHeight > 0 ? old.VerticalOffset / old.ScrollableHeight : 0;
+            Show(Current);
+            if (at > 0 && PageScroll() is ScrollViewer now)
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, new Action(() => now.ScrollToVerticalOffset(at * now.ScrollableHeight)));
         }
+
+        /// <summary>The current page's main scroll area (see <see cref="Page"/>), or null for pages without one.</summary>
+        private ScrollViewer PageScroll() => (_content.Child as Grid)?.Children.OfType<ScrollViewer>().FirstOrDefault();
 
         private bool _extraWide;
 

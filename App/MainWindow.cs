@@ -319,8 +319,10 @@ namespace HearthStoner
                     shell.ReplayShowHidden = false;
                     shell.ReplayFrame = midFrame;
                     // Every page at the other window sizes the layout adapts to: a small window (compact), a
-                    // maximized 1920x1080 screen and a maximized 3440x1440 ultrawide (both wide).
-                    foreach (var (suffix, w, h) in new[] { ("compact", 1100, 800), ("1920", 1920, 1040), ("3440", 3440, 1400) })
+                    // maximized 1920x1080 screen and a maximized 3440x1440 ultrawide (both wide), plus the narrowest
+                    // wide window (page area right at the breakpoint), where wide layouts have the least room.
+                    var edge = (int)(PageLayout.WideFrom + PageLayout.RailWidth);
+                    foreach (var (suffix, w, h) in new[] { ("compact", 1100, 800), ("wide-edge", edge, 1000), ("1920", 1920, 1040), ("3440", 3440, 1400) })
                         foreach (var page in AppShell.Pages)
                             Snap(shell, page, folder, page.ToLowerInvariant() + "-" + suffix, w, h);
                     // Settings, Text size 130% on the ultrawide: the layouts follow the zoomed width.

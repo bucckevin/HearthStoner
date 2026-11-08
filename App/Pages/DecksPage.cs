@@ -40,9 +40,17 @@ namespace HearthStoner.Pages
             return g;
         }
 
-        /// <summary>Your wins and losses with each saved deck, from your recorded games.</summary>
+        /// <summary>
+        /// The last <see cref="Records"/> result and what it was worked out from. Clicking a deck redraws the page,
+        /// and matching every game to a deck each time gets slow as your history grows. UI thread only.
+        /// </summary>
+        private static (AppData Data, int Games, int Decks, Dictionary<PlayerDeck, (int Wins, int Losses)> Records) _recordsCache;
+
+        /// <summary>Your wins and losses with each saved deck, from your recorded games (worked out again only when the data changes).</summary>
         private static Dictionary<PlayerDeck, (int Wins, int Losses)> Records(AppData d)
         {
+            var c = _recordsCache;
+            if (ReferenceEquals(c.Data, d) && c.Games == d.Games.Count && c.Decks == d.Decks.Count) return c.Records;
             var r = new Dictionary<PlayerDeck, (int Wins, int Losses)>();
             foreach (var g in d.Games.Where(g => g.Decided))
             {
@@ -51,6 +59,7 @@ namespace HearthStoner.Pages
                 var (w, l) = r.TryGetValue(deck, out var x) ? x : (0, 0);
                 r[deck] = g.Won ? (w + 1, l) : (w, l + 1);
             }
+            _recordsCache = (d, d.Games.Count, d.Decks.Count, r);
             return r;
         }
 

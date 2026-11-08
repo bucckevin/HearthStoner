@@ -28,6 +28,7 @@ namespace HearthStoner.Pages
             if (d.Games.Count > 0) list.Children.Add(FilterChips(shell));
             // One small header per day instead of the date on every row.
             DateTime? day = null;
+            var shown = 0;
             for (var i = 0; i < d.Games.Count; i++)
             {
                 if (!Matches(d.Games[i], shell)) continue;
@@ -37,7 +38,9 @@ namespace HearthStoner.Pages
                     list.Children.Add(DayHeader(day.Value));
                 }
                 list.Children.Add(GameRow(d.Games[i], i, shell));
+                shown++;
             }
+            if (d.Games.Count > 0 && shown == 0) list.Children.Add(NoMatches(shell));
             if (d.OtherGames.Count > 0)
             {
                 // Modes HearthStoner doesn't track card by card: how often you played them and how it went.
@@ -131,6 +134,18 @@ namespace HearthStoner.Pages
                 row.Children.Add(chip);
             }
             return row;
+        }
+
+        /// <summary>Shown when the filter chips hide every game: says so, with a button back to all games.</summary>
+        private static UIElement NoMatches(AppShell shell)
+        {
+            var p = new StackPanel { Margin = new Thickness(22, 8, 22, 16) };
+            p.Children.Add(Theme.Text("No games match these filters.", 13.5, Theme.Mist, wrap: true));
+            var reset = Theme.Button("Show all games", () => { shell.HistoryFilter = "All"; shell.HistoryResult = "Any"; shell.Redraw(); }, primary: false);
+            reset.Margin = new Thickness(0, 10, 0, 0);
+            reset.HorizontalAlignment = HorizontalAlignment.Left;
+            p.Children.Add(reset);
+            return p;
         }
 
         private static UIElement DayHeader(DateTime day)

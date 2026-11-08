@@ -23,7 +23,7 @@ namespace HearthStoner.Pages
             p = Section(sections, "Display", "Changes apply right away.");
             p.Children.Add(Choice("Text size", "Everything in the window grows or shrinks. Bigger suits a large screen.",
                 Settings.AppScales.Select(v => (v.ToString(System.Globalization.CultureInfo.InvariantCulture), $"{v * 100:0}%")).ToArray(),
-                Closest(st.AppScale, Settings.AppScales),
+                Closest(st.AppScale, Settings.AppScales.ToArray()),
                 v => { st.AppScale = double.Parse(v, System.Globalization.CultureInfo.InvariantCulture); Save(); shell.SetScale(st.AppScale); }));
             p.Children.Add(Toggle("Remember the window's size and place", "Opens where you left it, maximized if it was. Back to the middle if that screen is gone.", st.RememberWindow, v => { st.RememberWindow = v; Save(); }));
             p.Children.Add(KeyRow("Go to a page (in the order of the menu)", "Ctrl+1 … Ctrl+9"));
@@ -287,9 +287,16 @@ namespace HearthStoner.Pages
             var right = new StackPanel();
             foreach (var s in sections) (Equals(s.Tag, LeftColumn) ? left : right).Children.Add(s);
             right.Children.Add(credits);
-            var cols = PageLayout.Columns((left, column), (right, column));
-            cols.ColumnDefinitions[1].Width = new GridLength(64);   // a wider gutter between two forms
-            cols.HorizontalAlignment = HorizontalAlignment.Left;
+            // Two equal shares capped at the column width, not two fixed columns: a window just past the wide
+            // breakpoint has less than 2 x 760 px plus the gutter, and fixed columns cut the right one off there.
+            // Stretched (not left-aligned) so the shares get the page's width; past 2 x 760 the spare stays on the right.
+            var cols = new Grid();
+            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = column });
+            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });   // a wider gutter between two forms
+            cols.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = column });
+            cols.Children.Add(left);
+            Grid.SetColumn(right, 2);
+            cols.Children.Add(right);
             return cols;
         }
 

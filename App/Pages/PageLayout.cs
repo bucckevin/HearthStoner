@@ -60,7 +60,10 @@ namespace HearthStoner.Pages
             return g;
         }
 
-        /// <summary>The elements one under the other, with <paramref name="gap"/> px between them.</summary>
+        /// <summary>
+        /// The elements one under the other, with <paramref name="gap"/> px between them. The gap is added to each
+        /// element's top margin (after the first), so pass freshly built elements, each once; null ones are skipped.
+        /// </summary>
         public static StackPanel Stack(double gap, params UIElement[] items)
         {
             var p = new StackPanel();

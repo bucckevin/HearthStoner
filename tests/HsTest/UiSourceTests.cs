@@ -16,10 +16,21 @@ namespace HearthStoner.Tests
         public void Rounded_boxes_clip_their_content_with_RoundedBorder()
         {
             var app = Path.Combine(RepoRoot(), "App");
+            // Statement by statement (split at ';'), so an object initializer spread over several lines is caught too.
             var bad = Directory.GetFiles(app, "*.cs", SearchOption.AllDirectories)
-                .SelectMany(f => File.ReadLines(f).Select((line, i) => (File: f, Line: i + 1, Text: line)))
-                .Where(x => x.Text.Contains("CornerRadius") && x.Text.Contains("ClipToBounds = true"))
-                .Select(x => $"{Path.GetFileName(x.File)}:{x.Line}")
+                .SelectMany(f =>
+                {
+                    var text = File.ReadAllText(f);
+                    var found = new System.Collections.Generic.List<string>();
+                    var start = 0;
+                    foreach (var statement in text.Split(';'))
+                    {
+                        if (statement.Contains("CornerRadius") && statement.Contains("ClipToBounds = true"))
+                            found.Add($"{Path.GetFileName(f)}:{text.Substring(0, start).Count(c => c == '\n') + 1}");
+                        start += statement.Length + 1;
+                    }
+                    return found;
+                })
                 .ToList();
             Assert.True(bad.Count == 0, "Use RoundedBorder instead of a rounded Border with ClipToBounds: " + string.Join(", ", bad));
         }
