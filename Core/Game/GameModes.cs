@@ -56,12 +56,19 @@ namespace HearthStoner.Game
             return order.Where(seen.Contains).ToList();
         }
 
+        /// <summary>
+        /// The places that count as a good finish in Battlegrounds: the top half, 1-4 of 8 players, or 1-2 of the 4
+        /// teams in Duos (where places only go to 4).
+        /// </summary>
+        public static int GoodPlaces(string gameType) => (gameType ?? "").Contains("DUO") ? 2 : 4;
+
         /// <summary>"1st", "2nd", "3rd", "5th": a Battlegrounds place.</summary>
         public static string Ordinal(int place) => place + (place % 100 is 11 or 12 or 13 ? "th" : (place % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
 
         /// <summary>
         /// One line for a mode's games, newest first in <paramref name="games"/>: "Battlegrounds: 3 games, average place
-        /// 4.3, top 4 in 2, last Nov 7" where places were saved, else "Mercenaries: 2 games, 1 win, last Nov 7".
+        /// 4.3, top 4 in 2, last Nov 7" where places were saved ("top 2" in Duos), else "Mercenaries: 2 games, 1 win,
+        /// last Nov 7".
         /// </summary>
         public static string Summary(string mode, System.Collections.Generic.IReadOnlyList<GameRecord> games)
         {
@@ -69,9 +76,10 @@ namespace HearthStoner.Game
             if (games.Count == 0) return $"{mode}: no games";
             var n = games.Count;
             var placed = games.Where(x => x.Place > 0).ToList();
+            var good = GoodPlaces(games[0].GameType);
             string how;
             if (placed.Count == 1) how = $"finished {Ordinal(placed[0].Place)}";
-            else if (placed.Count > 1) how = $"average place {placed.Average(x => x.Place):0.0}, top 4 in {placed.Count(x => x.Place <= 4)}";
+            else if (placed.Count > 1) how = $"average place {placed.Average(x => x.Place):0.0}, top {good} in {placed.Count(x => x.Place <= good)}";
             else
             {
                 var w = games.Count(x => x.Won);

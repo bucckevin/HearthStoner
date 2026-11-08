@@ -69,14 +69,14 @@ namespace HearthStoner.Pages
             return g;
         }
 
-        /// <summary>A Battlegrounds game: its place in a badge (top 4 in green), the hero and when.</summary>
+        /// <summary>A Battlegrounds game: its place in a badge (green for the top half: top 4, top 2 in Duos), the hero and when.</summary>
         private static UIElement PlaceRow(GameRecord g, CardDb cards)
         {
             var row = new Grid { Margin = new Thickness(0, 6, 0, 0) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var c = g.Place <= 4 ? Theme.WinC : Theme.DuskC;
+            var c = g.Place <= GameModes.GoodPlaces(g.GameType) ? Theme.WinC : Theme.DuskC;
             row.Children.Add(new Border
             {
                 Width = 30, Height = 30, CornerRadius = new CornerRadius(8), Background = Theme.B(c, 0.14), HorizontalAlignment = HorizontalAlignment.Left,

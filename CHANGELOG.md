@@ -13,7 +13,8 @@ The Ladder, History and Stats pages tell the game modes apart, and two crashes-i
   the "a day" column (it's on hover). Decks are per format, and Wild no longer gets Standard meta estimates. A format
   with fewer than 3 games this season gets a short version. "Best time to play" moved to Stats.
 - **History:** a filter chip for each mode you've played (Ranked, Casual, Brawl, Arena, Solo), with counts.
-  Battlegrounds games are listed with your place and hero.
+  Battlegrounds games are listed with your place and hero; a top-half finish is green (top 4, or top 2 of the 4
+  teams in Duos).
 - **Stats:** ranked and casual games by default, the ones the advice is about, or every card mode with one click.
   Before, 4 wins against the AI and the Arena and Brawl games counted, and adventure bosses showed as "Neutral".
 - **Fixed:** the app crashed as a game ended when two minions had "infinite" attack (Hand of Infinity), and that

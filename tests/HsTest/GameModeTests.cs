@@ -108,6 +108,14 @@ namespace HearthStoner.Tests
                 new GameRecord { Start = day, Place = 5 }, new GameRecord { Start = day.AddDays(-1), Place = 2 }, new GameRecord { Start = day.AddDays(-2), Place = 3 },
             };
             Assert.Equal("Battlegrounds: 3 games, average place 3.3, top 4 in 2, last Nov 7", GameModes.Summary("Battlegrounds", three));
+            // Duos: 4 teams, so a good finish is the top 2 (Nov 8: 4th, last).
+            var duos = new List<GameRecord>
+            {
+                new GameRecord { GameType = "GT_BATTLEGROUNDS_DUO", Start = day, Place = 4 }, new GameRecord { GameType = "GT_BATTLEGROUNDS_DUO", Start = day, Place = 2 },
+            };
+            Assert.Equal("Battlegrounds Duos: 2 games, average place 3.0, top 2 in 1, last Nov 7", GameModes.Summary("Battlegrounds Duos", duos));
+            Assert.Equal(2, GameModes.GoodPlaces("GT_BATTLEGROUNDS_DUO"));
+            Assert.Equal(4, GameModes.GoodPlaces("GT_BATTLEGROUNDS"));
             var mercs = new List<GameRecord> { new GameRecord { Start = day, Result = "WON" }, new GameRecord { Start = day, Result = "LOST" } };
             Assert.Equal("Mercenaries: 2 games, 1 win, last Nov 7", GameModes.Summary("Mercenaries", mercs));
         }
