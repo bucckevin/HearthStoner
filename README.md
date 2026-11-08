@@ -51,8 +51,12 @@ you're not in a game.
 ## The app
 
 HearthStoner sits in the tray near the clock. Its menu has Open, Overlay on/off, Start with Windows, Quit, and
-"Update to x.y.z" when a new version is out. The overlay appears whenever Hearthstone is in front. The window has
-nine pages:
+"Update to x.y.z" when a new version is out. The overlay appears whenever Hearthstone is in front.
+
+The window fits any screen: in a small window the pages stack into one column, a normal window gets two, and a
+maximized window on a 1920 px or ultrawide screen gets three side by side (centred on very wide screens so nothing
+stretches across the whole monitor). Settings has a **text size** (90% to 150%) for big or far-away screens, and the
+window opens where you left it. Ctrl+1 to Ctrl+9 jump to the pages in menu order. It has nine pages:
 
 - **Play:** a button to start Hearthstone through the Battle.net app (it turns into "Switch to Hearthstone" while
   the game runs). Then your decks, ranked by expected win rate against today's field at your rank, the best one as
@@ -76,13 +80,15 @@ nine pages:
   Hearthstone install (built in the background; Settings can rebuild it after a patch).
 - **Practice:** a daily review (questions you missed come back the next day, then after 3 and 7 days; three right
   in a row retire one) and six drills from your own games: What would you play?, Guess their hand, Secret guessing,
-  Mulligan by matchup, Discover picks and Lethal puzzles.
+  Mulligan by matchup, Discover picks and Lethal puzzles. **Your progress** shows the questions you answered on each
+  of the last two weeks' days and how often you're right in each drill.
 - **Stats:** your record, going first and on the coin, the last 30 games, **mana use** (how much you spend, the
   turns you leave mana unspent, by deck), results by opponent class and by deck, mulligan habits and tilt notes.
 - **Meta:** every archetype at your rank with its play rate and win rate, by class or in one list, with search and
   sorting. Your archetypes are marked.
-- **Settings:** overlay layout and panels, the replay board, the meta rank bracket and period, which program starts
-  Hearthstone, start with Windows, updates, your collection, and the hotkeys. Saved as you change them.
+- **Settings:** text size and whether the window remembers its size and place, overlay layout and panels, the
+  replay board, the meta rank bracket and period, which program starts Hearthstone, start with Windows, updates,
+  your collection, and the hotkeys. Saved as you change them.
 
 ![Practice](docs/screenshots/practice.png)
 
@@ -241,9 +247,11 @@ The exe lands in `bin\Release\net10.0-windows\HearthStoner.exe`. `install.bat` b
   `tests/run.sh` builds everything (including the Windows app) and runs the tests; it installs the .NET 10 SDK into
   `/opt/dotnet` if it's missing. Test data goes in `tests/data`: copies of `%LocalAppData%\HearthStoner` under
   `tests/data/appdata/HearthStoner`, and Hearthstone's `Logs\Hearthstone_*` folders under `tests/data/install/Logs`.
-- `HearthStoner screenshot [folder]` draws every page of the app to PNGs, and `HearthStoner preview [out.png]
-  [--log Power.log] [--turn N]` draws the overlay at a turn of a saved game. `build.bat` makes
-  `screenshots\preview.png` after every build.
+- `HearthStoner screenshot [folder]` draws every page of the app to PNGs (at 1280x800, and again in a small window,
+  the narrowest wide window, 1920 and 3440 px wide), and `HearthStoner preview [out.png] [--log Power.log]
+  [--turn N]` draws the overlay at a turn of a saved game. `build.bat` makes `screenshots\preview.png` after every
+  build. With `HEARTHSTONER_SCREENSHOT_ANON=1` the screenshots leave your name off the menu (the README's pictures
+  are made that way).
 
 ### Releases
 

@@ -215,6 +215,8 @@ namespace HearthStoner
                     if (Application.Current == null) new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
                     var data = AppData.Load(svc);
                     if (data.Error != null) Console.WriteLine("Data error: " + data.Error);
+                    // HEARTHSTONER_SCREENSHOT_ANON=1: leave your name off the menu, for pictures that go public (the README's).
+                    if (Environment.GetEnvironmentVariable("HEARTHSTONER_SCREENSHOT_ANON") == "1") data.PlayerName = null;
                     // Card art (banners) and tiles (card lists), downloaded if missing.
                     ArtCache.Prefetch(data.Picks.Select(p => p.SignatureCardId).Where(x => x != null), TimeSpan.FromSeconds(30));
                     foreach (var id in data.Decks.SelectMany(dk => dk.Cards).Distinct()) CardTiles.Get(id);

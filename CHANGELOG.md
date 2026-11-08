@@ -3,6 +3,34 @@
 Every installed version, newest first. The number is in `VERSION`: patch (1.0.x) for fixes, minor (1.x.0) for new
 features, major (x.0.0) for big changes, such as a new data format. Each version is tagged in git as `v<number>`.
 
+## 1.4.0 - 2026-11-07
+
+A UI review: the window fits any screen size, and every page got clearer.
+
+- **Any screen size:** pages stack into one column in a small window, use two in a normal one, and three side by
+  side when maximized on a 1920 px or ultrawide screen (centred past 2400 px). Crossing a size keeps your place.
+- **Display settings:** text size from 90% to 150%, and the window opens where you left it (maximized if it was;
+  back to the middle if that screen is gone). Ctrl+1 to Ctrl+9 open the pages in menu order.
+- **Play:** on a wide screen the field shows all eight classes and quests and crafting sit beside it.
+- **Decks:** your own record under each deck's win rate, "No data" for decks the meta doesn't know, a shorter
+  results-by-class list.
+- **History:** filter by result (wins, losses) as well as mode, a message and a reset button when nothing
+  matches, and "Clean" instead of an empty review. On an ultrawide screen the review sits beside the graph.
+- **Ladder:** lost games are hollow rings on the climb chart and the extra-stars note is clearer.
+- **Stats:** W and L letters on the last 30 games; decks that weren't saved read "Paladin, deck not saved".
+  Your rank comes from your Standard ranked games, not a newer Wild brawl.
+- **Practice:** a progress panel (answers per day for two weeks, accuracy per drill, questions learned). "What
+  would you play?" keeps your plan, mana crystals and Lock in beside the board. Lethal puzzles use the app's
+  colours and real card art.
+- **Replays:** the advice is grouped into cards, a bit larger, and "their deck" no longer sits under your name.
+- **Meta:** names sit next to their bars.
+- **Settings:** two columns on a wide screen.
+- Rounded boxes clip their art to the rounded corners (the Best pick banner's right end was square).
+- Greyed-out buttons are flat grey and say why they're greyed out.
+- Your name shows in the menu even when HearthStoner starts before Hearthstone.
+- The settings file is saved safely when two saves happen at once.
+- Self-test: each game uses the deck queued before it, not the session's last deck.
+
 ## 1.3.1 - 2026-11-07
 
 Dependency updates (from Dependabot).
