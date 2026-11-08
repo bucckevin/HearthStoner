@@ -337,6 +337,8 @@ namespace HearthStoner
                     foreach (var (suffix, w, h) in new[] { ("compact", 1100, 800), ("wide-edge", edge, 1000), ("1920", 1920, 1040), ("3440", 3440, 1400) })
                         foreach (var page in AppShell.Pages)
                             Snap(shell, page, folder, page.ToLowerInvariant() + "-" + suffix, w, h);
+                    // The overlay preview on Settings (very wide screens) replays your latest game first.
+                    Pages.SettingsPage.PreparePreview(data);
                     // Every page maximized on a 3440x1440 ultrawide with Text size Auto (app-play-3440-auto.png, ...).
                     foreach (var page in AppShell.Pages)
                         Snap(shell, page, folder, page.ToLowerInvariant() + "-3440-auto", 3440, 1400, scale: AutoZoom.For(3440, 1400, maximized: true));

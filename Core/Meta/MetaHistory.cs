@@ -100,6 +100,37 @@ namespace HearthStoner.Meta
                    ?? same.OrderBy(x => x.Day).FirstOrDefault();
         }
 
+        /// <summary>The newest snapshot from before <paramref name="now"/>'s day with the same rank and period (null if none).</summary>
+        public Snapshot Previous(Snapshot now) =>
+            Snapshots.Where(x => x.Rank == now.Rank && x.Period == now.Period && x.Day < now.Day).OrderByDescending(x => x.Day).FirstOrDefault();
+
+        /// <summary>
+        /// How much each class's share of games moved between two snapshots (lowercase class key -> change, 0.02 = up 2
+        /// points). Snapshots keep archetypes, not classes, so <paramref name="classOf"/> maps an archetype key to its
+        /// class; archetypes it doesn't know are left out of both sides.
+        /// </summary>
+        public static Dictionary<string, double> ClassShareChange(Snapshot before, Snapshot now, Func<string, string> classOf)
+        {
+            var change = new Dictionary<string, double>();
+            if (before == null || now == null || classOf == null) return change;
+            Dictionary<string, double> Sum(Snapshot s)
+            {
+                var sums = new Dictionary<string, double>();
+                foreach (var kv in s.Archetypes)
+                {
+                    var cls = classOf(kv.Key)?.ToLowerInvariant();
+                    if (string.IsNullOrEmpty(cls)) continue;
+                    sums[cls] = (sums.TryGetValue(cls, out var v) ? v : 0) + kv.Value.Share;
+                }
+                return sums;
+            }
+            var a = Sum(before);
+            var b = Sum(now);
+            foreach (var cls in a.Keys.Union(b.Keys))
+                change[cls] = (b.TryGetValue(cls, out var nv) ? nv : 0) - (a.TryGetValue(cls, out var ov) ? ov : 0);
+            return change;
+        }
+
         /// <summary>What changed between two snapshots that's worth a line on the Play page, biggest first.</summary>
         public static List<Alert> Compare(Snapshot before, Snapshot now, int max = 4)
         {

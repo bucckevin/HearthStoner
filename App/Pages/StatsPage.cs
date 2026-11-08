@@ -53,6 +53,12 @@ namespace HearthStoner.Pages
             p.Children.Add(tiles);
 
             // Recent form: one square per game.
+            var trend = WinTables.Rolling(view.Games, TrendWindow);
+            if (trend.Count >= 2)
+            {
+                p.Children.Add(Theme.Heading($"Win rate over time"));
+                p.Children.Add(TrendChart(trend));
+            }
             p.Children.Add(Theme.Heading($"Last {s.Recent.Count} game{(s.Recent.Count == 1 ? "" : "s")}"));
             p.Children.Add(RecentForm(s, shell));
 
@@ -61,7 +67,8 @@ namespace HearthStoner.Pages
             // Matchups, decks, and how early HearthStoner names the opponent's deck: three columns on a wide screen,
             // two (decks and the scorecard sharing one) on a normal one, one under the other in a small window.
             var byClass = Table("By opponent's class", s.ByClass, r => Theme.ClassColor(r.Class));
-            var byDeck = Table("By deck", s.ByDeck, r => Theme.ClassColor(r.Class));
+            // One deck: its table would repeat "By opponent's class", so that space shows first against coin instead.
+            var byDeck = s.ByDeck.Count >= 2 ? Table("By deck", s.ByDeck, r => Theme.ClassColor(r.Class)) : FirstOrCoin(view.Games);
             var score = Scorecard(PredictionScore.Compute(view.Games));
             switch (shell.Size)
             {
@@ -75,6 +82,8 @@ namespace HearthStoner.Pages
                     p.Children.Add(PageLayout.Columns((byClass, 0), (PageLayout.Stack(26, byDeck, score), 0)));
                     break;
             }
+
+            if (s.ByDeck.Count >= 2) p.Children.Add(DeckGrid(view.Games));
 
             // When you win most: ranked and casual games by the hour they started (moved here from the Ladder page,
             // where it repeated under each format).
@@ -105,6 +114,148 @@ namespace HearthStoner.Pages
 
             var which = scope == AppShell.StatsLadder ? "ranked and casual" : "every card mode";
             return AppShell.Page("Stats", $"{s.Games} finished game{(s.Games == 1 ? "" : "s")} recorded with HearthStoner: {which}.", p);
+        }
+
+        /// <summary>Games in the rolling win rate.</summary>
+        private const int TrendWindow = 10;
+
+        /// <summary>
+        /// The win rate over your last <see cref="TrendWindow"/> games at each game, a line over a dashed 50%, green
+        /// above and red below where it ends; your overall rate on hover.
+        /// </summary>
+        private static UIElement TrendChart(List<double> values)
+        {
+            const double h = 120, left = 40, bottom = 4;
+            var c = new Canvas { Height = h + bottom, Margin = new Thickness(0, -2, 0, 4), Background = Brushes.Transparent, ClipToBounds = true };
+            void Draw()
+            {
+                c.Children.Clear();
+                var w = c.ActualWidth;
+                if (w <= left + 10) return;
+                double X(int i) => left + (w - left - 4) * i / (values.Count - 1);
+                double Y(double v) => 4 + (h - 8) * (1 - v);
+                foreach (var (v, label) in new[] { (1.0, "100%"), (0.5, "50%"), (0.0, "0%") })
+                {
+                    var t = Theme.Text(label, 11, Theme.Dusk);
+                    Canvas.SetLeft(t, 0); Canvas.SetTop(t, Y(v) - 8);
+                    c.Children.Add(t);
+                    c.Children.Add(new Line { X1 = left, X2 = w, Y1 = Y(v), Y2 = Y(v), Stroke = Theme.Line, StrokeThickness = 1, StrokeDashArray = v == 0.5 ? new DoubleCollection { 4, 4 } : null });
+                }
+                var line = new Polyline { StrokeThickness = 2, StrokeLineJoin = PenLineJoin.Round, Stroke = values[values.Count - 1] >= 0.5 ? Theme.Win : Theme.Loss };
+                for (var i = 0; i < values.Count; i++) line.Points.Add(new Point(X(i), Y(values[i])));
+                c.Children.Add(line);
+            }
+            c.SizeChanged += (o, e) => { if (e.WidthChanged) Draw(); };
+            c.ToolTip = $"Win rate over the last {TrendWindow} games at each game, oldest on the left. Now: {AppShell.Pct(values[values.Count - 1])}.";
+            var p = new StackPanel { Margin = new Thickness(0, 0, 0, 22) };
+            p.Children.Add(c);
+            p.Children.Add(Theme.Text($"Each point: your win rate over the {TrendWindow} games up to it. Dashed line: 50%.", 12, Theme.Dusk));
+            return p;
+        }
+
+        /// <summary>Your record going first and on the coin against each class, most played first (shown when you play one deck).</summary>
+        private static UIElement FirstOrCoin(List<GameRecord> games)
+        {
+            var p = new StackPanel();
+            p.Children.Add(Theme.Heading("First or on the coin"));
+            var cross = WinTables.Cross(games, g => MetaStats.Key(g.OpponentClass), g => g.WentFirst ? "first" : "coin");
+            var classes = cross.Keys.Select(k => k.Row).Distinct().OrderByDescending(cls => cross.Where(kv => kv.Key.Row == cls).Sum(kv => kv.Value.Games)).Take(10).ToList();
+            if (classes.Count == 0) { p.Children.Add(Theme.Text("Shows up once a few games are recorded.", 13.5, Theme.Dusk, wrap: true)); return p; }
+            Grid Row(double hgt)
+            {
+                var g = new Grid { Height = hgt };
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
+                return g;
+            }
+            void Put(Grid g, FrameworkElement el, int col) { el.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(el, col); g.Children.Add(el); }
+            var head = Row(24);
+            Put(head, AppShell.ColumnLabel("Against"), 1);
+            Put(head, AppShell.ColumnLabel("First", TextAlignment.Right), 2);
+            Put(head, AppShell.ColumnLabel("Coin", TextAlignment.Right), 3);
+            p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = head });
+            TextBlock CellText(WinTables.Cell c)
+            {
+                var t = new TextBlock { FontSize = 13.5, TextAlignment = TextAlignment.Right, Foreground = Theme.Dusk };
+                if (c.Games == 0) { t.Text = "-"; return t; }
+                t.Inlines.Add(new System.Windows.Documents.Run($"{c.Wins}-{c.Losses}  ") { Foreground = Theme.Mist });
+                t.Inlines.Add(new System.Windows.Documents.Run(c.Games < 3 ? "few" : AppShell.Pct(c.WinRate)) { Foreground = c.Games < 3 ? Theme.Dusk : Theme.RateBrush(c.WinRate), FontWeight = FontWeights.SemiBold });
+                return t;
+            }
+            foreach (var cls in classes)
+            {
+                var r = Row(38);
+                Put(r, new Border { Width = 10, Height = 10, CornerRadius = new CornerRadius(3), Background = Theme.B(Theme.ClassColor(cls)), HorizontalAlignment = HorizontalAlignment.Left }, 0);
+                Put(r, Theme.Text(MetaStats.ClassName(cls), 14), 1);
+                Put(r, CellText(cross.TryGetValue((cls, "first"), out var f) ? f : default), 2);
+                Put(r, CellText(cross.TryGetValue((cls, "coin"), out var cn) ? cn : default), 3);
+                p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = r });
+            }
+            return p;
+        }
+
+        /// <summary>
+        /// Each deck against each class as a grid: the cell's colour is the win rate (dim under 3 games), its text the
+        /// record. Shown when you play two or more decks.
+        /// </summary>
+        private static UIElement DeckGrid(List<GameRecord> games)
+        {
+            var cross = WinTables.Cross(games, g => g.DeckLabel, g => MetaStats.Key(g.OpponentClass));
+            int Games(Func<(string Row, string Col), bool> pick) => cross.Where(kv => pick(kv.Key)).Sum(kv => kv.Value.Games);
+            var decks = cross.Keys.Select(k => k.Row).Distinct().OrderByDescending(dk => Games(k => k.Row == dk)).Take(8).ToList();
+            var classes = cross.Keys.Select(k => k.Col).Distinct().OrderByDescending(cls => Games(k => k.Col == cls)).Take(11).ToList();
+            var p = new StackPanel { Margin = new Thickness(0, 26, 0, 0) };
+            p.Children.Add(Theme.Heading("Decks against classes"));
+            var g = new Grid();
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(200) });
+            foreach (var _ in classes) g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
+            for (var i = 0; i < classes.Count; i++)
+            {
+                var t = AppShell.ColumnLabel(MetaStats.ClassName(classes[i]), TextAlignment.Center);
+                t.VerticalAlignment = VerticalAlignment.Center;
+                Grid.SetColumn(t, i + 1);
+                g.Children.Add(t);
+            }
+            for (var r = 0; r < decks.Count; r++)
+            {
+                g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(38) });
+                var name = Theme.Text(decks[r], 14);
+                name.VerticalAlignment = VerticalAlignment.Center;
+                name.TextTrimming = TextTrimming.CharacterEllipsis;
+                name.ToolTip = decks[r];
+                Grid.SetRow(name, r + 1);
+                g.Children.Add(name);
+                for (var c = 0; c < classes.Count; c++)
+                {
+                    if (!cross.TryGetValue((decks[r], classes[c]), out var cell)) continue;
+                    var few = cell.Games < 3;
+                    var rate = cell.WinRate;
+                    var color = rate >= 0.52 ? Theme.WinC : rate < 0.48 ? Theme.LossC : Theme.DuskC;
+                    var box = new Border
+                    {
+                        Margin = new Thickness(3), CornerRadius = new CornerRadius(6),
+                        Background = Theme.B(color, few ? 0.10 : 0.18 + 0.30 * Math.Abs(rate - 0.5) * 2),
+                        Child = new TextBlock { Text = $"{cell.Wins}-{cell.Losses}", FontSize = 13, Foreground = few ? Theme.Dusk : Theme.Vellum, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+                        ToolTip = $"{decks[r]} vs {MetaStats.ClassName(classes[c])}: {cell.Wins}-{cell.Losses}" + (few ? " (too few games to judge)" : $", {AppShell.Pct(rate)}"),
+                    };
+                    Grid.SetRow(box, r + 1);
+                    Grid.SetColumn(box, c + 1);
+                    g.Children.Add(box);
+                }
+            }
+            // The class columns share the width up to 96 px each (no scroll box: it would take the page's mouse wheel).
+            var fit = new Grid();
+            fit.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = 200 + 96 * classes.Count });
+            fit.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Star) });
+            fit.Children.Add(g);
+            p.Children.Add(fit);
+            var note = Theme.Text("Green: you win more than you lose there, red: less; stronger colour, further from 50%. Faint: under 3 games.", 12, Theme.Dusk, wrap: true);
+            note.Margin = new Thickness(0, 6, 0, 0);
+            p.Children.Add(note);
+            return p;
         }
 
         /// <summary>The games shown: your pick, else ranked and casual when there are any, else every card mode.</summary>
@@ -174,24 +325,8 @@ namespace HearthStoner.Pages
             var older = AppShell.ColumnLabel("Older");
             older.Margin = new Thickness(0, 0, 10, 0);
             row.Children.Add(older);
-            var squares = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
-            for (var i = 0; i < s.RecentGames.Count; i++)
-            {
-                var g = s.RecentGames[i];
-                var sq = new Border
-                {
-                    Width = 18, Height = 18, CornerRadius = new CornerRadius(4), Margin = new Thickness(0, 0, 5, 0), Cursor = System.Windows.Input.Cursors.Hand,
-                    Background = g.Won ? Theme.Win : Theme.B(Theme.LossC, 0.8),
-                    BorderBrush = Theme.Vellum, BorderThickness = new Thickness(i == s.RecentGames.Count - 1 ? 2 : 0),
-                    // A letter too, so wins and losses don't rely on telling green from red.
-                    Child = new TextBlock { Text = g.Won ? "W" : "L", FontSize = 10.5, FontWeight = FontWeights.Bold, Foreground = g.Won ? Theme.B(Theme.Rgb(0x0B, 0x14, 0x30)) : Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
-                    ToolTip = $"{(g.Won ? "Win" : "Loss")} vs {g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass)}\n{g.DeckLabel} · {g.Start:MMM d, h:mm tt} · {g.TurnsText}\nClick to open in History",
-                };
-                var index = shell.Data.Games.IndexOf(g);
-                sq.MouseLeftButtonUp += (o, e) => { if (index < 0) return; shell.SelectedGame = index; shell.HistoryFilter = "All"; shell.HistoryResult = "Any"; shell.Show("History"); };
-                squares.Children.Add(sq);
-            }
-            row.Children.Add(squares);
+            row.Children.Add(AppShell.ResultSquares(shell, s.RecentGames));
+
             var newer = AppShell.ColumnLabel("Newest");
             newer.Foreground = Theme.Vellum;
             newer.Margin = new Thickness(6, 0, 0, 0);

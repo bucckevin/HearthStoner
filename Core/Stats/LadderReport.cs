@@ -276,6 +276,20 @@ namespace HearthStoner.Stats
             return change - (idx > LadderRules.FloorAt(idx) ? 1 : 0);
         }
 
+        /// <summary>
+        /// The gaming day (see <see cref="DaySession"/>) with the best record in these games: most wins over losses,
+        /// then most wins, then the latest. Null without a decided game.
+        /// </summary>
+        public static (DateTime Day, int Wins, int Losses)? BestDay(IEnumerable<GameRecord> games)
+        {
+            var best = (games ?? Enumerable.Empty<GameRecord>()).Where(g => g != null && g.Decided)
+                .GroupBy(g => DaySession.DayStart(g.Start).Date)
+                .Select(g => (Day: g.Key, Wins: g.Count(x => x.Won), Losses: g.Count(x => !x.Won)))
+                .OrderByDescending(x => x.Wins - x.Losses).ThenByDescending(x => x.Wins).ThenByDescending(x => x.Day)
+                .ToList();
+            return best.Count == 0 ? ((DateTime, int, int)?)null : best[0];
+        }
+
         /// <summary>Ranked and casual games by the hour they started; the best block needs 5+ games and another block to compare.</summary>
         public static (List<TimeBlock>, TimeBlock) ByTimeOfDay(List<GameRecord> all)
         {

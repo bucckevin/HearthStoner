@@ -232,7 +232,9 @@ namespace HearthStoner.Pages
             var wide = shell.Size == PageWidth.Wide;
             // Room for the review beside the chart: the game list (300), the main column and a usable second column.
             var split = wide && shell.PageAreaWidth >= PageLayout.ExtraWideFrom;
-            var p = new StackPanel { MaxWidth = wide ? WideMainWidth : 860, HorizontalAlignment = HorizontalAlignment.Left };
+            // Split: the main column takes whatever the notes column leaves, so the chart fills the screen's width.
+            var p = split ? new StackPanel() : new StackPanel { MaxWidth = wide ? WideMainWidth : 860, HorizontalAlignment = HorizontalAlignment.Left };
+            var notes = split ? new StackPanel() : p;
 
             var verdict = new StackPanel { Orientation = Orientation.Horizontal };
             var word = g.Won ? "Win" : g.Result == "LOST" ? "Loss" : g.Result == "TIED" ? "Tie" : "Unfinished";
@@ -287,9 +289,18 @@ namespace HearthStoner.Pages
                 p.Children.Add(sub);
                 // As wide as the column allows, up to the usual size, redrawn when it changes: a fixed width cut off
                 // the end of the game in a small window.
-                var c = new Canvas { MaxWidth = wide ? WideMainWidth - 40 : 760, Height = wide ? 250 : 210, HorizontalAlignment = HorizontalAlignment.Stretch, Background = Brushes.Transparent };
+                var c = new Canvas { MaxWidth = split ? double.PositiveInfinity : wide ? WideMainWidth - 40 : 760, Height = split ? 320 : wide ? 250 : 210, HorizontalAlignment = HorizontalAlignment.Stretch, Background = Brushes.Transparent };
                 c.SizeChanged += (s2, e2) => { if (e2.WidthChanged) WinChanceView.Draw(c, chance, -1, replay, Watch); };
                 p.Children.Add(c);
+                // The swings: under the chart, or as the notes column's "Key moments" on a very wide screen.
+                var moments = notes;
+                if (split && chance.Drops.Count + chance.Rises.Count > 0)
+                {
+                    var kh = Theme.Heading("Key moments");
+                    kh.Margin = new Thickness(0, 0, 0, 2);
+                    notes.Children.Add(kh);
+                }
+                else moments = p;
                 foreach (var m in chance.Drops.Concat(chance.Rises).OrderBy(m => m.Frame))
                 {
                     var down = chance.Drops.Contains(m);
@@ -300,7 +311,7 @@ namespace HearthStoner.Pages
                     line.ToolTip = "Show in the replay";
                     var frame = m.Frame;
                     line.MouseLeftButtonUp += (s2, e2) => Watch(frame);
-                    p.Children.Add(line);
+                    moments.Children.Add(line);
                 }
             }
             else
@@ -313,9 +324,8 @@ namespace HearthStoner.Pages
             }
 
             // Very wide screens: the review and mulligan get their own column beside the chart instead of going under it.
-            var notes = split ? new StackPanel() : p;
             var reviewHead = Theme.Heading("Review");
-            reviewHead.Margin = new Thickness(0, split ? 0 : 22, 0, 6);
+            reviewHead.Margin = new Thickness(0, split && notes.Children.Count == 0 ? 0 : 22, 0, 6);
             notes.Children.Add(reviewHead);
             if (review.Count == 0) notes.Children.Add(Theme.Text("Nothing stood out: no missed lethal, wasted mana, held cards, lost trades or mulligan against the data.", 13.5, Theme.Dusk, wrap: true));
             foreach (var n in review.OrderByDescending(n => n.Severity).ThenBy(n => n.Turn))
@@ -330,12 +340,51 @@ namespace HearthStoner.Pages
                 foreach (var m in g.Mulligan) wrap.Children.Add(MulliganCard(m, d));
                 notes.Children.Add(wrap);
             }
+            var lists = DeckLists(g, d);
+            if (lists != null) notes.Children.Add(lists);
             if (!split) return p;
-            var cols = PageLayout.Columns((p, WideMainWidth), (notes, 0));
+            var cols = PageLayout.Columns((p, 0), (notes, NotesWidth));
             cols.ColumnDefinitions[1].Width = new GridLength(56);   // a clear gutter between the chart and the notes
-            cols.ColumnDefinitions[2].MaxWidth = 700;
-            cols.HorizontalAlignment = HorizontalAlignment.Left;
             return cols;
+        }
+
+        /// <summary>The notes column's width beside the chart on a very wide screen.</summary>
+        private const double NotesWidth = 640;
+
+        /// <summary>
+        /// The two decks side by side: the 30 cards you built (by cost) and the opponent's cards you saw, with copies.
+        /// Null when neither was recorded.
+        /// </summary>
+        private static UIElement DeckLists(GameRecord g, AppData d)
+        {
+            var mine = DeckVersions.Built(g.DeckCards, d.Cards);
+            var theirs = g.OpponentCardsSeen ?? new List<string>();
+            if (mine.Count == 0 && theirs.Count == 0) return null;
+            StackPanel Column(string title, List<string> ids, string empty)
+            {
+                var col = new StackPanel();
+                var h = AppShell.ColumnLabel(title);
+                h.Margin = new Thickness(0, 0, 0, 6);
+                col.Children.Add(h);
+                if (ids.Count == 0) { col.Children.Add(Theme.Text(empty, 13, Theme.Dusk, wrap: true)); return col; }
+                foreach (var c in ids.GroupBy(x => x).Select(gr => new { Id = gr.Key, Info = d.Cards.ById(gr.Key), N = gr.Count() })
+                             .OrderBy(x => x.Info?.Cost ?? 99).ThenBy(x => x.Info?.Name))
+                {
+                    var badge = c.Info?.Rarity == "LEGENDARY" && c.N == 1 ? "★" : c.N > 1 ? c.N.ToString() : null;
+                    col.Children.Add(SectionView.CardTile(AdviceLine.Card(c.Info, c.Id, c.Info?.Name ?? c.Id, Tone.Normal, badge, null), true, true));
+                }
+                return col;
+            }
+            var p = new StackPanel { Margin = new Thickness(0, 22, 0, 0) };
+            p.Children.Add(Theme.Heading("Cards"));
+            var cols = PageLayout.Columns(
+                (Column("Your deck", mine, "Not recorded for this game."), 0),
+                (Column($"Theirs, seen ({theirs.Count})", theirs, "None seen."), 0));
+            cols.ColumnDefinitions[1].Width = new GridLength(20);
+            cols.MaxWidth = 640;
+            cols.HorizontalAlignment = HorizontalAlignment.Left;
+            p.Children.Add(cols);
+            return p;
         }
 
         /// <summary>The game's main column on a wide screen (verdict, numbers, chart); the review sits beside it.</summary>

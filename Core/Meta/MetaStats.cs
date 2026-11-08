@@ -242,6 +242,12 @@ namespace HearthStoner.Meta
             }
         }
 
+        /// <summary>The archetype's detail if it's already loaded (null otherwise): never downloads, so it's safe on the UI thread.</summary>
+        public ArchetypeDetail CachedDetail(int archetypeId)
+        {
+            lock (_details) return _details.TryGetValue(archetypeId, out var d) ? d : null;
+        }
+
         /// <summary>Per-matchup card stats for one archetype (downloaded on demand, cached).</summary>
         public ArchetypeDetail Detail(int archetypeId, Action<string> log = null)
         {

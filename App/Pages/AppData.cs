@@ -41,6 +41,13 @@ namespace HearthStoner.Pages
         /// <summary>What changed in the meta since <see cref="MetaSince"/> (empty on the first day).</summary>
         public List<MetaHistory.Alert> MetaAlerts = new List<MetaHistory.Alert>();
         public DateTime? MetaSince;
+        /// <summary>Each class's share of games now minus on <see cref="ClassShareSince"/> (lowercase class key); empty without an older snapshot.</summary>
+        public Dictionary<string, double> ClassShareChange = new Dictionary<string, double>();
+        public DateTime? ClassShareSince;
+        /// <summary>The meta snapshots kept day by day (the Meta page's share trends).</summary>
+        public MetaHistory History = new MetaHistory();
+        /// <summary>Today's games (Play page).</summary>
+        public DaySession Session = new DaySession();
         public string PlayerName;
         public string Rank;
         public string Error;
@@ -85,9 +92,15 @@ namespace HearthStoner.Pages
                     var since = history.Baseline(snap);
                     d.MetaAlerts = MetaHistory.Compare(since, snap);
                     d.MetaSince = since?.Day;
+                    var previous = history.Previous(snap);
+                    var classes = d.Meta.Archetypes.Where(a => !string.IsNullOrEmpty(a.Key)).GroupBy(a => a.Key).ToDictionary(g => g.Key, g => g.First().Class);
+                    d.ClassShareChange = MetaHistory.ClassShareChange(previous, snap, k => classes.TryGetValue(k, out var c) ? c : null);
+                    d.ClassShareSince = previous?.Day;
+                    d.History = history;
                     if (d.Meta.Archetypes.Count > 0) { history.Add(snap); history.Save(); }
                 }
                 catch (Exception ex) { svc.Log?.Invoke("[meta history] " + ex.Message); }
+                d.Session = DaySession.For(games, DateTime.Now);
                 d.PlayerName = (svc.PlayerName ?? svc.Settings?.LastBattleTag)?.Split('#')[0];
                 d.Rank = d.Stats.Rank;
             }

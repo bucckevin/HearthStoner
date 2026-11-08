@@ -63,7 +63,8 @@ namespace HearthStoner.Pages
 
             // The climb chart: shorter than before, and saying why games are missing from it.
             p.Children.Add(Theme.Heading($"{Ladder.Short(f)} climb, {season.Name}"));
-            var chart = new Canvas { Height = 150, ClipToBounds = true, Margin = new Thickness(0, 2, 0, 0) };
+            // Taller on a wide screen, where the page has the height to spare and the steps get easier to read.
+            var chart = new Canvas { Height = size == PageWidth.Wide ? 250 : 150, ClipToBounds = true, Margin = new Thickness(0, 2, 0, 0) };
             chart.SizeChanged += (o, e) => DrawLadder(chart, season);
             p.Children.Add(chart);
             var unranked = season.Games.Count - season.Points.Count;
@@ -80,6 +81,7 @@ namespace HearthStoner.Pages
             var sessions = new StackPanel();
             sessions.Children.Add(Theme.Heading("Sessions"));
             Session(sessions, r, d);
+            SessionTable(sessions, season);
             var past = f.Seasons.Take(f.Seasons.Count - 1).Reverse().Take(6).ToList();
             if (past.Count > 0)
             {
@@ -209,9 +211,88 @@ namespace HearthStoner.Pages
                 chips.Margin = new Thickness(28, 0, 0, 0);
                 Grid.SetColumn(chips, 2);
                 g.Children.Add(chips);
+                if (size == PageWidth.Wide)
+                {
+                    g.ColumnDefinitions[3].Width = new GridLength(1, GridUnitType.Star);
+                    var summary = SeasonSummary(season);
+                    Grid.SetColumn(summary, 3);
+                    g.Children.Add(summary);
+                }
                 body = g;
             }
             return Box(body, new Thickness(0, 4, 0, 26));
+        }
+
+        /// <summary>The season in numbers beside the rank card's facts (wide screens): games, record, net stars and your best day.</summary>
+        private static FrameworkElement SeasonSummary(Ladder.Season season)
+        {
+            var p = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            p.Children.Add(AppShell.ColumnLabel(season.Month == Ladder.SeasonOf(DateTime.Now) ? "This season" : season.Name));
+            var nums = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
+            void Num(string v, string label, Brush c)
+            {
+                var b = new StackPanel { Margin = new Thickness(0, 0, 30, 8) };
+                b.Children.Add(Theme.Text(v, 24, c, FontWeights.SemiBold, display: true));
+                b.Children.Add(Theme.Text(label, 12, Theme.Dusk));
+                nums.Children.Add(b);
+            }
+            var decided = season.Wins + season.Losses;
+            Num($"{season.Wins}-{season.Losses}", $"{season.Games.Count} game{(season.Games.Count == 1 ? "" : "s")}", Theme.Vellum);
+            if (decided > 0) { var wr = (double)season.Wins / decided; Num(AppShell.Pct(wr), "win rate", Theme.RateBrush(wr)); }
+            var ranked = season.Games.Where(g => g.StarLevel > 0).ToList();
+            // Games added from logs have no rank: say how many games the stars cover when some are missing.
+            var covers = ranked.Count == season.Games.Count ? "net stars" : $"net stars, {ranked.Count} game{(ranked.Count == 1 ? "" : "s")} with a rank";
+            if (LadderReport.NetStars(ranked, ranked) is int n) Num($"{(n >= 0 ? "+" : "")}{n}", covers, n > 0 ? Theme.Win : n < 0 ? Theme.Loss : Theme.Vellum);
+            if (LadderReport.BestDay(season.Games) is var (day, w, l)) Num(day.ToString("MMM d"), $"best day, {w}-{l}", Theme.Vellum);
+            p.Children.Add(nums);
+            return new Border { Child = p, BorderBrush = Theme.Line, BorderThickness = new Thickness(1, 0, 0, 0), Padding = new Thickness(28, 0, 0, 0), Margin = new Thickness(20, 0, 0, 0) };
+        }
+
+        /// <summary>
+        /// This season's sessions (games less than <see cref="Ladder.SessionGap"/> apart), newest first: the day,
+        /// record, stars won or lost and a small line of your rank through the session.
+        /// </summary>
+        private static void SessionTable(Panel p, Ladder.Season season)
+        {
+            var list = Ladder.Sessions(season.Games).AsEnumerable().Reverse().Take(8).ToList();
+            if (list.Count < 2) return;
+            Caption(p, "This season's sessions");
+            Grid Row(double h)
+            {
+                var g = new Grid { Height = h };
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
+                return g;
+            }
+            void Put(Grid g, FrameworkElement el, int col, bool right = true)
+            {
+                el.VerticalAlignment = VerticalAlignment.Center;
+                if (right && el is TextBlock t) t.TextAlignment = TextAlignment.Right;
+                Grid.SetColumn(el, col);
+                g.Children.Add(el);
+            }
+            var head = Row(24);
+            Put(head, AppShell.ColumnLabel("Session"), 0, false);
+            Put(head, AppShell.ColumnLabel("Record"), 1);
+            Put(head, AppShell.ColumnLabel("Stars"), 2);
+            Put(head, AppShell.ColumnLabel("Rank"), 3);
+            p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = head });
+            var ranked = season.Games.Where(g => g.StarLevel > 0).ToList();
+            foreach (var s in list)
+            {
+                var r = Row(32);
+                var first = s.Games[0];
+                Put(r, Theme.Text($"{first.Start:ddd MMM d, h tt}", 13.5, Theme.Vellum), 0, false);
+                Put(r, Theme.Text($"{s.Wins}-{s.Losses}", 13.5, Theme.Mist), 1);
+                var known = s.Games.Where(g => g.StarLevel > 0).ToList();
+                var net = known.Count == s.Games.Count ? LadderReport.NetStars(s.Games, ranked) : null;
+                Put(r, net is int n ? Theme.Text($"{(n >= 0 ? "+" : "")}{n}", 13.5, n > 0 ? Theme.Win : n < 0 ? Theme.Loss : Theme.Vellum, FontWeights.SemiBold) : Theme.Text("-", 13.5, Theme.Dusk), 2);
+                Put(r, AppShell.Sparkline(known.Select(g => (double)Ladder.RankOf(g).Score).ToList()), 3, false);
+                r.ToolTip = $"{s.Games.Count} game{(s.Games.Count == 1 ? "" : "s")}" + (s.From.Known && s.To.Known ? $", {s.From} to {s.To} (at the start of its last game)" : "");
+                p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = r });
+            }
         }
 
         /// <summary>Three star pips, the ones you have in this rank filled.</summary>

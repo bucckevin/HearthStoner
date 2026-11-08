@@ -63,33 +63,45 @@ where you left it. Ctrl+1 to Ctrl+9 jump to the pages in menu order. It has nine
   the game runs). Then your decks, ranked by expected win rate against today's field at your rank, the best one as
   a banner with a button to copy its deck code. On the right: the field's class mix with your win rate against each
   class, your quests, and what to craft next. Under your decks, **meta changes**: decks whose expected win rate
-  moved by 1.5 points or more, or archetypes whose share of games changed noticeably, since a few days ago.
+  moved by 1.5 points or more, or archetypes whose share of games changed noticeably, since a few days ago, and
+  **today so far**: your record, time played and rank change since 4 AM, with your last 10 results. Arrows in the
+  field table show classes whose share moved since yesterday.
 - **Decks:** each deck's card list, your results with it by class, the swaps the data favours (for example a card
   that wins 41% of games when drawn for one that wins 55%), and how your list differs from the best list of its
   archetype, with the dust to build it. Paste any deck code to analyze it the same way. **Versions:** every list
-  you've played a deck with, its record, and what changed from the version before.
+  you've played a deck with, its record, and what changed from the version before, with a timeline of them. The card
+  list has a mana curve and, per card, the archetype's win rate when it's drawn and its mulligan keep rate;
+  **Matchups** puts the data's win rate against each class next to your own record.
 - **Ladder:** one format at a time (Standard and Wild tabs): your rank and how far it is to the next floor, star
   bonus and streak, the season's climb chart, your pace before the reset, the deck that climbs fastest per hour,
-  your sessions and your opponents' ranks. A format with only a game or two gets a short version.
+  your sessions (a table with stars and a rank line for each) and your opponents' ranks. A format with only a game
+  or two gets a short version. On a wide screen the rank card adds a season summary and the chart is taller.
 - **History:** every recorded game, filtered by mode (Ranked, Casual, Tavern Brawl, Arena, Solo: whichever you've
   played) and by wins or losses. Battlegrounds games show your place and hero. Each game has its result, key numbers, your
   mulligan, the review, and the **win-chance graph**: an estimate at every moment from health, boards, hands,
   unspent mana and lethal threats, starting from the matchup's win rate. The biggest drops are marked and open the
-  replay at that moment.
+  replay at that moment. **Cards** shows your deck next to the opponent's cards you saw. On an ultrawide screen the
+  chart fills the width and the review, key moments and cards get their own column.
 - **Replays:** step through any recorded game without Hearthstone: both boards, hands, mana, secrets, what
   HearthStoner advised that turn, and a timeline with the turning point and review notes. Left/Right step,
   Up/Down jump a turn, Space plays. The board, frames and effects are drawn with art read from your own
-  Hearthstone install (built in the background; Settings can rebuild it after a patch).
+  Hearthstone install (built in the background; Settings can rebuild it after a patch). The side panel has Now,
+  Their deck and Board tabs; on an ultrawide screen a clickable turn-by-turn log runs beside the board.
 - **Practice:** a daily review (questions you missed come back the next day, then after 3 and 7 days; three right
   in a row retire one) and six drills from your own games: What would you play?, Guess their hand, Secret guessing,
   Mulligan by matchup, Discover picks and Lethal puzzles. **Your progress** shows the questions you answered on each
-  of the last two weeks' days and how often you're right in each drill.
+  of the last two weeks' days and how often you're right in each drill, and what comes due next. On an ultrawide
+  screen the drills sit in one row with a practice calendar beside them.
 - **Stats:** your ranked and casual games by default, or every card mode: your record, going first and on the coin,
-  the last 30 games, **mana use** (how much you spend, the turns you leave mana unspent, by deck), results by
-  opponent class and by deck, your best time of day to play, mulligan habits and tilt notes.
+  your win rate over time (over the last 10 games at each game), the last 30 games, **mana use** (how much you spend,
+  the turns you leave mana unspent, by deck), results by opponent class and by deck (with one deck: going first
+  against on the coin, by class; with several, a grid of decks against classes), your best time of day to play,
+  mulligan habits and tilt notes.
 - **Meta:** every archetype at your rank with its play rate and win rate, by class or in one list, with search and
-  sorting. Your archetypes are marked.
-- **Settings:** text size and whether the window remembers its size and place, overlay layout and panels, the
+  sorting. Your archetypes are marked. On a wide screen, click one for its share over two weeks, how it does against
+  your decks' classes and its core cards.
+- **Settings:** on an ultrawide screen, a live **overlay preview** of your latest game redrawn as you change the
+  overlay settings. Text size and whether the window remembers its size and place, overlay layout and panels, the
   replay board, the meta rank bracket and period, which program starts Hearthstone, start with Windows, updates,
   your collection, and the hotkeys. Saved as you change them.
 

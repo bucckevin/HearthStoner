@@ -190,20 +190,34 @@ namespace HearthStoner.Pages
             banner.Children.Add(info);
             p.Children.Add(new RoundedBorder { CornerRadius = new CornerRadius(12), Background = Theme.Slate, Child = banner, Margin = new Thickness(0, 0, 0, 24) });
 
+            // Card list: the mana curve, then each card with how it does in the archetype's games (when there's room).
+            var arch = pick?.Archetype;
+            var withNums = arch != null && arch.Cards.Count > 0 && shell.Size != PageWidth.Compact;
             var listCol = new StackPanel();
             listCol.Children.Add(Theme.Heading("Card list"));
+            listCol.Children.Add(ManaCurve(deck, d));
+            if (withNums) listCol.Children.Add(CardNumbersHead());
             foreach (var c in deck.Cards.GroupBy(x => x).Select(gr => new { Id = gr.Key, Info = d.Cards.ById(gr.Key), N = gr.Count() })
                          .OrderBy(x => x.Info?.Cost ?? 99).ThenBy(x => x.Info?.Name))
             {
                 var badge = c.Info?.Rarity == "LEGENDARY" && c.N == 1 ? "★" : c.N > 1 ? c.N.ToString() : null;
-                listCol.Children.Add(SectionView.CardTile(AdviceLine.Card(c.Info, c.Id, $"{c.N}x {c.Info?.Name}", Tone.Normal, badge, null), true, true));
+                var tile = SectionView.CardTile(AdviceLine.Card(c.Info, c.Id, $"{c.N}x {c.Info?.Name}", Tone.Normal, badge, null), true, true);
+                listCol.Children.Add(withNums ? CardWithNumbers(tile, arch, c.Id) : tile);
+            }
+            if (withNums)
+            {
+                var key = Theme.Text($"From {arch.Name} games in the data. Drawn: win rate when the card was drawn (the archetype wins {AppShell.Pct(arch.WinRate, 1)}). Kept: how often it's kept in the mulligan.", 12, Theme.Dusk, wrap: true);
+                key.Margin = new Thickness(0, 8, 0, 0);
+                listCol.Children.Add(key);
             }
             UIElement results = null;
+            DeckVersions versions = null;
             if (!deck.Imported)
             {
-                var versions = DeckVersions.For(deck, d.Decks, d.Games, d.Cards);
+                versions = DeckVersions.For(deck, d.Decks, d.Games, d.Cards);
                 if (versions.Versions.Any(v => v.Games > 0)) results = Versions(versions, d, shell.Size == PageWidth.Compact);
             }
+            if (pick?.Archetype != null && pick.Matchups.Count > 0) results = PageLayout.Stack(0, results, Matchups(pick, versions));
             var right = new StackPanel();
             right.Children.Add(Theme.Heading("Swaps the data favours"));
             if (plan == null)
@@ -226,7 +240,7 @@ namespace HearthStoner.Pages
                 right.Children.Add(note);
                 if (plan.Best != null) right.Children.Add(BestList(plan.Best, d));
             }
-            p.Children.Add(DetailColumns(shell.Size, listCol, results, right));
+            p.Children.Add(DetailColumns(shell.Size, listCol, results, right, withNums));
             return p;
         }
 
@@ -234,9 +248,10 @@ namespace HearthStoner.Pages
         /// Wide: card list | your results | swaps and the best list. Otherwise the results go above the swaps, next
         /// to the card list; in a small window the card list is narrower.
         /// </summary>
-        private static UIElement DetailColumns(PageWidth size, UIElement cards, UIElement results, UIElement swaps)
+        /// <param name="withNumbers">The card list has its Drawn and Kept columns, so it needs more room.</param>
+        private static UIElement DetailColumns(PageWidth size, UIElement cards, UIElement results, UIElement swaps, bool withNumbers)
         {
-            var listWidth = size == PageWidth.Compact ? 240 : 280;
+            var listWidth = size == PageWidth.Compact ? 240 : withNumbers ? 400 : 280;
             if (size == PageWidth.Wide && results != null)
                 return PageLayout.Columns((cards, listWidth), (results, 0), (swaps, 0));
             return PageLayout.Columns((cards, listWidth), (PageLayout.Stack(0, results, swaps), 0));
@@ -248,6 +263,7 @@ namespace HearthStoner.Pages
         {
             var p = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
             p.Children.Add(Theme.Heading(v.Versions.Count == 1 ? "Your results with this list" : $"Versions ({v.Versions.Count})"));
+            if (v.Versions.Count > 1) p.Children.Add(VersionTimeline(v));
             string Cards(Dictionary<string, int> m) => string.Join(", ", m.OrderBy(kv => d.Cards.NameOf(kv.Key)).Select(kv => (kv.Value > 1 ? $"{kv.Value}x " : "") + d.Cards.NameOf(kv.Key)));
             foreach (var ver in Enumerable.Reverse(v.Versions))
             {
@@ -283,6 +299,156 @@ namespace HearthStoner.Pages
             var note = Theme.Text(few ? "From your recorded games. A handful of games per version is mostly luck; the gap means more after 20 or so." : "From your recorded games.", 12, Theme.Dusk, wrap: true);
             p.Children.Add(note);
             return p;
+        }
+
+        /// <summary>
+        /// The versions in order on one line, each a pill with its dates and win rate (the current one outlined), so
+        /// you can see at a glance whether your changes helped. The list under it has the cards that changed.
+        /// </summary>
+        private static UIElement VersionTimeline(DeckVersions v)
+        {
+            var row = new WrapPanel { Margin = new Thickness(0, -2, 0, 14) };
+            for (var i = 0; i < v.Versions.Count; i++)
+            {
+                var ver = v.Versions[i];
+                if (i > 0)
+                {
+                    var arrow = Theme.Text("→", 15, Theme.Dusk);
+                    arrow.Margin = new Thickness(6, 8, 6, 0);
+                    row.Children.Add(arrow);
+                }
+                var t = new TextBlock { FontSize = 12.5, Foreground = Theme.Mist };
+                t.Inlines.Add(new System.Windows.Documents.Run($"v{ver.Number}  ") { Foreground = Theme.Vellum, FontWeight = FontWeights.SemiBold });
+                if (ver.Games > 0)
+                {
+                    t.Inlines.Add(new System.Windows.Documents.Run(AppShell.Pct(ver.WinRate)) { Foreground = Theme.RateBrush(ver.WinRate), FontWeight = FontWeights.SemiBold });
+                    t.Inlines.Add(new System.Windows.Documents.Run($"  {ver.Wins}-{ver.Losses}"));
+                }
+                else t.Inlines.Add(new System.Windows.Documents.Run("not played"));
+                var pill = new Border
+                {
+                    Child = t, CornerRadius = new CornerRadius(12), Padding = new Thickness(10, 4, 10, 5), Margin = new Thickness(0, 0, 0, 6),
+                    Background = Theme.Raised, BorderBrush = ver.IsCurrent ? Theme.Mana : Theme.Line, BorderThickness = new Thickness(1),
+                    ToolTip = (ver.First == null ? "Not played yet" : $"{ver.First:MMM d} to {ver.Last:MMM d}") + (ver.IsCurrent ? " (current list)" : ""),
+                };
+                row.Children.Add(pill);
+            }
+            return row;
+        }
+
+        /// <summary>
+        /// The deck against each class in the field: its share of games, the data's win rate for this archetype and
+        /// your own record with this deck (the meta data has class matchups, not archetype against archetype).
+        /// </summary>
+        private static UIElement Matchups(DeckPlanner.DeckPick pick, DeckVersions versions)
+        {
+            var p = new StackPanel { Margin = new Thickness(0, 0, 0, 24) };
+            p.Children.Add(Theme.Heading("Matchups"));
+            Grid Row(double h)
+            {
+                var g = new Grid { Height = h };
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(56) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(64) });
+                return g;
+            }
+            void Put(Grid g, FrameworkElement el, int col) { el.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(el, col); g.Children.Add(el); }
+            var head = Row(24);
+            Put(head, AppShell.ColumnLabel("Class"), 1);
+            Put(head, AppShell.ColumnLabel("Share", TextAlignment.Right), 2);
+            Put(head, AppShell.ColumnLabel("Data", TextAlignment.Right), 3);
+            Put(head, AppShell.ColumnLabel("You", TextAlignment.Right), 4);
+            p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = head });
+            var mine = (versions?.ByOpponent ?? new Dictionary<string, DeckVersions.Record>())
+                .GroupBy(kv => MetaStats.Key(kv.Key)).ToDictionary(g => g.Key, g => (Wins: g.Sum(x => x.Value.Wins), Losses: g.Sum(x => x.Value.Losses)));
+            foreach (var m in pick.Matchups.Where(m => m.Share >= 0.01))
+            {
+                var r = Row(32);
+                Put(r, new Border { Width = 10, Height = 10, CornerRadius = new CornerRadius(3), Background = Theme.B(Theme.ClassColor(m.Class)), HorizontalAlignment = HorizontalAlignment.Left }, 0);
+                Put(r, Theme.Text(MetaStats.ClassName(m.Class), 13.5), 1);
+                var share = Theme.Text(AppShell.Pct(m.Share), 13, Theme.Mist); share.TextAlignment = TextAlignment.Right; Put(r, share, 2);
+                var data = m.FromData ? Theme.Text(AppShell.Pct(m.WinRate), 13.5, Theme.RateBrush(m.WinRate), FontWeights.SemiBold) : Theme.Text("-", 13.5, Theme.Dusk);
+                data.TextAlignment = TextAlignment.Right; Put(r, data, 3);
+                var you = mine.TryGetValue(MetaStats.Key(m.Class), out var rec) ? Theme.Text($"{rec.Wins}-{rec.Losses}", 13, Theme.Mist) : Theme.Text("-", 13, Theme.Dusk);
+                you.TextAlignment = TextAlignment.Right; Put(r, you, 4);
+                p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = r });
+            }
+            var note = Theme.Text($"Share of the field and {pick.Archetype.Name}'s win rate against each class in the data (\"-\": too few games), next to your record with this deck.", 12, Theme.Dusk, wrap: true);
+            note.Margin = new Thickness(0, 8, 0, 0);
+            p.Children.Add(note);
+            return p;
+        }
+
+        /// <summary>Card counts by mana cost (0 to 7+) of the 30 cards you built (not the copies a card adds as the game starts), as small bars with the count on top.</summary>
+        private static UIElement ManaCurve(PlayerDeck deck, AppData d)
+        {
+            const double barH = 54;
+            var counts = new int[8];
+            foreach (var id in DeckVersions.Built(deck.Cards, d.Cards)) counts[Math.Max(0, Math.Min(7, d.Cards.ById(id)?.Cost ?? 0))]++;
+            var max = Math.Max(1, counts.Max());
+            var g = new Grid { Height = barH + 36, Margin = new Thickness(0, -2, 0, 14) };
+            for (var i = 0; i < counts.Length; i++)
+            {
+                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                var cell = new Grid { Margin = new Thickness(3, 0, 3, 0) };
+                cell.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                cell.RowDefinitions.Add(new RowDefinition { Height = new GridLength(18) });
+                var col = new StackPanel { VerticalAlignment = VerticalAlignment.Bottom };
+                var n = Theme.Text(counts[i] > 0 ? counts[i].ToString() : "", 11.5, Theme.Mist);
+                n.HorizontalAlignment = HorizontalAlignment.Center;
+                col.Children.Add(n);
+                col.Children.Add(new Border { Height = Math.Max(counts[i] > 0 ? 3 : 0, barH * counts[i] / max), CornerRadius = new CornerRadius(3, 3, 1, 1), Background = Theme.Mana, Margin = new Thickness(0, 2, 0, 0) });
+                cell.Children.Add(col);
+                var lbl = Theme.Text(i == 7 ? "7+" : i.ToString(), 11.5, Theme.Dusk);
+                lbl.HorizontalAlignment = HorizontalAlignment.Center;
+                lbl.VerticalAlignment = VerticalAlignment.Bottom;
+                Grid.SetRow(lbl, 1);
+                cell.Children.Add(lbl);
+                cell.ToolTip = $"{counts[i]} card{(counts[i] == 1 ? "" : "s")} costing {(i == 7 ? "7 or more" : i.ToString())}";
+                Grid.SetColumn(cell, i);
+                g.Children.Add(cell);
+            }
+            return g;
+        }
+
+        /// <summary>The card list's column widths when it shows Drawn and Kept.</summary>
+        private static Grid CardNumbersRow()
+        {
+            var g = new Grid();
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(62) });
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(52) });
+            return g;
+        }
+
+        private static UIElement CardNumbersHead()
+        {
+            var g = CardNumbersRow();
+            g.Margin = new Thickness(0, 0, 0, 4);
+            var drawn = AppShell.ColumnLabel("Drawn", TextAlignment.Right); Grid.SetColumn(drawn, 1); g.Children.Add(drawn);
+            var kept = AppShell.ColumnLabel("Kept", TextAlignment.Right); Grid.SetColumn(kept, 2); g.Children.Add(kept);
+            return g;
+        }
+
+        /// <summary>A card tile with the archetype's win rate when it's drawn (coloured against the archetype's own) and its mulligan keep rate.</summary>
+        private static UIElement CardWithNumbers(UIElement tile, MetaArchetype arch, string cardId)
+        {
+            var g = CardNumbersRow();
+            g.Children.Add(tile);
+            arch.Cards.TryGetValue(cardId, out var st);
+            var drawn = st != null && st.Drawn >= 30
+                ? Theme.Text(AppShell.Pct(st.DrawnWinRate), 13, Theme.RateBrush(st.DrawnWinRate - arch.WinRate + 0.5), FontWeights.SemiBold)
+                : Theme.Text("-", 13, Theme.Dusk);
+            var kept = st != null && st.DrawnBeforeMulligan >= 30 ? Theme.Text(AppShell.Pct(st.KeepRate), 13, Theme.Mist) : Theme.Text("-", 13, Theme.Dusk);
+            foreach (var (t, col) in new[] { (drawn, 1), (kept, 2) })
+            {
+                t.TextAlignment = TextAlignment.Right; t.VerticalAlignment = VerticalAlignment.Center;
+                Grid.SetColumn(t, col); g.Children.Add(t);
+            }
+            if (st != null) g.ToolTip = $"Drawn in {st.Drawn:N0} games, won {AppShell.Pct(st.DrawnWinRate, 1)}; kept {AppShell.Pct(st.KeepRate)} of {st.DrawnBeforeMulligan:N0} opening hands";
+            return g;
         }
 
         /// <summary>Under this many games a matchup is greyed and labelled "few", so 0-2 doesn't look like a verdict.</summary>

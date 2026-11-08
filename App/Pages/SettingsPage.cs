@@ -16,7 +16,15 @@ namespace HearthStoner.Pages
         public static UIElement Build(AppShell shell)
         {
             var st = shell.Data.Services.Settings ?? new Settings();
-            void Save() { try { st.Save(); } catch (Exception swallowed) { Diag.Ignored(swallowed, "SettingsPage"); } }
+            // Very wide screens: a live picture of the overlay, redrawn after every change.
+            var extra = shell.Size == PageWidth.Wide && shell.PageAreaWidth >= PageLayout.ExtraWideFrom;
+            Action refreshPreview = null;
+            var preview = extra ? OverlayPreview(shell, st, out refreshPreview) : null;
+            void Save()
+            {
+                try { st.Save(); } catch (Exception swallowed) { Diag.Ignored(swallowed, "SettingsPage"); }
+                refreshPreview?.Invoke();
+            }
             var sections = new List<StackPanel>();
             StackPanel p;
 
@@ -171,7 +179,7 @@ namespace HearthStoner.Pages
             files.Children.Add(openFolder);
             p.Children.Add(files);
             var credits = Theme.Text($"HearthStoner {AppVersion.Current.Detail}. Card text and art: HearthstoneJSON. Meta stats: Firestone. Memory reading: UnitySpy (MIT). Fonts: Barlow (SIL Open Font License).", 12, Theme.Dusk, wrap: true);
-            return AppShell.Page("Settings", "Saved as you change them.", Arrange(shell.Size, sections, credits));
+            return AppShell.Page("Settings", "Saved as you change them.", Arrange(shell.Size, sections, credits, preview));
         }
 
         /// <summary>The board art job's state, live while the page is open, and a Regenerate button. New art redraws the page.</summary>
@@ -245,6 +253,96 @@ namespace HearthStoner.Pages
             return row;
         }
 
+        /// <summary>Your latest game, replayed once per run for the overlay preview (null result: no game log found).</summary>
+        private static Task<Overlay.Preview.Game> _previewGame;
+
+        /// <summary>The turn the preview shows (or the game's last, if it was shorter).</summary>
+        private const int PreviewTurn = 12;
+
+        /// <summary>Starts replaying your latest game for the preview, if it hasn't been started yet.</summary>
+        private static Task<Overlay.Preview.Game> PreviewGame(AppData d, Settings st)
+        {
+            if (_previewGame != null) return _previewGame;
+            // Your newest ranked or casual game with a saved log (else any card game) that lasted long enough to show
+            // something (a quick concede doesn't): the overlay's coaching is about those.
+            var game = d.Games.Where(g => !string.IsNullOrEmpty(g.LogFile))
+                .OrderByDescending(g => g.Turns >= PreviewTurn).ThenByDescending(g => GameModes.HasLadderRank(g.GameType)).ThenByDescending(g => g.Start).FirstOrDefault();
+            var cards = d.Cards;
+            var meta = d.Meta;
+            var log = d.Services.Log;
+            _previewGame = Task.Run(() => game == null ? null : Overlay.Preview.Prepare(game, PreviewTurn, cards, meta, st, log));
+            return _previewGame;
+        }
+
+        /// <summary>Replays the preview's game now, waiting for it (the screenshot command, so Settings is drawn with it).</summary>
+        public static void PreparePreview(AppData d)
+        {
+            try { PreviewGame(d, d.Services.Settings ?? new Settings()).Wait(); }
+            catch (AggregateException ex) { Diag.Ignored(ex, "SettingsPage"); }
+        }
+
+        /// <summary>
+        /// The overlay as it would look over the game, from your latest game at turn <see cref="PreviewTurn"/>, drawn with
+        /// your settings. <paramref name="refresh"/> redraws it (after a change); the game replays in the background the
+        /// first time, and the page redraws when it's ready.
+        /// </summary>
+        private static UIElement OverlayPreview(AppShell shell, Settings st, out Action refresh)
+        {
+            var p = new StackPanel();
+            var h = Theme.Text("Overlay preview", 22, Theme.Vellum, FontWeights.SemiBold, display: true);
+            h.Margin = new Thickness(0, 0, 0, 2);
+            p.Children.Add(h);
+            var sub = Theme.Text("Your latest ranked or casual game as the overlay would show it, redrawn as you change the settings beside it.", 13, Theme.Dusk, wrap: true);
+            sub.Margin = new Thickness(0, 0, 0, 12);
+            p.Children.Add(sub);
+            var frame = new Border { CornerRadius = new CornerRadius(8), BorderBrush = Theme.Line, BorderThickness = new Thickness(1), ClipToBounds = false };
+            p.Children.Add(frame);
+            var caption = Theme.Text("", 12, Theme.Dusk, wrap: true);
+            caption.Margin = new Thickness(0, 8, 0, 0);
+            p.Children.Add(caption);
+            var task = PreviewGame(shell.Data, st);
+            void Draw()
+            {
+                if (!task.IsCompleted)
+                {
+                    frame.Child = new Border { Height = 240, Child = Theme.Text("Replaying your latest game for the preview...", 13.5, Theme.Dusk), Padding = new Thickness(16) };
+                    return;
+                }
+                var game = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
+                if (game == null)
+                {
+                    if (task.IsFaulted) Diag.Ignored(task.Exception, "SettingsPage");
+                    frame.Child = new Border { Padding = new Thickness(16), Child = Theme.Text("Play a ranked or casual game with HearthStoner running and the preview shows up here.", 13.5, Theme.Dusk, wrap: true) };
+                    return;
+                }
+                try
+                {
+                    var snap = game.Advisor.Compute();
+                    var marks = game.Advisor.OpponentHandMarks();
+                    // The whole window small (where the panels sit), then the panels at a size you can read.
+                    var both = new StackPanel();
+                    both.Children.Add(new RoundedBorder { CornerRadius = new CornerRadius(8), Child = new Viewbox { Stretch = Stretch.Uniform, Child = Overlay.Preview.OverlayFrame(snap, marks, st) } });
+                    var panels = Overlay.Preview.Panels(snap, st);
+                    panels.Margin = new Thickness(0, 14, 0, 0);
+                    panels.HorizontalAlignment = HorizontalAlignment.Left;
+                    both.Children.Add(new Viewbox { Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, HorizontalAlignment = HorizontalAlignment.Left, Child = panels });
+                    frame.Child = both;
+                    frame.BorderThickness = new Thickness(0);
+                    caption.Text = $"Your {game.Source}, turn {(game.Turn + 1) / 2}: on a 1920x1080 window above, the two panels at their real size below. Changes show here at once; layout and panel changes reach the overlay when it next starts.";
+                }
+                catch (Exception ex)
+                {
+                    Diag.Ignored(ex, "SettingsPage");
+                    frame.Child = new Border { Padding = new Thickness(16), Child = Theme.Text("The preview couldn't be drawn for this game.", 13.5, Theme.Dusk, wrap: true) };
+                }
+            }
+            Draw();
+            if (!task.IsCompleted)
+                task.ContinueWith(_ => { if (shell.Current == "Settings") shell.Redraw(); }, TaskScheduler.FromCurrentSynchronizationContext());
+            refresh = Draw;
+            return p;
+        }
+
         /// <summary>The Text size choice that means <see cref="Settings.AppScaleAuto"/>.</summary>
         private const string AutoScaleValue = "auto";
 
@@ -282,9 +380,29 @@ namespace HearthStoner.Pages
         /// One column (760 px at most, so toggles stay near their labels) or, on wide screens, two: the overlay and
         /// replay board on the left, everything else on the right. The credits go under both.
         /// </summary>
-        private static UIElement Arrange(PageWidth size, List<StackPanel> sections, UIElement credits)
+        /// <param name="preview">The live overlay preview (very wide screens): it goes between the overlay settings and the rest.</param>
+        private static UIElement Arrange(PageWidth size, List<StackPanel> sections, UIElement credits, UIElement preview)
         {
             const double column = 760;
+            if (preview != null)
+            {
+                var l = new StackPanel();
+                var r = new StackPanel();
+                foreach (var s in sections) (Equals(s.Tag, LeftColumn) ? l : r).Children.Add(s);
+                r.Children.Add(credits);
+                var three = new Grid();
+                three.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = 640 });
+                three.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
+                three.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.3, GridUnitType.Star), MaxWidth = 900 });
+                three.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
+                three.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = 640 });
+                three.Children.Add(l);
+                Grid.SetColumn(preview, 2);
+                three.Children.Add(preview);
+                Grid.SetColumn(r, 4);
+                three.Children.Add(r);
+                return three;
+            }
             if (size != PageWidth.Wide)
             {
                 var one = new StackPanel { MaxWidth = column, HorizontalAlignment = HorizontalAlignment.Left };

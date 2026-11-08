@@ -9,6 +9,24 @@ features, major (x.0.0) for big changes, such as a new data format. Each version
   screen when maximized, so a big monitor isn't mostly empty. It follows the screen's height (1080 px tall = 100%,
   1440 px tall = 130%, up to 150%), so pages fill the width without getting so tall that everything needs scrolling.
   Picking a fixed size (90% to 150%) works as before.
+- **Play:** Today so far (since 4 AM): record, win rate, time played, rank change and your last 10 results. The
+  field table marks classes whose share moved half a point or more since yesterday.
+- **Decks:** a mana curve, each card's win rate when drawn and mulligan keep rate (from the archetype's games), a
+  version timeline, and Matchups: the data's win rate against each class next to your record.
+- **Ladder:** wide screens get a season summary in the rank card (record, win rate, net stars, best day) and a taller
+  climb chart. Sessions has a table of this season's sessions with stars and a rank line.
+- **History:** your deck and the opponent's cards you saw. On an ultrawide screen the win-chance chart fills the
+  width and the review, key moments, mulligan and cards get their own column.
+- **Replays:** the side panel has Now, Their deck and Board tabs, so it no longer runs off the bottom. Ultrawide: a
+  clickable turn-by-turn log beside the board.
+- **Practice:** what comes due over the next days. Ultrawide: the six drills in one row and a progress column with a
+  five-week practice calendar.
+- **Stats:** win rate over time. With one deck, By deck becomes going first against on the coin by class; with
+  several, a grid of decks against classes is added.
+- **Meta:** on a wide screen, click an archetype for a panel with its share over two weeks, how it does against your
+  decks' classes and its core cards (its matchups download in the background).
+- **Settings:** ultrawide gets three columns with a live overlay preview of your latest game in the middle,
+  redrawn as you change the settings. The `preview` command now stops a turn before the game ends.
 
 ## 1.5.1 - 2026-11-08
 

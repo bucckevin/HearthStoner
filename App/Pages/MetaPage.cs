@@ -29,8 +29,17 @@ namespace HearthStoner.Pages
             var mine = shell.Data.Picks.Where(x => x.Archetype != null && !x.Deck.Imported)
                 .GroupBy(x => x.Archetype.Id).ToDictionary(g => g.Key, g => g.Count());
 
+            // Wide screens: click an archetype to see it in a panel on the right (your first archetype to begin with).
+            var wide = shell.Size == PageWidth.Wide;
+            MetaArchetype selected = null;
+            if (wide)
+            {
+                selected = m.Archetypes.FirstOrDefault(a => a.Id == shell.MetaSelected)
+                           ?? m.Archetypes.FirstOrDefault(a => mine.ContainsKey(a.Id)) ?? m.Archetypes[0];
+                shell.MetaSelected = selected.Id;
+            }
             var list = new StackPanel();
-            void Rebuild() { list.Children.Clear(); Fill(list, shell, mine); }
+            void Rebuild() { list.Children.Clear(); Fill(list, shell, mine, wide); }
             p.Children.Add(Toolbar(shell, Rebuild));
             p.Children.Add(list);
             Rebuild();
@@ -39,6 +48,14 @@ namespace HearthStoner.Pages
             holder.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = 1280 });
             holder.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Auto) });
             holder.Children.Add(p);
+            if (selected != null)
+            {
+                holder.ColumnDefinitions[1].Width = new GridLength(PageLayout.Gap);
+                holder.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(PanelWidth) });
+                var panel = Panel(shell, selected, mine);
+                Grid.SetColumn(panel, 2);
+                holder.Children.Add(panel);
+            }
             return AppShell.Page("Meta", $"Every archetype at {AppData.RankBracketName(m.Rank)}, {AppData.PeriodName(m.Period)}: {m.TotalGames:N0} games from Firestone.", holder);
         }
 
@@ -83,7 +100,8 @@ namespace HearthStoner.Pages
         }
 
         /// <summary>The table: a header (Games and Win rate sort when clicked), then the archetypes for the chosen view.</summary>
-        private static void Fill(StackPanel p, AppShell shell, Dictionary<int, int> mine)
+        /// <param name="selectable">Rows open the detail panel when clicked (wide screens).</param>
+        private static void Fill(StackPanel p, AppShell shell, Dictionary<int, int> mine, bool selectable)
         {
             var m = shell.Data.Meta;
             var maxShare = m.Archetypes.Max(a => a.Share);
@@ -117,11 +135,161 @@ namespace HearthStoner.Pages
                     title.Children.Add(new Border { Width = 12, Height = 12, CornerRadius = new CornerRadius(3), Background = Theme.B(color), Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center });
                     title.Children.Add(Theme.Text(MetaStats.ClassName(cls.Key), 20, Theme.Vellum, FontWeights.SemiBold, display: true));
                     p.Children.Add(title);
-                    foreach (var a in Sorted(cls)) p.Children.Add(Row(a, maxShare, mine, indent: true));
+                    foreach (var a in Sorted(cls)) p.Children.Add(Selectable(Row(a, maxShare, mine, indent: true), a, shell, selectable));
                 }
             }
             else
-                foreach (var a in Sorted(rows)) p.Children.Add(Row(a, maxShare, mine, indent: false));
+                foreach (var a in Sorted(rows)) p.Children.Add(Selectable(Row(a, maxShare, mine, indent: false), a, shell, selectable));
+        }
+
+        /// <summary>The detail panel's width (wide screens).</summary>
+        private const double PanelWidth = 520;
+
+        /// <summary>Days of share history in the panel's trend line.</summary>
+        private const int TrendDays = 14;
+
+        /// <summary>Archetypes whose detail download was started, so a failed one isn't retried on every redraw.</summary>
+        private static readonly HashSet<int> DetailRequested = new HashSet<int>();
+
+        /// <summary>Makes a row open its archetype in the panel when clicked, and marks the open one.</summary>
+        private static UIElement Selectable(UIElement row, MetaArchetype a, AppShell shell, bool selectable)
+        {
+            if (!selectable) return row;
+            var on = a.Id == shell.MetaSelected;
+            var wrap = new Grid { Cursor = System.Windows.Input.Cursors.Hand, Background = on ? Theme.B(Theme.ManaC, 0.12) : Brushes.Transparent, ToolTip = on ? null : "Show this archetype on the right" };
+            wrap.Children.Add(row);
+            if (on) wrap.Children.Add(new Border { Width = 3, HorizontalAlignment = HorizontalAlignment.Right, Background = Theme.Mana });
+            wrap.MouseLeftButtonUp += (s, e) => { if (shell.MetaSelected == a.Id) return; shell.MetaSelected = a.Id; shell.Redraw(); };
+            return wrap;
+        }
+
+        /// <summary>
+        /// One archetype in detail: its numbers, its share over the last two weeks (HearthStoner's daily snapshots), how
+        /// it does against your decks' classes and its core cards. The matchups download in the background if needed.
+        /// </summary>
+        private static UIElement Panel(AppShell shell, MetaArchetype a, Dictionary<int, int> mine)
+        {
+            var d = shell.Data;
+            var m = d.Meta;
+            var p = new StackPanel();
+            var head = new StackPanel { Orientation = Orientation.Horizontal };
+            head.Children.Add(new Border { Width = 12, Height = 12, CornerRadius = new CornerRadius(3), Background = Theme.B(Theme.ClassColor(a.Class)), Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center });
+            head.Children.Add(Theme.Text(a.Name, 26, Theme.Vellum, FontWeights.SemiBold, display: true));
+            p.Children.Add(head);
+            var place = m.Archetypes.OrderByDescending(x => x.Share).ToList().IndexOf(a) + 1;
+            p.Children.Add(Theme.Text($"{MetaStats.ClassName(a.Class)}, #{place} of {m.Archetypes.Count} by games" + (mine.ContainsKey(a.Id) ? ", one of your decks" : ""), 13, Theme.Dusk));
+            var nums = new WrapPanel { Margin = new Thickness(0, 12, 0, 6) };
+            void Num(string v, string label, Brush c)
+            {
+                var b = new StackPanel { Margin = new Thickness(0, 0, 30, 6) };
+                b.Children.Add(Theme.Text(v, 24, c, FontWeights.SemiBold, display: true));
+                b.Children.Add(Theme.Text(label, 12, Theme.Dusk));
+                nums.Children.Add(b);
+            }
+            Num(AppShell.Pct(a.Share, 1), "of games", Theme.Vellum);
+            Num(AppShell.Pct(a.WinRate, 1), "win rate", Theme.RateBrush(a.WinRate));
+            Num($"{a.Games:N0}", "games", Theme.Vellum);
+            p.Children.Add(nums);
+
+            // Share over the last two weeks.
+            var trend = d.History.Snapshots.Where(s => s.Rank == m.Rank && s.Period == m.Period && s.Day >= DateTime.Today.AddDays(-TrendDays))
+                .OrderBy(s => s.Day).Select(s => (s.Day, Share: s.Archetypes.TryGetValue(a.Key, out var x) ? x.Share : 0)).ToList();
+            p.Children.Add(Small("Share, last two weeks"));
+            if (trend.Count >= 2)
+            {
+                var change = trend[trend.Count - 1].Share - trend[0].Share;
+                var row = new DockPanel();
+                var line = AppShell.Sparkline(trend.Select(x => x.Share).ToList(), 200, 40, 2);
+                line.Margin = new Thickness(16, 0, 0, 0);
+                DockPanel.SetDock(line, Dock.Right);
+                row.Children.Add(line);
+                row.Children.Add(Theme.Text(Math.Abs(change) < 0.0005 ? $"Steady since {trend[0].Day:MMM d}." : $"{(change > 0 ? "Up" : "Down")} {Math.Abs(change) * 100:0.0} points since {trend[0].Day:MMM d}.", 13.5, Theme.Vellum, wrap: true));
+                p.Children.Add(row);
+            }
+            else p.Children.Add(Theme.Text("HearthStoner saves the meta once a day: the trend shows from the second day.", 13, Theme.Dusk, wrap: true));
+
+            // Against your decks: the archetype's record against each class you play (from its matchup data).
+            p.Children.Add(Small("Against your decks"));
+            var yours = d.Picks.Where(x => !x.Deck.Imported && x.Archetype != null).GroupBy(x => MetaStats.Key(x.Deck.Class)).ToList();
+            var det = m.CachedDetail(a.Id);
+            if (yours.Count == 0) p.Children.Add(Theme.Text("None of your decks match an archetype yet.", 13, Theme.Dusk, wrap: true));
+            else if (det == null)
+            {
+                var tried = DetailRequested.Contains(a.Id);
+                p.Children.Add(Theme.Text(tried ? "Its matchups couldn't be loaded (no connection?)." : "Loading its matchups...", 13, Theme.Dusk, wrap: true));
+                if (!tried)
+                {
+                    DetailRequested.Add(a.Id);
+                    var id = a.Id;
+                    var log = d.Services?.Log;
+                    System.Threading.Tasks.Task.Run(() => m.Detail(id, log)).ContinueWith(t =>
+                    {
+                        if (t.IsFaulted) Diag.Ignored(t.Exception, "MetaPage");
+                        if (shell.Current == "Meta" && shell.MetaSelected == id) shell.Redraw();
+                    }, System.Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext());
+                }
+            }
+            else
+            {
+                foreach (var cls in yours)
+                {
+                    var g = new Grid { Height = 34 };
+                    g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
+                    var names = string.Join(", ", cls.Select(x => x.Deck.Name));
+                    var who = Theme.Text($"vs {MetaStats.ClassName(cls.Key)} ({names})", 13.5, Theme.Vellum);
+                    who.TextTrimming = TextTrimming.CharacterEllipsis;
+                    who.ToolTip = names;
+                    who.VerticalAlignment = VerticalAlignment.Center;
+                    g.Children.Add(who);
+                    TextBlock val;
+                    if (det.Matchups.TryGetValue(cls.Key, out var mu) && mu.Games >= 50)
+                    {
+                        var you = 1 - mu.WinRate;
+                        val = new TextBlock { FontSize = 13.5, TextAlignment = TextAlignment.Right, Foreground = Theme.Mist };
+                        val.Inlines.Add(new System.Windows.Documents.Run("you win "));
+                        val.Inlines.Add(new System.Windows.Documents.Run(AppShell.Pct(you)) { Foreground = Theme.RateBrush(you), FontWeight = FontWeights.SemiBold });
+                        g.ToolTip = $"{a.Name} wins {AppShell.Pct(mu.WinRate, 1)} of {mu.Games:N0} games against {MetaStats.ClassName(cls.Key)}";
+                    }
+                    else val = Theme.Text("too few games", 13, Theme.Dusk);
+                    val.TextAlignment = TextAlignment.Right;
+                    val.VerticalAlignment = VerticalAlignment.Center;
+                    Grid.SetColumn(val, 1);
+                    g.Children.Add(val);
+                    p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = g });
+                }
+                var note = Theme.Text("Its win rate against each class you play, turned around: how often that class beats it in the data.", 12, Theme.Dusk, wrap: true);
+                note.Margin = new Thickness(0, 6, 0, 0);
+                p.Children.Add(note);
+            }
+
+            // Core cards: what every list of it runs.
+            if (a.CoreCards.Count > 0)
+            {
+                p.Children.Add(Small("Core cards"));
+                var cards = a.CoreCards.Distinct().Select(id => (Id: id, Info: d.Cards.ById(id))).OrderBy(x => x.Info?.Cost ?? 99).ThenBy(x => x.Info?.Name).Take(16).ToList();
+                var cols = new System.Windows.Controls.Primitives.UniformGrid { Columns = 2 };
+                foreach (var (id, info) in cards)
+                {
+                    var tile = SectionView.CardTile(AdviceLine.Card(info, id, info?.Name ?? id, Tone.Normal, null, null), true, true);
+                    if (tile is FrameworkElement fe) fe.Margin = new Thickness(0, 0, 8, 0);
+                    cols.Children.Add(tile);
+                }
+                p.Children.Add(cols);
+            }
+            return new Border
+            {
+                Child = p, Padding = new Thickness(22, 18, 22, 20), CornerRadius = new CornerRadius(12), VerticalAlignment = VerticalAlignment.Top,
+                BorderBrush = Theme.Line, BorderThickness = new Thickness(1), Background = Theme.B(Theme.NightC, 0.6),
+            };
+        }
+
+        /// <summary>A small capitals label opening a part of the panel.</summary>
+        private static TextBlock Small(string text)
+        {
+            var t = AppShell.ColumnLabel(text);
+            t.Margin = new Thickness(0, 18, 0, 6);
+            return t;
         }
 
         /// <summary>Archetype, played, games, win rate. The share bar takes the spare width, so names sit next to their bars.</summary>

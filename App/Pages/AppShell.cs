@@ -35,6 +35,8 @@ namespace HearthStoner.Pages
         /// <summary>Replays page: which game (index into the replayable games, newest first), which frame, hidden cards shown.</summary>
         public int ReplayGame, ReplayFrame;
         public bool ReplayShowHidden;
+        /// <summary>The Replays side panel's tab (see <see cref="ReplayPage"/>): Now, Their deck or Board. Kept while you step through a game.</summary>
+        public string ReplayTab = "Now";
         /// <summary>The History list's filter chips: a mode ("All" or a <see cref="GameModes.Kind"/> name) and a result (Any, Wins, Losses).</summary>
         public string HistoryFilter = "All", HistoryResult = "Any";
         /// <summary>The Ladder page's format tab (FT_STANDARD, FT_WILD, ...); null until you pick one.</summary>
@@ -44,6 +46,8 @@ namespace HearthStoner.Pages
         public const string StatsLadder = "Ladder", StatsAll = "All";
         /// <summary>The Meta page's search text, view chip and sort column.</summary>
         public string MetaSearch = "", MetaView = "By class", MetaSort = "Games";
+        /// <summary>The archetype open in the Meta page's detail panel (its id; 0 = your first, else the most played).</summary>
+        public int MetaSelected;
         /// <summary>Practice page state that lasts between redraws.</summary>
         public PracticeState Practice { get; } = new PracticeState();
         /// <summary>Replays page playback state that lasts between redraws.</summary>
@@ -408,6 +412,54 @@ namespace HearthStoner.Pages
             return p;
         }
 
+        /// <summary>
+        /// One square per game, OLDEST to NEWEST, a W or L in each (not only green and red) and the newest outlined;
+        /// hovering shows the game and clicking opens it in History.
+        /// </summary>
+        public static WrapPanel ResultSquares(AppShell shell, IList<GameRecord> oldestFirst)
+        {
+            var squares = new WrapPanel { VerticalAlignment = VerticalAlignment.Center };
+            for (var i = 0; i < oldestFirst.Count; i++)
+            {
+                var g = oldestFirst[i];
+                var sq = new Border
+                {
+                    Width = 18, Height = 18, CornerRadius = new CornerRadius(4), Margin = new Thickness(0, 0, 5, 0), Cursor = System.Windows.Input.Cursors.Hand,
+                    Background = g.Won ? Theme.Win : Theme.B(Theme.LossC, 0.8),
+                    BorderBrush = Theme.Vellum, BorderThickness = new Thickness(i == oldestFirst.Count - 1 ? 2 : 0),
+                    Child = new TextBlock { Text = g.Won ? "W" : "L", FontSize = 10.5, FontWeight = FontWeights.Bold, Foreground = g.Won ? Theme.B(Theme.Rgb(0x0B, 0x14, 0x30)) : Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+                    ToolTip = $"{(g.Won ? "Win" : "Loss")} vs {g.OpponentArchetype ?? MetaStats.ClassName(g.OpponentClass)}\n{g.DeckLabel} · {g.Start:MMM d, h:mm tt} · {g.TurnsText}\nClick to open in History",
+                };
+                sq.MouseLeftButtonUp += (o, e) => OpenGame(shell, g);
+                squares.Children.Add(sq);
+            }
+            return squares;
+        }
+
+        /// <summary>
+        /// A small line of values (higher is better), green when it ends above where it started and red below; empty
+        /// under two values.
+        /// </summary>
+        public static FrameworkElement Sparkline(IList<double> values, double width = 80, double height = 18, double strokeThickness = 1.6)
+        {
+            var c = new Canvas { Width = width, Height = height, HorizontalAlignment = HorizontalAlignment.Right };
+            if (values == null || values.Count < 2) return c;
+            double lo = values.Min(), hi = values.Max(), span = hi - lo > 0 ? hi - lo : 1;
+            var line = new System.Windows.Shapes.Polyline { StrokeThickness = strokeThickness, StrokeLineJoin = PenLineJoin.Round };
+            for (var i = 0; i < values.Count; i++)
+                line.Points.Add(new Point(width * i / (values.Count - 1), height - 2 - (height - 4) * (values[i] - lo) / span));
+            var end = values[values.Count - 1];
+            line.Stroke = end > values[0] ? Theme.Win : end < values[0] ? Theme.Loss : Theme.Dusk;
+            c.Children.Add(line);
+            return c;
+        }
+        /// <summary>Opens <paramref name="g"/> in History, with the filters cleared so it's in the list.</summary>
+        public static void OpenGame(AppShell shell, GameRecord g)
+        {
+            var index = shell.Data.Games.IndexOf(g);
+            if (index < 0) return;
+            shell.SelectedGame = index; shell.HistoryFilter = "All"; shell.HistoryResult = "Any"; shell.Show("History");
+        }
         /// <summary>A thin rounded bar filled to <paramref name="fraction"/> (0 to 1).</summary>
         public static Border StatBar(double fraction, Brush fill, double height = 5)
         {

@@ -44,18 +44,135 @@ namespace HearthStoner.Pages
             var d = shell.Data;
             var today = DateTime.Today;
             var due = Store.Due(today).Where(id => GameFor(d, id) != null).ToList();
-            var p = new StackPanel { MaxWidth = shell.Size == PageWidth.Wide ? 1600 : 1200, HorizontalAlignment = HorizontalAlignment.Left };
+            // Very wide screens: all six drills in one row, and your progress in its own column on the right.
+            var extra = shell.Size == PageWidth.Wide && shell.PageAreaWidth >= PageLayout.ExtraWideFrom;
+            var p = extra ? new StackPanel() : new StackPanel { MaxWidth = shell.Size == PageWidth.Wide ? 1600 : 1200, HorizontalAlignment = HorizontalAlignment.Left };
             p.Children.Add(ReviewBox(shell, due, Store.StreakDays(today)));
 
-            var columns = shell.Size == PageWidth.Compact ? 2 : 3;
+            var columns = extra ? PracticeIds.Drills.Length : shell.Size == PageWidth.Compact ? 2 : 3;
             var tiles = new System.Windows.Controls.Primitives.UniformGrid { Columns = columns, Margin = new Thickness(0, 22, 0, 0) };
             foreach (var drill in PracticeIds.Drills) tiles.Children.Add(Tile(shell, drill, due.Count(id => PracticeIds.DrillOf(id) == drill)));
             p.Children.Add(tiles);
-            p.Children.Add(Progress(shell.Size, today));
             var note = Theme.Text("A question you miss comes back the next day; right answers push it back 3, then 7 days, and three right in a row retire it. New games add new questions by themselves.", 12.5, Theme.Dusk, wrap: true);
             note.Margin = new Thickness(0, 16, 0, 0);
+            if (extra)
+            {
+                p.Children.Add(note);
+                return PageLayout.Columns((p, 0), (ProgressColumn(today), ProgressColumnWidth));
+            }
+            p.Children.Add(Progress(shell.Size, today));
+            var coming = ComingUpLine(today);
+            if (coming != null) p.Children.Add(coming);
             p.Children.Add(note);
             return p;
+        }
+
+        /// <summary>The progress column's width on a very wide screen.</summary>
+        private const double ProgressColumnWidth = 440;
+
+        /// <summary>Weeks in the practice calendar.</summary>
+        private const int CalendarWeeks = 5;
+
+        /// <summary>Days ahead in "Coming up".</summary>
+        private const int ComingDays = 7;
+
+        /// <summary>The right-hand column on a very wide screen: the practice calendar, accuracy by drill and what comes due next.</summary>
+        private static UIElement ProgressColumn(DateTime today)
+        {
+            var p = new StackPanel();
+            p.Children.Add(Theme.Heading("Your progress"));
+            p.Children.Add(Calendar(today));
+            var acc = new StackPanel { Margin = new Thickness(0, 22, 0, 0) };
+            if (Store.Cards.Count == 0) acc.Children.Add(Theme.Text("Answer a few questions and your accuracy shows up here.", 13.5, Theme.Mist, wrap: true));
+            else acc.Children.Add(AccuracyTable());
+            p.Children.Add(acc);
+            p.Children.Add(ComingUp(today));
+            return p;
+        }
+
+        /// <summary>
+        /// The last <see cref="CalendarWeeks"/> weeks, one square a day (Monday on top), brighter the more you answered;
+        /// today outlined, each day's tally on hover.
+        /// </summary>
+        private static UIElement Calendar(DateTime today)
+        {
+            var p = new StackPanel();
+            p.Children.Add(AppShell.ColumnLabel($"Last {CalendarWeeks} weeks · days you practised"));
+            // Start on the Monday CalendarWeeks-1 weeks before this week's.
+            var monday = today.Date.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+            var start = monday.AddDays(-7 * (CalendarWeeks - 1));
+            var days = Store.LastDays(today, (int)(today.Date - start).TotalDays + 1);
+            var most = Math.Max(1, days.Max(x => x.Answered));
+            var g = new Grid { Margin = new Thickness(0, 8, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+            g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(26) });
+            for (var w = 0; w < CalendarWeeks; w++) g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(26) });
+            for (var r = 0; r < 7; r++) g.RowDefinitions.Add(new RowDefinition { Height = new GridLength(26) });
+            foreach (var (row, label) in new[] { (0, "M"), (2, "W"), (4, "F"), (6, "S") })
+            {
+                var t = Theme.Text(label, 11.5, Theme.Dusk);
+                t.VerticalAlignment = VerticalAlignment.Center;
+                Grid.SetRow(t, row);
+                g.Children.Add(t);
+            }
+            foreach (var day in days)
+            {
+                var offset = (int)(day.Day - start).TotalDays;
+                var isToday = day.Day == today.Date;
+                var cell = new Border
+                {
+                    Width = 20, Height = 20, CornerRadius = new CornerRadius(4),
+                    Background = day.Answered == 0 ? Theme.Raised : Theme.B(Theme.ManaC, 0.35 + 0.65 * day.Answered / most),
+                    BorderBrush = isToday ? Theme.Vellum : null, BorderThickness = new Thickness(isToday ? 1.5 : 0),
+                    ToolTip = day.Answered == 0 ? $"{day.Day:ddd MMM d}: none" : $"{day.Day:ddd MMM d}: {day.Answered} answered, {day.Right} right",
+                };
+                Grid.SetColumn(cell, 1 + offset / 7);
+                Grid.SetRow(cell, offset % 7);
+                g.Children.Add(cell);
+            }
+            p.Children.Add(g);
+            return p;
+        }
+
+        /// <summary>How many questions come due on each of the next days, as a short list.</summary>
+        private static UIElement ComingUp(DateTime today)
+        {
+            var p = new StackPanel { Margin = new Thickness(0, 22, 0, 0) };
+            p.Children.Add(AppShell.ColumnLabel("Coming up"));
+            var next = Store.Upcoming(today, ComingDays);
+            if (next.All(x => x.Due == 0))
+            {
+                var none = Theme.Text("Nothing scheduled: questions you answer come back over the next days.", 13, Theme.Mist, wrap: true);
+                none.Margin = new Thickness(0, 6, 0, 0);
+                p.Children.Add(none);
+                return p;
+            }
+            foreach (var (day, count) in next)
+            {
+                var row = new Grid { Height = 28 };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                var name = Theme.Text(day == today.Date.AddDays(1) ? "Tomorrow" : day.ToString("ddd MMM d"), 13.5, count > 0 ? Theme.Vellum : Theme.Dusk);
+                var n = Theme.Text(count == 0 ? "–" : $"{count} question{(count == 1 ? "" : "s")}", 13.5, count > 0 ? Theme.Mana : Theme.Dusk);
+                Grid.SetColumn(n, 1);
+                foreach (var t in new[] { name, n }) { t.VerticalAlignment = VerticalAlignment.Center; row.Children.Add(t); }
+                p.Children.Add(new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = row });
+            }
+            return p;
+        }
+
+        /// <summary>"Coming up: 3 questions tomorrow, 5 more this week." under the progress (narrower windows); null when nothing is scheduled.</summary>
+        private static UIElement ComingUpLine(DateTime today)
+        {
+            var next = Store.Upcoming(today, ComingDays);
+            var tomorrow = next[0].Due;
+            var rest = next.Skip(1).Sum(x => x.Due);
+            if (tomorrow + rest == 0) return null;
+            var parts = new List<string>();
+            if (tomorrow > 0) parts.Add($"{tomorrow} question{(tomorrow == 1 ? "" : "s")} tomorrow");
+            if (rest > 0) parts.Add($"{rest}{(tomorrow > 0 ? " more" : " question" + (rest == 1 ? "" : "s"))} in the {ComingDays - 1} days after");
+            var t = Theme.Text("Coming up: " + string.Join(", ", parts) + ".", 13, Theme.Mist, wrap: true);
+            t.Margin = new Thickness(0, 12, 0, 0);
+            return t;
         }
 
         /// <summary>Days shown in the progress strip.</summary>

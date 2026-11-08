@@ -31,6 +31,7 @@ namespace HearthStoner.Pages
             foreach (var p in mine.Where(p => p != matched.FirstOrDefault()))
                 left.Children.Add(Row(p, shell, copies[p]));
             if (d.Meta?.Archetypes.Count > 0) left.Children.Add(MetaChanges(d, copies.Values.SelectMany(c => c).ToList()));
+            if (d.Session.Recent.Count > 0) left.Children.Add(Session(shell));
 
             var wide = shell.Size == PageWidth.Wide;
             var field = matched.Count > 0 ? Field(matched[0], d, allClasses: wide) : null;
@@ -234,6 +235,52 @@ namespace HearthStoner.Pages
             return p;
         }
 
+        // ------------------------------------------------------------------ today
+
+        /// <summary>Today's record, time played and rank change (a day runs 4 AM to 4 AM), then your last results.</summary>
+        private static UIElement Session(AppShell shell)
+        {
+            var d = shell.Data;
+            var s = d.Session;
+            var p = new StackPanel { Margin = new Thickness(0, 22, 0, 0) };
+            p.Children.Add(Theme.Heading("Today so far"));
+            if (s.Games > 0)
+            {
+                var nums = new WrapPanel { Margin = new Thickness(0, -2, 0, 14) };
+                void Num(string v, string label, Brush c)
+                {
+                    var b = new StackPanel { Margin = new Thickness(0, 0, 34, 6) };
+                    b.Children.Add(Theme.Text(v, 26, c, FontWeights.SemiBold, display: true));
+                    b.Children.Add(Theme.Text(label, 12, Theme.Dusk));
+                    nums.Children.Add(b);
+                }
+                Num($"{s.Wins}-{s.Losses}", s.Games == 1 ? "1 game" : $"{s.Games} games", Theme.Vellum);
+                if (s.Wins + s.Losses > 0) Num(AppShell.Pct(s.WinRate), "win rate", Theme.RateBrush(s.WinRate));
+                Num(Duration(s.Played), "played", Theme.Vellum);
+                if (s.RankAtStart != null && d.Rank != null)
+                    Num(s.RankAtStart == d.Rank ? d.Rank : $"{s.RankAtStart} → {d.Rank}", s.RankAtStart == d.Rank ? "rank, no change" : "rank today", Theme.Vellum);
+                p.Children.Add(nums);
+            }
+            else
+            {
+                var none = Theme.Text($"No games yet today (since {s.Since:h tt}).", 13, Theme.Dusk, wrap: true);
+                none.Margin = new Thickness(0, -4, 0, 12);
+                p.Children.Add(none);
+            }
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            var label = AppShell.ColumnLabel($"Last {s.Recent.Count}");
+            label.Margin = new Thickness(0, 0, 10, 0);
+            label.VerticalAlignment = VerticalAlignment.Center;
+            row.Children.Add(label);
+            row.Children.Add(AppShell.ResultSquares(shell, s.Recent));
+            p.Children.Add(row);
+            return p;
+        }
+
+        /// <summary>"45m", "1h 05m".</summary>
+        public static string Duration(TimeSpan t) =>
+            t.TotalHours >= 1 ? $"{(int)t.TotalHours}h {t.Minutes:00}m" : $"{Math.Max(0, (int)Math.Round(t.TotalMinutes))}m";
+
         // ------------------------------------------------------------------ the field
 
         /// <param name="allClasses">Show all eight rows (wide screens have the room) instead of five and a "more" toggle.</param>
@@ -258,47 +305,63 @@ namespace HearthStoner.Pages
             p.Children.Add(FieldRow(null, AppShell.ColumnLabel("Class"), AppShell.ColumnLabel("Share", TextAlignment.Right), AppShell.ColumnLabel("You win", TextAlignment.Right), 24));
             const int maxRows = 8;
             var shownRows = allClasses ? maxRows : 5;
-            foreach (var m in best.Matchups.Take(shownRows)) p.Children.Add(FieldMatchup(m));
+            foreach (var m in best.Matchups.Take(shownRows)) p.Children.Add(FieldMatchup(m, d));
             var more = best.Matchups.Skip(shownRows).Take(maxRows - shownRows).ToList();
             if (more.Count > 0)
             {
                 var rest = new StackPanel();
-                foreach (var m in more) rest.Children.Add(FieldMatchup(m));
+                foreach (var m in more) rest.Children.Add(FieldMatchup(m, d));
                 var c = AppShell.Collapsible($"{more.Count} more class{(more.Count == 1 ? "" : "es")}", rest);
                 c.Margin = new Thickness(0, 6, 0, 0);
                 p.Children.Add(c);
             }
-            var note = Theme.Text($"Share of games at {AppData.RankBracketName(d.Meta.Rank)}, and {best.Deck.Name}'s win rate against each class.", 12, Theme.Dusk, wrap: true);
+            var since = d.ClassShareSince.HasValue && d.ClassShareChange.Count > 0 ? $" Arrows: share up or down by 0.5 points or more since {d.ClassShareSince.Value:MMM d}." : "";
+            var note = Theme.Text($"Share of games at {AppData.RankBracketName(d.Meta.Rank)}, and {best.Deck.Name}'s win rate against each class.{since}", 12, Theme.Dusk, wrap: true);
             note.Margin = new Thickness(0, 8, 0, 0);
             p.Children.Add(note);
             return p;
         }
 
-        /// <summary>One class of the field: its colour, name, share of games and your win rate against it.</summary>
-        private static UIElement FieldMatchup(DeckPlanner.ClassMatchup m)
+        /// <summary>Share changes smaller than this (0.5 points) get no arrow.</summary>
+        private const double ShareArrowFrom = 0.005;
+
+        /// <summary>One class of the field: its colour, name, share of games (with an arrow when it moved) and your win rate against it.</summary>
+        private static UIElement FieldMatchup(DeckPlanner.ClassMatchup m, AppData d)
         {
             var dot = new Border { Width = 10, Height = 10, CornerRadius = new CornerRadius(3), Background = Theme.B(Theme.ClassColor(m.Class)), HorizontalAlignment = HorizontalAlignment.Left };
             var n = Theme.Text(MetaStats.ClassName(m.Class), 13.5);
             var s = Theme.Text(AppShell.Pct(m.Share), 13.5, Theme.Mist); s.TextAlignment = TextAlignment.Right;
             var v = m.FromData ? Theme.Text(AppShell.Pct(m.WinRate), 13.5, Theme.RateBrush(m.WinRate), FontWeights.SemiBold) : Theme.Text("-", 13.5, Theme.Dusk);
             v.TextAlignment = TextAlignment.Right;
-            return FieldRow(dot, n, s, v, 34);
+            UIElement trend = null;
+            if (d.ClassShareChange.TryGetValue(m.Class?.ToLowerInvariant() ?? "", out var ch) && Math.Abs(ch) >= ShareArrowFrom)
+            {
+                // Neutral blue: more of a class isn't good or bad by itself (the Meta changes list uses the same).
+                trend = new System.Windows.Shapes.Path
+                {
+                    Data = Geometry.Parse(ch > 0 ? "M 0,7 L 4.5,0 L 9,7 Z" : "M 0,0 L 9,0 L 4.5,7 Z"), Fill = Theme.Mana, Width = 9, Height = 7,
+                    HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center,
+                    ToolTip = $"{(ch > 0 ? "Up" : "Down")} {Math.Abs(ch) * 100:0.0} points since {d.ClassShareSince:MMM d}",
+                };
+            }
+            return FieldRow(dot, n, s, v, 34, trend);
         }
 
-        /// <summary>The field table's columns: dot, class, share, your win rate.</summary>
-        private static UIElement FieldRow(UIElement dot, TextBlock name, TextBlock share, TextBlock win, double height)
+        /// <summary>The field table's columns: dot, class, share, a share arrow, your win rate.</summary>
+        private static UIElement FieldRow(UIElement dot, TextBlock name, TextBlock share, TextBlock win, double height, UIElement trend = null)
         {
             var row = new Grid { Height = height };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(22) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(56) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(72) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
             if (dot != null) row.Children.Add(dot);
-            var col = 1;
-            foreach (var t in new[] { name, share, win })
+            if (trend != null) { Grid.SetColumn(trend, 3); row.Children.Add(trend); }
+            foreach (var (t, col) in new[] { (name, 1), (share, 2), (win, 4) })
             {
                 t.VerticalAlignment = VerticalAlignment.Center;
-                Grid.SetColumn(t, col++);
+                Grid.SetColumn(t, col);
                 row.Children.Add(t);
             }
             return new Border { BorderBrush = Theme.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = row };

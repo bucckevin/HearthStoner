@@ -211,8 +211,18 @@ namespace HearthStoner.Pages
             Grid.SetRow(controls, 1);
             body.Children.Add(controls);
 
-            // Right: what happened, and the advice at the start of this turn.
+            // Right: tabs, then what happened and the advice at the start of this turn (Now), their deck, or the board.
             var side = new StackPanel();
+            var sections = r.AdviceAt(shell.ReplayFrame).Where(s => !s.Lower || s.Opponent).ToList();   // your own deck list: not what the replay is about
+            var tab = SideTabs.Contains(shell.ReplayTab) ? shell.ReplayTab : SideTabs[0];
+            var tabs = new WrapPanel { Margin = new Thickness(0, 0, 0, 10) };
+            foreach (var t in SideTabs)
+            {
+                var n = sections.Count(s => TabOf(s) == t);
+                tabs.Children.Add(AppShell.FilterChip(t, t == tab, () => { shell.ReplayTab = t; shell.Redraw(); },
+                    t == "Now" ? "What just happened, health and this turn's advice" : n == 0 ? "Nothing here at this point of the game" : null));
+            }
+            side.Children.Add(tabs);
             var actionBox = new Border
             {
                 CornerRadius = new CornerRadius(10), Background = Theme.Slate, Padding = new Thickness(14, 10, 14, 12), Margin = new Thickness(0, 0, 0, 14),
@@ -226,15 +236,16 @@ namespace HearthStoner.Pages
                 t.Margin = new Thickness(0, 3, 0, 0);
                 ap.Children.Add(t);
             }
-            side.Children.Add(actionBox);
+            if (tab == "Now") side.Children.Add(actionBox);
             // Turn, whose turn and the win chance at the top, so you don't have to look down at the controls.
             var adviceTitle = new TextBlock { FontSize = 11.5, FontWeight = FontWeights.SemiBold, Foreground = Theme.Dusk, Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap };
             adviceTitle.Inlines.Add(new System.Windows.Documents.Run($"START OF TURN {f.Round}  ·  {(f.Mulligan ? "MULLIGAN" : f.YourTurn ? "YOUR TURN" : "THEIR TURN")}  ·  "));
             adviceTitle.Inlines.Add(new System.Windows.Documents.Run(AppShell.Pct(chanceNow)) { Foreground = chanceNow >= 0.5 ? Theme.Win : Theme.Loss });
             adviceTitle.Inlines.Add(new System.Windows.Documents.Run(" TO WIN"));
             side.Children.Add(adviceTitle);
-            // Your deck list is long and not what the replay is about: leave it out here.
-            side.Children.Add(AdviceCards(r.AdviceAt(shell.ReplayFrame).Where(s => !s.Lower || s.Opponent)));
+            var shown = sections.Where(s => TabOf(s) == tab).ToList();
+            if (shown.Count > 0) side.Children.Add(AdviceCards(shown));
+            else side.Children.Add(Theme.Text(tab == "Board" ? "No minions on the board yet." : "Nothing known about their deck yet.", 13, Theme.Dusk, wrap: true));
             var sideScroll = new ScrollViewer { Content = side, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false };
             // The side panel's text is drawn at the overlay's glance-in-game sizes; here you sit back and read it,
             // so it's scaled up a little, and more on a wide screen where the column is wider too.
@@ -249,6 +260,18 @@ namespace HearthStoner.Pages
             Grid.SetColumn(sideScroll, 2);
             Grid.SetRowSpan(sideScroll, 2);
             body.Children.Add(sideScroll);
+
+            // Very wide screens: every action of the game down the left, grouped by turn, next to the board.
+            if (shell.Size == PageWidth.Wide && shell.PageAreaWidth >= PageLayout.ExtraWideFrom)
+            {
+                body.ColumnDefinitions.Insert(0, new ColumnDefinition { Width = new GridLength(LogWidth) });
+                body.ColumnDefinitions.Insert(1, new ColumnDefinition { Width = new GridLength(22) });
+                foreach (UIElement child in body.Children) Grid.SetColumn(child, Grid.GetColumn(child) + 2);
+                var log = TurnLog(r, shell.ReplayFrame, Go);
+                Grid.SetColumn(log, 0);
+                Grid.SetRowSpan(log, 2);
+                body.Children.Add(log);
+            }
 
             var page = AppShell.PageFill(Title(game), Subtitle(game), body, GameSwitcher(shell, games));
             page.Focusable = true;
@@ -266,6 +289,60 @@ namespace HearthStoner.Pages
                 }
             };
             return page;
+        }
+
+        /// <summary>The side panel's tabs, in order.</summary>
+        private static readonly string[] SideTabs = { "Now", "Their deck", "Board" };
+
+        /// <summary>Which tab an advice section goes under: the board, the opponent's deck (their likely deck and cards left), or now.</summary>
+        private static string TabOf(AdviceSection s) =>
+            s.Title == "Board" ? "Board"
+            : s.Opponent && (s.Lower || (s.Title ?? "").StartsWith("Their deck", StringComparison.Ordinal)) ? "Their deck"
+            : "Now";
+
+        /// <summary>The turn log's width on a very wide screen.</summary>
+        private const double LogWidth = 280;
+
+        /// <summary>
+        /// Every action of the game, grouped under its turn, the current one highlighted and scrolled into view; clicking
+        /// one jumps there.
+        /// </summary>
+        private static UIElement TurnLog(Replay r, int current, Action<int> go)
+        {
+            var p = new StackPanel();
+            var head = Theme.Heading("Turn by turn");
+            head.Margin = new Thickness(0, 0, 0, 6);
+            p.Children.Add(head);
+            var lastTurn = int.MinValue;
+            FrameworkElement now = null;
+            for (var i = 0; i < r.Frames.Count; i++)
+            {
+                var f = r.Frames[i];
+                if (string.IsNullOrEmpty(f.Action) || f.Action.StartsWith("---", StringComparison.Ordinal)) continue;
+                if (f.Turn != lastTurn)
+                {
+                    lastTurn = f.Turn;
+                    var th = AppShell.ColumnLabel(f.Mulligan ? "Mulligan" : $"Turn {f.Round} · {(f.YourTurn ? "you" : "them")}");
+                    th.Margin = new Thickness(0, 10, 0, 3);
+                    th.Foreground = f.YourTurn ? Theme.Mana : Theme.Dusk;
+                    p.Children.Add(th);
+                }
+                var on = i == current;
+                var t = Theme.Text(f.Action, 12.5, on ? Theme.Vellum : Theme.Mist, on ? FontWeights.SemiBold : FontWeights.Normal, wrap: true);
+                var row = new Border
+                {
+                    Child = t, Padding = new Thickness(8, 3, 6, 3), Cursor = Cursors.Hand, ToolTip = "Go to this moment",
+                    Background = on ? Theme.B(Theme.ManaC, 0.14) : Brushes.Transparent,
+                    BorderBrush = on ? Theme.Mana : Brushes.Transparent, BorderThickness = new Thickness(2, 0, 0, 0),
+                };
+                var frame = i;
+                row.MouseLeftButtonUp += (s, e) => go(frame);
+                p.Children.Add(row);
+                if (on) now = row;
+            }
+            // Scroll the current action into view when the log opens.
+            if (now != null) now.Loaded += (s, e) => now.BringIntoView();
+            return new ScrollViewer { Content = p, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false };
         }
 
         private static void TogglePlay(AppShell shell, Replay r)

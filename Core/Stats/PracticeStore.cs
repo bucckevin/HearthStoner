@@ -96,6 +96,17 @@ namespace HearthStoner.Stats
         public List<string> Due(DateTime today) =>
             Cards.Where(kv => !kv.Value.Retired && kv.Value.Due <= today.Date).OrderBy(kv => kv.Value.Due).ThenBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => kv.Key).ToList();
 
+        /// <summary>
+        /// Questions coming due on each of the <paramref name="days"/> days after today, tomorrow first (questions due
+        /// today or earlier are today's review, not counted here); retired ones never come back.
+        /// </summary>
+        public List<(DateTime Day, int Due)> Upcoming(DateTime today, int days)
+        {
+            if (days <= 0) throw new ArgumentOutOfRangeException(nameof(days), "Ask for at least one day.");
+            return Enumerable.Range(1, days).Select(i => today.Date.AddDays(i))
+                .Select(d => (d, Cards.Values.Count(c => !c.Retired && c.Due.Date == d))).ToList();
+        }
+
         /// <summary>Days in a row you practised, ending today (or yesterday, so the streak holds until you play today).</summary>
         public int StreakDays(DateTime today)
         {
